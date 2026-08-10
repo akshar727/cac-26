@@ -71,66 +71,125 @@ const setPosition = {
   inputsInline: true,
 };
 
-const drawText = {
-  type: "draw_text",
-  tooltip:
-    "Draws text on the canvas at the specified position with the specified font, color, and size.",
+const setX = {
+  type: "set_x",
+  tooltip: "",
   helpUrl: "",
-  message0: "draw text %1 font %2 color %3 font size %4 at x-pos %5 y-pos %6",
+  message0: "set position x %1",
   args0: [
     {
       type: "input_value",
-      name: "TEXT",
-      check: "String",
-      text: "default",
-    },
-    {
-      type: "field_dropdown",
-      name: "FONT",
-      options: [
-        ["Arial", "ARIAL"],
-        ["Monospace", "MONOSPACE"],
-        ["Sans-Serif", "SANS-SERIF"],
-      ],
-    },
-    {
-      type: "field_colour_hsv_sliders",
-      name: "COLOR",
-      colour: "#ff0000",
-    },
-    {
-      type: "input_value",
-      name: "FONTSIZE",
+      name: "X",
+      check: "Number",
       value: 0,
-      min: 0,
-      max: 127,
-      precision: 1,
-    },
-    {
-      type: "input_value",
-      name: "XPOS",
-      value: 0,
-      min: 0,
-      max: 400,
-      precision: 1,
-    },
-    {
-      type: "input_value",
-      name: "YPOS",
-      value: 0,
-      min: 0,
-      max: 800,
-      precision: 1,
     },
   ],
   previousStatement: null,
   nextStatement: null,
   colour: 310,
+  inputsInline: true,
 };
+const setY = {
+  type: "set_y",
+  tooltip: "",
+  helpUrl: "",
+  message0: "set position y %1",
+  args0: [
+    {
+      type: "input_value",
+      name: "Y",
+      check: "Number",
+      value: 0,
+    },
+  ],
+  previousStatement: null,
+  nextStatement: null,
+  colour: 310,
+  inputsInline: true,
+};
+
+const wait = {
+  type: "wait",
+  tooltip: "Wait for a specified amount of time",
+  helpUrl: "",
+  message0: "wait %1 seconds",
+  args0: [
+    {
+      type: "input_value",
+      name: "DURATION",
+      check: "Number",
+      value: 1,
+    },
+  ],
+  previousStatement: null,
+  nextStatement: null,
+  colour: 120,
+  inputsInline: true,
+};
+
+// const drawText = {
+//   type: "draw_text",
+//   tooltip:
+//     "Draws text on the canvas at the specified position with the specified font, color, and size.",
+//   helpUrl: "",
+//   message0: "draw text %1 font %2 color %3 font size %4 at x-pos %5 y-pos %6",
+//   args0: [
+//     {
+//       type: "input_value",
+//       name: "TEXT",
+//       check: "String",
+//       text: "default",
+//     },
+//     {
+//       type: "field_dropdown",
+//       name: "FONT",
+//       options: [
+//         ["Arial", "ARIAL"],
+//         ["Monospace", "MONOSPACE"],
+//         ["Sans-Serif", "SANS-SERIF"],
+//       ],
+//     },
+//     {
+//       type: "field_colour_hsv_sliders",
+//       name: "COLOR",
+//       colour: "#ff0000",
+//     },
+//     {
+//       type: "input_value",
+//       name: "FONTSIZE",
+//       value: 0,
+//       min: 0,
+//       max: 127,
+//       precision: 1,
+//     },
+//     {
+//       type: "input_value",
+//       name: "XPOS",
+//       value: 0,
+//       min: 0,
+//       max: 400,
+//       precision: 1,
+//     },
+//     {
+//       type: "input_value",
+//       name: "YPOS",
+//       value: 0,
+//       min: 0,
+//       max: 800,
+//       precision: 1,
+//     },
+//   ],
+//   previousStatement: null,
+//   nextStatement: null,
+//   colour: 310,
+// };
 
 export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
   // canvasRect,
   whenStarted,
   setPosition,
-  drawText,
+  setX,
+  setY,
+  wait,
+  // drawText,
 ]);

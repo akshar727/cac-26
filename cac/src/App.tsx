@@ -3,8 +3,6 @@ import * as React from "react";
 import Database from "@tauri-apps/plugin-sql";
 import * as Blockly from "blockly";
 import { blocks } from "./blocks/blocks";
-import { forBlock } from "./generators/javascript";
-import { javascriptGenerator } from "blockly/javascript";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import {
@@ -30,31 +28,24 @@ import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-conve
 import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "./components/ui/skeleton";
-import { appDataDir, join } from "@tauri-apps/api/path";
-
-type Sprite = {
-  id: number;
-  name: string;
-  image_paths: string;
-  created_at: string;
-  blocks_json: string;
-  project_id: number;
-};
-
-interface AssetSprite extends Sprite {
-  loadableImagePaths: string[];
-}
+import { appDataDir } from "@tauri-apps/api/path";
+import { AssetDatabaseSprite, DatabaseSprite } from "@/types/sprite";
+import { intermediateGenerator } from "@/generators/intermediate";
+import { Runtime } from "@/runner/runtime";
 
 function App() {
-  // const canvasRef = useRef<HTMLCanvasElement>(null);
-  const activeSpriteRef = useRef<Sprite | null>(null);
+  const activeSpriteRef = useRef<DatabaseSprite | null>(null);
   const [codePreview, setCodePreview] = React.useState<string>("");
   const [workspace, setWorkspace] = React.useState<Blockly.WorkspaceSvg | null>(
     null,
   );
-  const [activeSprite, setActiveSprite] = React.useState<Sprite | null>(null);
-  const [sprites, setSprites] = React.useState<Sprite[]>([]);
-  const [assetSprites, setAssetSprites] = React.useState<AssetSprite[]>([]);
+  const [activeSprite, setActiveSprite] = React.useState<DatabaseSprite | null>(
+    null,
+  );
+  const [sprites, setSprites] = React.useState<DatabaseSprite[]>([]);
+  const [assetSprites, setAssetSprites] = React.useState<AssetDatabaseSprite[]>(
+    [],
+  );
   const [spriteImageDialogValue, setSpriteImageDialogValue] = React.useState<
     string | null
   >(null);
@@ -70,7 +61,7 @@ function App() {
   }, [activeSprite]);
 
   React.useEffect(() => {
-    const newAssetSprites: AssetSprite[] = sprites.map((sprite) => {
+    const newAssetSprites: AssetDatabaseSprite[] = sprites.map((sprite) => {
       return {
         ...sprite,
         loadableImagePaths: JSON.parse(sprite.image_paths || "[]").map(
@@ -118,7 +109,7 @@ function App() {
 
   async function importDatabaseData() {
     const db = await Database.load("sqlite:cac.db");
-    const result = await db.select<Sprite[]>(
+    const result = await db.select<DatabaseSprite[]>(
       `SELECT * from sprites WHERE project_id = 1`,
     );
     console.log("Sprites from database:", result);
@@ -142,108 +133,25 @@ function App() {
   const runCode = () => {
     if (!Blockly.getMainWorkspace()) return;
     Blockly.Events.disable();
-    let blocksToRemove: Blockly.Block[] = [];
-    let blockOwners: Record<string, Blockly.Block[]> = {};
-    for (const sprite of sprites) {
-      blockOwners[sprite.id] = [];
-    }
     try {
-      let code = `
-      const backgroundCanvas = document.getElementById('backgroundCanvas');\n
-      const backgroundCanvasContext = backgroundCanvas.getContext('2d');\n
-      backgroundCanvasContext.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);\n
-      const spriteCanvas = document.getElementById('foregroundCanvas');\n
-      const spriteCanvasContext = spriteCanvas.getContext('2d');\n
-      spriteCanvasContext.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);\n
-      const blitTasks = [];\n
-      function runBlitTasks() {
-        spriteCanvasContext.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);\n
-        for (const task of blitTasks) {
-          if (task.type === 'image') {
-            if (!task.src.complete) {
-            task.src.onload = () => {
-              spriteCanvasContext.drawImage(task.src, task.x, task.y);\n
-            };\n
-            } else {
-              spriteCanvasContext.drawImage(task.src, task.x, task.y);\n
-            }\n
-          }\n
-          else if (task.type === 'text') {
-            spriteCanvasContext.font = task.fontSize + 'px ' + task.font;\n
-            spriteCanvasContext.fillStyle = task.color;\n
-            spriteCanvasContext.fillText(task.text, task.x, task.y);\n
-          }\n
-          else if (task.type === 'rect') {
-            spriteCanvasContext.fillStyle = task.color;\n
-            spriteCanvasContext.fillRect(task.x, task.y, task.width, task.height);\n
-          }\n
-        }\n
-          }
-      `;
-      for (const sprite of sprites) {
-        code += `
-        \nconst sprite_${sprite.id}_img = new Image();\n
-        sprite_${sprite.id}_img.src = '${assetSprites.find((s) => s.id === sprite.id)?.loadableImagePaths[0]}';\n
-        blitTasks.push({'type': 'image', 'src': sprite_${sprite.id}_img, 'x': 0, 'y': 0,'spriteId': ${sprite.id}});\n
-        `;
-        if (sprite.id === activeSprite?.id) continue;
-        if (sprite.blocks_json) {
-          const parsedBlocks = JSON.parse(sprite.blocks_json);
-          for (const block of parsedBlocks) {
-            const placedBlock = Blockly.serialization.blocks.append(
-              block,
-              Blockly.getMainWorkspace(),
-            );
-            blocksToRemove.push(placedBlock);
-            blockOwners[sprite.id].push(placedBlock);
-          }
+      const runtime = new Runtime(assetSprites);
+      runtime.start();
+      window.addEventListener("keydown", (event) => {
+        runtime.keyPressed(event.key);
+      });
+      let prev = performance.now();
+      function step() {
+        const now = performance.now();
+        const deltaTime = (now - prev) / 1000; // Convert to seconds
+        prev = now;
+        runtime.tick(deltaTime);
+        if (runtime._threads.length > 0) {
+          requestAnimationFrame(step);
         }
       }
-      const topBlocks = Blockly.getMainWorkspace().getTopBlocks(false);
-      console.log("Top blocks:", topBlocks);
-      const startBlocks = topBlocks.filter((block) =>
-        [
-          "when_started",
-          "procedures_defnoreturn",
-          "procedures_defreturn",
-        ].includes(block.type),
-      );
-      if (startBlocks.length === 0) {
-        console.log("No 'When Started' block found.");
-        return;
-      }
-      javascriptGenerator.init(Blockly.getMainWorkspace() as Blockly.Workspace);
-      for (const block of startBlocks) {
-        const blockCode = javascriptGenerator.blockToCode(block);
-        code += blockCode;
-      }
-
-      code = javascriptGenerator.finish(code);
-      const eventRegistry: Record<string, Function> = {};
-      // @ts-expect-error
-      window.registerEvent = function (eventName, callback) {
-        eventRegistry[eventName] = callback;
-      };
-      code += "runBlitTasks();\n";
-      try {
-        setCodePreview(code);
-        eval(code);
-        for (const eventName in eventRegistry) {
-          if (eventName.startsWith("run_")) {
-            const callback = eventRegistry[eventName];
-            if (typeof callback === "function") {
-              callback();
-            }
-          }
-        }
-      } catch (error) {
-        console.log(error);
-      }
+      requestAnimationFrame(step);
     } finally {
       Blockly.Events.enable();
-      for (const block of blocksToRemove) {
-        block.dispose(false);
-      }
     }
   };
 
@@ -289,10 +197,9 @@ function App() {
 
   async function setupWorkspace() {
     console.log("Setting up workspace...");
-    Blockly.utils.colour.setHsvSaturation(0.75); // 0 (inclusive) to 1 (exclusive), defaulting to 0.45
-    Blockly.utils.colour.setHsvValue(0.65); // 0 (inclusive) to 1 (exclusive), defaulting to 0.65
+    Blockly.utils.colour.setHsvSaturation(0.75);
+    Blockly.utils.colour.setHsvValue(0.65);
     Blockly.common.defineBlocks(blocks);
-    Object.assign(javascriptGenerator.forBlock, forBlock);
     const theme = Blockly.Theme.defineTheme("cac", {
       name: "cac",
       base: Blockly.Themes.Classic,
@@ -405,7 +312,7 @@ function App() {
                 <CardTitle>Sprites</CardTitle>
                 {assetSprites.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2">
-                    {assetSprites.map((sprite: AssetSprite) => {
+                    {assetSprites.map((sprite: AssetDatabaseSprite) => {
                       return (
                         <Card
                           className="hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200"
