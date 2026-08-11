@@ -5,7 +5,7 @@ export class Sprite {
   direction = 90;
   size = 100;
   visible = true;
-  variables = new Map<string, any>();
+  variables = new Map<string, number | string | boolean>();
   _costumes: HTMLImageElement[] = [];
   currentCostumeIndex = 0;
 

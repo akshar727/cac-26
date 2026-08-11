@@ -3,7 +3,7 @@ import * as Blockly from "blockly";
 import { intermediateGenerator } from "@/generators/intermediate";
 import { Thread } from "./thread";
 import { Sprite } from "@/runner/sprite";
-import { AssetDatabaseSprite, DatabaseSprite } from "@/types/sprite";
+import { AssetDatabaseSprite } from "@/types/sprite";
 import { VirtualMachine } from "./virtualMachine";
 import { Renderer } from "./renderer";
 
@@ -58,7 +58,7 @@ export class Runtime {
     script.blocks = JSON.parse(
       "[" + intermediateGenerator.blockToCode(block) + "]",
     );
-
+    console.log("Compiled script for sprite", spriteId, ":", script);
     return script;
   }
 
@@ -73,9 +73,9 @@ export class Runtime {
     }
   }
 
-  tick(deltaTime: number) {
+  tick(deltaTime: number, currentTime: number) {
     for (const thread of this._threads) {
-      this._vm.step(thread, this, deltaTime);
+      this._vm.step(thread, this, currentTime);
     }
     this._threads = this._threads.filter((thread) => thread.status !== "done");
     this._renderer.blit(this._targets);

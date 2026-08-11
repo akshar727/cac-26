@@ -14,9 +14,6 @@ export class Renderer {
     );
     for (const target of targets) {
       if (target.visible) {
-        console.log(
-          `Rendering sprite ${target.id} at position (${target.x}, ${target.y}). Current costume index: ${target.currentCostumeIndex}, Costume path: ${target._costumes[target.currentCostumeIndex]}`,
-        );
         foregroundContext?.drawImage(
           target._costumes[target.currentCostumeIndex],
           target.x,

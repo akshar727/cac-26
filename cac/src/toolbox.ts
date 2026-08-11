@@ -48,6 +48,20 @@ export const toolbox = {
           kind: "block",
           type: "logic_ternary",
         },
+        {
+          kind: "block",
+          type: "logic_wait",
+          inputs: {
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 1,
+                },
+              },
+            },
+          },
+        },
       ],
     },
     {
@@ -612,47 +626,9 @@ export const toolbox = {
       name: "Screen",
       categorystyle: "screen_category",
       contents: [
-        // {
-        //   kind: "block",
-        //   type: "canvas_rect",
-        //   inputs: {
-        //     XPOS: {
-        //       shadow: {
-        //         type: "math_number",
-        //         fields: {
-        //           NUM: 0,
-        //         },
-        //       },
-        //     },
-        //     YPOS: {
-        //       shadow: {
-        //         type: "math_number",
-        //         fields: {
-        //           NUM: 0,
-        //         },
-        //       },
-        //     },
-        //     WIDTH: {
-        //       shadow: {
-        //         type: "math_number",
-        //         fields: {
-        //           NUM: 100,
-        //         },
-        //       },
-        //     },
-        //     HEIGHT: {
-        //       shadow: {
-        //         type: "math_number",
-        //         fields: {
-        //           NUM: 100,
-        //         },
-        //       },
-        //     },
-        //   },
-        // },
         {
           kind: "block",
-          type: "set_position",
+          type: "screen_set_position",
           inputs: {
             X: {
               shadow: {
@@ -674,7 +650,7 @@ export const toolbox = {
         },
         {
           kind: "block",
-          type: "set_x",
+          type: "screen_set_x",
           inputs: {
             X: {
               shadow: {
@@ -688,7 +664,7 @@ export const toolbox = {
         },
         {
           kind: "block",
-          type: "set_y",
+          type: "screen_set_y",
           inputs: {
             Y: {
               shadow: {
@@ -700,58 +676,6 @@ export const toolbox = {
             },
           },
         },
-        {
-          kind: "block",
-          type: "wait",
-          inputs: {
-            DURATION: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 1,
-                },
-              },
-            },
-          },
-        },
-        // {
-        //   kind: "block",
-        //   type: "draw_text",
-        //   inputs: {
-        //     TEXT: {
-        //       shadow: {
-        //         type: "text",
-        //         fields: {
-        //           TEXT: "default",
-        //         },
-        //       },
-        //     },
-        //     FONTSIZE: {
-        //       shadow: {
-        //         type: "math_number",
-        //         fields: {
-        //           NUM: 12,
-        //         },
-        //       },
-        //     },
-        //     XPOS: {
-        //       shadow: {
-        //         type: "math_number",
-        //         fields: {
-        //           NUM: 0,
-        //         },
-        //       },
-        //     },
-        //     YPOS: {
-        //       shadow: {
-        //         type: "math_number",
-        //         fields: {
-        //           NUM: 0,
-        //         },
-        //       },
-        //     },
-        //   },
-        // },
       ],
     },
     {

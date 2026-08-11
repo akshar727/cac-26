@@ -4,6 +4,7 @@ export type DatabaseSprite = {
   image_paths: string;
   created_at: string;
   blocks_json: string;
+  variables_map: string;
   project_id: number;
 };
 

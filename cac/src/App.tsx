@@ -30,7 +30,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "./components/ui/skeleton";
 import { appDataDir } from "@tauri-apps/api/path";
 import { AssetDatabaseSprite, DatabaseSprite } from "@/types/sprite";
-import { intermediateGenerator } from "@/generators/intermediate";
 import { Runtime } from "@/runner/runtime";
 
 function App() {
@@ -88,7 +87,21 @@ function App() {
             Blockly.getMainWorkspace(),
           );
         }
-        console.log("Loaded blocks for sprite:", activeSprite);
+        for (const variable of JSON.parse(
+          activeSprite?.variables_map || "[]",
+        )) {
+          Blockly.getMainWorkspace()
+            .getVariableMap()
+            .createVariable(
+              variable.name,
+              variable.type || undefined,
+              variable.id,
+            );
+        }
+        (
+          Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
+        ).refreshToolboxSelection();
+        console.log(activeSprite?.variables_map);
         (Blockly.getMainWorkspace() as Blockly.WorkspaceSvg).cleanUp();
       } finally {
         Blockly.Events.enable();
@@ -112,11 +125,11 @@ function App() {
     const result = await db.select<DatabaseSprite[]>(
       `SELECT * from sprites WHERE project_id = 1`,
     );
-    console.log("Sprites from database:", result);
+    // console.log("Sprites from database:", result);
     setSprites(result);
     if (!activeSprite && result.length > 0) {
       setActiveSprite(result[0]);
-      console.log("Active sprite set to:", result[0]);
+      // console.log("Active sprite set to:", result[0]);
     } else {
       setActiveSprite((prevActiveSprite) => {
         if (prevActiveSprite) {
@@ -144,10 +157,8 @@ function App() {
         const now = performance.now();
         const deltaTime = (now - prev) / 1000; // Convert to seconds
         prev = now;
-        runtime.tick(deltaTime);
-        if (runtime._threads.length > 0) {
-          requestAnimationFrame(step);
-        }
+        runtime.tick(deltaTime, now);
+        requestAnimationFrame(step);
       }
       requestAnimationFrame(step);
     } finally {
@@ -171,27 +182,34 @@ function App() {
       fullJson.push(blockJson);
     }
     (async () => {
+      const variableState = Blockly.getMainWorkspace()
+        .getVariableMap()
+        .getAllVariables();
+      const savedVariables = variableState.map((v) => ({
+        id: v.getId(),
+        name: v.getName(),
+        type: v.getType() || "",
+      }));
       const db = await Database.load("sqlite:cac.db");
       await db.execute(`UPDATE sprites SET blocks_json = ? WHERE id = ?`, [
         JSON.stringify(fullJson),
         currentActiveSprite.id,
       ]);
+      await db.execute(`UPDATE sprites SET variables_map = ? WHERE id = ?`, [
+        JSON.stringify(savedVariables),
+        currentActiveSprite.id,
+      ]);
       setSprites((prevSprites) =>
         prevSprites.map((sprite) =>
           sprite.id === currentActiveSprite.id
-            ? { ...sprite, blocks_json: JSON.stringify(fullJson) }
+            ? {
+                ...sprite,
+                blocks_json: JSON.stringify(fullJson),
+                variables_map: JSON.stringify(savedVariables),
+              }
             : sprite,
         ),
       );
-      console.log(
-        "Serialized blocks saved to database. Active sprite:",
-        currentActiveSprite,
-      );
-      const result = await db.select(
-        `SELECT blocks_json from sprites WHERE project_id = 1 AND id = ?`,
-        [currentActiveSprite.id],
-      );
-      console.log("Retrieved blocks_json from database:", result);
     })();
   }
 
@@ -280,15 +298,15 @@ function App() {
         defaultValue="blocks"
         onValueChange={(value) => {
           async function change() {
-            console.log("Tab changed to:", value);
+            // console.log("Tab changed to:", value);
             if (value === "blocks") {
               await importDatabaseData();
               await setupWorkspace();
-              // setTimeout(() => {
-              const workspace = Blockly.getMainWorkspace();
-              Blockly.svgResize(workspace as Blockly.WorkspaceSvg);
-              console.log("Resized workspace after switching to blocks tab.");
-              // }, 100);
+              setTimeout(() => {
+                const workspace = Blockly.getMainWorkspace();
+                Blockly.svgResize(workspace as Blockly.WorkspaceSvg);
+                // console.log("Resized workspace after switching to blocks tab.");
+              }, 100);
             } else {
               saveCurrentWorkspaceToDatabase();
             }
@@ -319,9 +337,9 @@ function App() {
                           onClick={() => {
                             setActiveSprite(sprite);
                             activeSpriteRef.current = sprite;
-                            console.log("Active sprite set to:", sprite);
+                            // console.log("Active sprite set to:", sprite);
                             setTimeout(() => {
-                              console.log(activeSprite);
+                              // console.log(activeSprite);
                             }, 0);
                           }}
                           key={sprite.id}
