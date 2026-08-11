@@ -1,8 +1,8 @@
 import { Predicate, Value } from "@/types/field";
 import { Runtime } from "./runtime";
 import { Thread } from "./thread";
-import { RepeatFrame } from "./stackFrame";
-import { Block } from "./block";
+import { IfFrame, RepeatFrame } from "./stackFrame";
+import { Block } from "../types/block";
 
 export class VirtualMachine {
   _processingThread: Thread | null = null;
@@ -10,9 +10,6 @@ export class VirtualMachine {
     this._processingThread = thread;
     if (thread.status === "waiting") {
       if (currentTime < thread.waitUntil) {
-        // console.log(
-        //   `Thread for target ${thread.target.id} is still waiting until ${thread.waitUntil}. Current time: ${currentTime}`,
-        // );
         this._processingThread = null;
         return;
       }
@@ -28,12 +25,17 @@ export class VirtualMachine {
 
     while (thread.status === "running" && operations < MAX_OPERATIONS) {
       operations++;
-
       if (
         thread.stack.length === 0 &&
         thread.count >= thread.script.blocks.length
       ) {
         thread.status = "done";
+        console.log(
+          "Thread completed for target:",
+          thread.target,
+          "program counter:",
+          thread.count,
+        );
         this._processingThread = null;
         return;
       }
@@ -45,9 +47,10 @@ export class VirtualMachine {
 
         if (currentFrame) {
           blockToExecute = currentFrame._body[currentFrame._position];
-
+          //   console.log(
+          //     `Executing block of type ${blockToExecute.type} at position ${currentFrame._position} in frame for target ${thread.target.id}`,
+          //   );
           currentFrame._position++;
-
           if (currentFrame._position === currentFrame._body.length) {
             if (currentFrame instanceof RepeatFrame) {
               currentFrame.incrementCount();
@@ -57,11 +60,11 @@ export class VirtualMachine {
               } else {
                 thread.popFrame();
                 if (thread.stack.length === 0) {
-                  console.log("Stack is empty after popping RepeatFrame");
+                  //   console.log("Stack is empty after popping RepeatFrame");
                 }
               }
-            } else {
-              console.log("Popping frame after reaching end of body");
+            } else if (currentFrame instanceof IfFrame) {
+              //   console.log("Popping If frame after reaching end of body");
               thread.popFrame();
             }
           }
@@ -76,7 +79,7 @@ export class VirtualMachine {
         thread.status = "done";
         console.log(
           "Thread completed for target:",
-          thread.target.id,
+          thread.target,
           "program counter:",
           thread.count,
         );
@@ -166,13 +169,10 @@ export class VirtualMachine {
               const thenBody = blockToExecute[thenBodyKey] as Block[];
 
               if (this.evaluatePredicate(condition)) {
-                thread.addFrame({
-                  _body: thenBody,
-                  _position: 0,
-                });
-                console.log(
-                  `Condition met for IF block in target ${thread.target.id}. Executing thenBody.`,
-                );
+                thread.addFrame(new IfFrame(thenBody));
+                // console.log(
+                //   `Condition met for IF block in target ${thread.target.id}. Executing thenBody.`,
+                // );
                 conditionMet = true;
                 break;
               }
@@ -181,14 +181,41 @@ export class VirtualMachine {
           } while (blockToExecute.hasOwnProperty("condition" + n));
 
           if (!conditionMet && blockToExecute.hasOwnProperty("elseBody")) {
-            console.log(
-              `No conditions met for IF block in target ${thread.target.id}. Executing elseBody.`,
-            );
-            thread.addFrame({
-              //@ts-expect-error
-              _body: blockToExecute.elseBody,
-              _position: 0,
-            });
+            // console.log(
+            //   `No conditions met for IF block in target ${thread.target.id}. Executing elseBody.`,
+            // );
+            //@ts-expect-error
+            thread.addFrame(new IfFrame(blockToExecute.elseBody));
+          }
+          break;
+        }
+        case "controls_flow_statements": {
+          if (blockToExecute.flow === "BREAK") {
+            while (thread.stack.length > 0) {
+              // break out of the innermost loop only just like in actual programming languages
+              // loop through the stack frames backwards to find the nearest RepeatFrame
+              let foundRepeatFrame = false;
+              for (let i = thread.stack.length - 1; i >= 0; i--) {
+                if (thread.stack[i] instanceof RepeatFrame) {
+                  // Found the nearest RepeatFrame, pop it and break out of the loop
+                  thread.stack.splice(i, 1);
+                  foundRepeatFrame = true;
+                  break;
+                }
+              }
+              if (foundRepeatFrame) {
+                break; // Exit the while loop after breaking out of the innermost loop
+              }
+            }
+          } else if (blockToExecute.flow === "CONTINUE") {
+            // Similar to BREAK, but we just want to skip to the next iteration of the innermost loop
+            for (let i = thread.stack.length - 1; i >= 0; i--) {
+              if (thread.stack[i] instanceof RepeatFrame) {
+                const repeatFrame = thread.stack[i] as RepeatFrame;
+                repeatFrame._position = repeatFrame._body.length - 1 - 1; // set to second to last position so that after incrementing in the next step, it will point to the last position
+                break;
+              }
+            }
           }
           break;
         }
@@ -201,7 +228,8 @@ export class VirtualMachine {
       if (thread.stack.length === 0) {
         thread.count++;
         if (thread.target.id === 6) {
-          console.log("Thread count incremented to:", thread.count);
+          //   console.log("Thread count incremented to:", thread.count);
+          console.log(thread.target);
         }
       }
     }
@@ -232,6 +260,7 @@ export class VirtualMachine {
           case "GTE":
             return left >= right;
           default:
+            //@ts-ignore
             console.error("Unknown operator:", predicate.operator);
             return false;
         }
@@ -245,6 +274,7 @@ export class VirtualMachine {
           case "OR":
             return left || right;
           default:
+            //@ts-ignore
             console.error("Unknown operator:", predicate.operator);
             return false;
         }
@@ -260,6 +290,7 @@ export class VirtualMachine {
         return null;
       }
       default:
+        //@ts-ignore
         console.error("Unknown predicate type:", predicate.type);
         return false;
     }

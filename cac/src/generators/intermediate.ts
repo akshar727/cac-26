@@ -313,7 +313,7 @@ intermediateGenerator.forBlock["logic_null"] = function (block, _) {
     }),
     Order.NONE,
   ];
-}; 
+};
 
 intermediateGenerator.forBlock["controls_repeat_ext"] = function (
   block,
@@ -325,6 +325,17 @@ intermediateGenerator.forBlock["controls_repeat_ext"] = function (
     type: "controls_repeat_ext",
     times: getFormatted(times),
     body: JSON.parse("[" + branch + "]"),
+  });
+};
+
+intermediateGenerator.forBlock["controls_flow_statements"] = function (
+  block,
+  _,
+) {
+  const flow = block.getFieldValue("FLOW");
+  return JSON.stringify({
+    type: "controls_flow_statements",
+    flow: flow,
   });
 };
 

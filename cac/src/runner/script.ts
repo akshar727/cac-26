@@ -1,4 +1,4 @@
-import { Block } from "@/runner/block";
+import { Block } from "@/types/block";
 
 export interface ScriptInterface {
   id: string;

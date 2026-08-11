@@ -36,4 +36,10 @@ export type Block =
   | {
       type: "controls_if";
       condition: Predicate;
+      thenBody: Block[];
+      elseBody?: Block[];
+    }
+  | {
+      type: "controls_flow_statements";
+      flow: "BREAK" | "CONTINUE";
     };

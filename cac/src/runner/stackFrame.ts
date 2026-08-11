@@ -1,4 +1,4 @@
-import { Block } from "./block";
+import { Block } from "../types/block";
 
 export class StackFrame {
   _body: Block[];
@@ -28,3 +28,5 @@ export class RepeatFrame extends StackFrame {
     return this._currentCount < this._times;
   }
 }
+
+export class IfFrame extends StackFrame {}
