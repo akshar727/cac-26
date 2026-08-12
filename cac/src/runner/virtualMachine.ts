@@ -58,10 +58,10 @@ export class VirtualMachine {
             thread.popFrame();
             if (thread.stack.length === 0) {
               thread.count++;
-              console.warn(
-                "Thread count incremented to (due to frame completion):",
-                thread.count,
-              );
+              //   console.warn(
+              //     "Thread count incremented to (due to frame completion):",
+              //     thread.count,
+              //   );
             }
             continue;
           }
@@ -76,10 +76,10 @@ export class VirtualMachine {
           if (currentFrame._position === currentFrame._body.length) {
             if (currentFrame instanceof RepeatFrame) {
               currentFrame.incrementCount();
-              console.warn(
-                "Repeat frame incremented count to:",
-                currentFrame._currentCount,
-              );
+              //   console.warn(
+              //     "Repeat frame incremented count to:",
+              //     currentFrame._currentCount,
+              //   );
               if (currentFrame.hasMoreIterations()) {
                 currentFrame._position = 0;
               } else {
@@ -182,28 +182,88 @@ export class VirtualMachine {
       }
       case "variables_set": {
         const variableName = blockToExecute.name;
-        const value = this.evaluateValue(blockToExecute.value) as number;
 
-        thread.target.variables.set(variableName, value);
+        let currentValue = thread.target.variables.get(variableName);
+        if (currentValue === undefined) {
+          // check in the last procedure frame if it exists
+          const filteredStack = thread.stack.filter(
+            (frame) => frame instanceof ProcedureFrame,
+          );
+          if (filteredStack.length > 0) {
+            const lastProcedureFrame = filteredStack[
+              filteredStack.length - 1
+            ] as ProcedureFrame;
+            const arg = lastProcedureFrame._arguments.find(
+              (arg) => arg.name === variableName,
+            );
+            if (arg) {
+              arg.value = this.evaluateValue(blockToExecute.value) as number;
+              break;
+            }
+          }
+          console.error(
+            `Variable ${variableName} is not defined for target ${thread.target.id} and not found in procedure frame arguments.`,
+          );
+        } else {
+          thread.target.variables.set(
+            variableName,
+            this.evaluateValue(blockToExecute.value) as number,
+          );
+        }
         break;
       }
 
       case "math_change": {
         const variableName = blockToExecute.name;
         const changeValue = this.evaluateValue(blockToExecute.value);
-        const currentValue = thread.target.variables.get(variableName);
-
-        if (typeof currentValue === "number") {
-          thread.target.variables.set(
-            variableName,
-            currentValue + (changeValue as number),
+        let currentValue = thread.target.variables.get(variableName);
+        if (currentValue === undefined) {
+          //   console.warn(
+          //     "Variable",
+          //     variableName,
+          //     "is not defined for target",
+          //     thread.target.id,
+          //     "checking procedure frame arguments...",
+          //   );
+          // check in the last procedure frame if it exists
+          const filteredStack = thread.stack.filter(
+            (frame) => frame instanceof ProcedureFrame,
           );
+          if (filteredStack.length > 0) {
+            const lastProcedureFrame = filteredStack[
+              filteredStack.length - 1
+            ] as ProcedureFrame;
+            const arg = lastProcedureFrame._arguments.find(
+              (arg) => arg.name === variableName,
+            );
+            if (arg) {
+              if (
+                typeof arg.value === "number" &&
+                typeof changeValue === "number"
+              ) {
+                arg.value += changeValue;
+              } else {
+                console.error(
+                  `Argument ${variableName} is not a number and cannot be changed. Value: ${arg.value}`,
+                );
+              }
+            }
+          }
         } else {
-          console.error(
-            `Variable ${variableName} is not a number and cannot be changed.`,
-          );
+          if (typeof currentValue === "number") {
+            thread.target.variables.set(
+              variableName,
+              currentValue + (changeValue as number),
+            );
+            // console.warn(
+            //   `Variable ${variableName} changed to ${currentValue + (changeValue as number)} for target ${thread.target.id}`,
+            // );
+          } else {
+            console.error(
+              `Variable ${variableName} is not a number and cannot be changed. Value: ${currentValue}`,
+            );
+          }
         }
-
         break;
       }
 
@@ -254,7 +314,11 @@ export class VirtualMachine {
       case "procedures_callnoreturn": {
         const newFrame = new ProcedureFrame(
           thread.target.procedures.get(blockToExecute.name) as Procedure,
-          blockToExecute.arguments,
+          blockToExecute.arguments.map((arg) => ({
+            name: arg.name,
+            value: this.evaluateValue(arg.value) as number | string | boolean,
+          })),
+          thread.count,
         );
         thread.addFrame(newFrame);
         break;
@@ -282,7 +346,12 @@ export class VirtualMachine {
           for (let i = thread.stack.length - 1; i >= 0; i--) {
             if (thread.stack[i] instanceof RepeatFrame) {
               const repeatFrame = thread.stack[i] as RepeatFrame;
-              repeatFrame._position = repeatFrame._body.length - 1 - 1; // set to second to last position so that after incrementing in the next step, it will point to the last position
+              repeatFrame.incrementCount();
+              if (repeatFrame.hasMoreIterations()) {
+                repeatFrame._position = 0; // Reset position to the start of the loop body
+              } else {
+                repeatFrame.markComplete(); // Mark the loop as complete if no more iterations
+              }
               break;
             }
           }
@@ -483,11 +552,13 @@ export class VirtualMachine {
               (arg) => arg.name === variableName,
             );
             if (arg) {
-              return this.evaluateValue(arg.value);
+              return arg.value;
             }
           }
           if (variableValue === undefined) {
-            throw new Error(`Variable ${variableName} is not defined`);
+            throw new Error(
+              `Variable ${variableName} is not defined. ${JSON.stringify(this._processingThread.target.variables)}`,
+            );
           }
           return variableValue;
         default:

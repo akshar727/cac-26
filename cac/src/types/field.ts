@@ -104,5 +104,5 @@ export type Procedure = {
 
 export type ProcedureCallArgument = {
   name: string;
-  value: Value;
+  value: number | string | boolean; // arguments should be evaluated before being passed to the procedure otherwise there are crazy side effects
 };

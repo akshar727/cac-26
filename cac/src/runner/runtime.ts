@@ -27,6 +27,9 @@ export class Runtime {
         sprites.find((s) => s.id === databaseSprite.id)?.loadableImagePaths ||
           [],
       );
+      for (const thing of JSON.parse(databaseSprite.variables_map || "[]")) {
+        sprite.variables.set(thing.id, 0);
+      }
       sprite.id = databaseSprite.id;
       this._targets.push(sprite);
       let topBlocks = spriteWorkspace.getTopBlocks(false);
