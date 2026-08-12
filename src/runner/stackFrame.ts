@@ -1,4 +1,4 @@
-import { Procedure, ProcedureCallArgument } from "@/types/field";
+import { Procedure, ProcedureCallArgument, Value } from "@/types/field";
 import { Block } from "../types/block";
 
 export class StackFrame {
@@ -14,7 +14,7 @@ export class StackFrame {
   markComplete() {
     this._finished = true;
   }
-  
+
   isComplete(): boolean {
     return this._finished;
   }
@@ -41,19 +41,41 @@ export class RepeatFrame extends StackFrame {
 
 export class IfFrame extends StackFrame {}
 
-export class ProcedureFrame extends StackFrame {
+export class ProcedureFrameNoReturn extends StackFrame {
   _procedure: Procedure;
-  _arguments: ProcedureCallArgument[];
-  returnLocation: number | null = null;
+  _arguments: ProcedureCallArgument[] | { name: string; value: Value }[];
+  _pendingEvaluation: any = null;
 
-  constructor(
-    procedure: Procedure,
-    args: ProcedureCallArgument[],
-    returnLocation: number | null = null,
-  ) {
+  constructor(procedure: Procedure, args: ProcedureCallArgument[]) {
     super(procedure.body);
     this._procedure = procedure;
     this._arguments = args;
-    this.returnLocation = returnLocation;
   }
 }
+
+export class ProcedureFrameReturn extends ProcedureFrameNoReturn {
+  _returnValue: number | string | boolean | null;
+  _returnDestination: number | null;
+  _arguments: { name: string; value: Value }[];
+  _evaluationId: number;
+
+  constructor(
+    procedure: Procedure,
+    args: { name: string; value: Value }[],
+    evaluationId: number,
+  ) {
+    super(procedure, []);
+    this._arguments = args;
+    this._returnValue = null;
+    this._returnDestination = null;
+    this._evaluationId = evaluationId;
+  }
+}
+
+export type EvaluationFrame = {
+  id: number;
+  expression: Value;
+  result: number | string | boolean | null | undefined;
+  state: "evaluating" | "evaluated" | "error";
+  waitingForProcedure: ProcedureFrameReturn | null;
+};

@@ -1,20 +1,23 @@
-import {
-  Condition,
-  ConditionType,
-  conditionTypes,
-  ValueType,
-  valueTypes,
-  Procedure,
-  Value,
-} from "@/types/field";
 import { Runtime } from "./runtime";
 import { Thread } from "./thread";
-import { IfFrame, ProcedureFrame, RepeatFrame } from "./stackFrame";
+import {
+  IfFrame,
+  ProcedureFrameNoReturn,
+  ProcedureFrameReturn,
+  RepeatFrame,
+} from "./stackFrame";
 import { Block } from "../types/block";
+import { EvaluationEngine} from "./evaluationEngine";
+import { Procedure } from "@/types/field";
 
 export class VirtualMachine {
   _processingThread: Thread | null = null;
-  step(thread: Thread, runtime: Runtime, currentTime: number) {
+  _evaluator: EvaluationEngine;
+  // private nextEvaluationId = 1;
+  constructor() {
+    this._evaluator = new EvaluationEngine();
+  }
+  step(thread: Thread, _: Runtime, currentTime: number) {
     this._processingThread = thread;
     if (thread.status === "waiting") {
       if (currentTime < thread.waitUntil) {
@@ -64,10 +67,6 @@ export class VirtualMachine {
             thread.popFrame();
             if (thread.stack.length === 0) {
               thread.count++;
-              //   console.warn(
-              //     "Thread count incremented to (due to frame completion):",
-              //     thread.count,
-              //   );
             }
             continue;
           }
@@ -82,10 +81,6 @@ export class VirtualMachine {
           if (currentFrame._position === currentFrame._body.length) {
             if (currentFrame instanceof RepeatFrame) {
               currentFrame.incrementCount();
-              //   console.warn(
-              //     "Repeat frame incremented count to:",
-              //     currentFrame._currentCount,
-              //   );
               if (currentFrame.hasMoreIterations()) {
                 currentFrame._position = 0;
               } else {
@@ -98,7 +93,7 @@ export class VirtualMachine {
               }
             } else if (currentFrame instanceof IfFrame) {
               currentFrame.markComplete();
-            } else if (currentFrame instanceof ProcedureFrame) {
+            } else if (currentFrame instanceof ProcedureFrameNoReturn) {
               console.log(
                 "Marking Procedure frame complete after reaching end of body for procedure:",
                 currentFrame._procedure.name,
@@ -160,20 +155,20 @@ export class VirtualMachine {
   executeBlock(blockToExecute: Block, thread: Thread, currentTime: number) {
     switch (blockToExecute.type) {
       case "screen_set_position": {
-        let targetX = this.evaluateValue(blockToExecute.x);
-        let targetY = this.evaluateValue(blockToExecute.y);
+        let targetX = this._evaluator.evaluate(blockToExecute.x,thread) as number;
+        let targetY = this._evaluator.evaluate(blockToExecute.y,thread) as number;
         thread.target.x = targetX as number;
         thread.target.y = targetY as number;
         break;
       }
 
       case "screen_set_x": {
-        let targetX = this.evaluateValue(blockToExecute.x);
+        let targetX = this._evaluator.evaluate(blockToExecute.x,thread) as number;
         thread.target.x = targetX as number;
         break;
       }
       case "screen_set_y": {
-        let targetY = this.evaluateValue(blockToExecute.y);
+        let targetY = this._evaluator.evaluate(blockToExecute.y,thread) as number;
         thread.target.y = targetY as number;
         break;
       }
@@ -182,7 +177,7 @@ export class VirtualMachine {
         thread.status = "waiting";
         thread.waitUntil =
           currentTime +
-          (this.evaluateValue(blockToExecute.duration) as number) * 1000;
+          (this._evaluator.evaluate(blockToExecute.duration,thread) as number) * 1000;
         this._processingThread = null;
         return;
       }
@@ -193,17 +188,17 @@ export class VirtualMachine {
         if (currentValue === undefined) {
           // check in the last procedure frame if it exists
           const filteredStack = thread.stack.filter(
-            (frame) => frame instanceof ProcedureFrame,
+            (frame) => frame instanceof ProcedureFrameNoReturn,
           );
           if (filteredStack.length > 0) {
             const lastProcedureFrame = filteredStack[
               filteredStack.length - 1
-            ] as ProcedureFrame;
+            ] as ProcedureFrameNoReturn;
             const arg = lastProcedureFrame._arguments.find(
               (arg) => arg.name === variableName,
             );
             if (arg) {
-              arg.value = this.evaluateValue(blockToExecute.value) as number;
+              arg.value = this._evaluator.evaluate(blockToExecute.value,thread) as number;
               break;
             }
           }
@@ -213,7 +208,7 @@ export class VirtualMachine {
         } else {
           thread.target.variables.set(
             variableName,
-            this.evaluateValue(blockToExecute.value) as number,
+            this._evaluator.evaluate(blockToExecute.value,thread) as number,
           );
         }
         break;
@@ -221,24 +216,17 @@ export class VirtualMachine {
 
       case "math_change": {
         const variableName = blockToExecute.name;
-        const changeValue = this.evaluateValue(blockToExecute.value);
+        const changeValue = this._evaluator.evaluate(blockToExecute.value,thread) as number;
         let currentValue = thread.target.variables.get(variableName);
         if (currentValue === undefined) {
-          //   console.warn(
-          //     "Variable",
-          //     variableName,
-          //     "is not defined for target",
-          //     thread.target.id,
-          //     "checking procedure frame arguments...",
-          //   );
           // check in the last procedure frame if it exists
           const filteredStack = thread.stack.filter(
-            (frame) => frame instanceof ProcedureFrame,
+            (frame) => frame instanceof ProcedureFrameNoReturn,
           );
           if (filteredStack.length > 0) {
             const lastProcedureFrame = filteredStack[
               filteredStack.length - 1
-            ] as ProcedureFrame;
+            ] as ProcedureFrameNoReturn;
             const arg = lastProcedureFrame._arguments.find(
               (arg) => arg.name === variableName,
             );
@@ -261,9 +249,6 @@ export class VirtualMachine {
               variableName,
               currentValue + (changeValue as number),
             );
-            // console.warn(
-            //   `Variable ${variableName} changed to ${currentValue + (changeValue as number)} for target ${thread.target.id}`,
-            // );
           } else {
             console.error(
               `Variable ${variableName} is not a number and cannot be changed. Value: ${currentValue}`,
@@ -274,7 +259,7 @@ export class VirtualMachine {
       }
 
       case "controls_repeat_ext": {
-        let times = this.evaluateValue(blockToExecute.times);
+        let times = this._evaluator.evaluate(blockToExecute.times,thread) as number;
         if ((times as number) > 0 && blockToExecute.body.length > 0) {
           const repeatFrame = new RepeatFrame(
             times as number,
@@ -302,7 +287,7 @@ export class VirtualMachine {
             //@ts-expect-error
             const thenBody = blockToExecute[thenBodyKey] as Block[];
 
-            if (this.evaluateCondition(condition)) {
+            if (this._evaluator.evaluateCondition(condition,thread)) {
               thread.addFrame(new IfFrame(thenBody));
               conditionMet = true;
               break;
@@ -318,13 +303,12 @@ export class VirtualMachine {
         break;
       }
       case "procedures_callnoreturn": {
-        const newFrame = new ProcedureFrame(
+        const newFrame = new ProcedureFrameNoReturn(
           thread.target.procedures.get(blockToExecute.name) as Procedure,
           blockToExecute.arguments.map((arg) => ({
             name: arg.name,
-            value: this.evaluateValue(arg.value) as number | string | boolean,
+            value: this._evaluator.evaluate(arg.value,thread) as number | string | boolean,
           })),
-          thread.count,
         );
         thread.addFrame(newFrame);
         break;
@@ -369,230 +353,5 @@ export class VirtualMachine {
         console.warn("Unknown block type:", blockToExecute.type);
         break;
     }
-  }
-
-  evaluateCondition(condition: Condition): boolean | null {
-    if (!condition) {
-      console.error("Condition is undefined or null:", condition);
-      return false;
-    }
-    switch (condition.type) {
-      case "logic_compare": {
-        const left = this.evaluateValue(condition.left);
-        const right = this.evaluateValue(condition.right);
-        switch (condition.operator) {
-          case "EQ":
-            return left === right;
-          case "NEQ":
-            return left !== right;
-          case "LT":
-            return left < right;
-          case "LTE":
-            return left <= right;
-          case "GT":
-            return left > right;
-          case "GTE":
-            return left >= right;
-          default:
-            //@ts-ignore
-            console.error("Unknown operator:", condition.operator);
-            return false;
-        }
-      }
-      case "logic_operation": {
-        const left = this.evaluateCondition(condition.left);
-        const right = this.evaluateCondition(condition.right);
-        switch (condition.operator) {
-          case "AND":
-            return left && right;
-          case "OR":
-            return left || right;
-          default:
-            //@ts-ignore
-            console.error("Unknown operator:", condition.operator);
-            return false;
-        }
-      }
-      case "logic_negate": {
-        const operand = this.evaluateCondition(condition.operand);
-        return !operand;
-      }
-      case "logic_boolean": {
-        return condition.value;
-      }
-      case "logic_null": {
-        return null;
-      }
-      default:
-        //@ts-expect-error
-        if (valueTypes.includes(condition.type as ValueType)) {
-          return this.evaluateValue(condition as Value) as boolean;
-        }
-        throw new Error(
-          //@ts-expect-error
-          `Unknown condition type: ${condition.type}. ${JSON.stringify(condition)}`,
-        );
-    }
-  }
-
-  evaluateValue(field: Value): number | string | boolean {
-    if (!field) {
-      console.error("Field is undefined or null:", field);
-      return 0;
-    }
-    if (field.type === "math_number") {
-      return field.value;
-    } else if (typeof field === "object" && "type" in field && field !== null) {
-      switch (field.type) {
-        case "math_arithmetic":
-          const left = this.evaluateValue(field.left) as number;
-          const right = this.evaluateValue(field.right) as number;
-          switch (field.operator) {
-            case "ADD":
-              return left + right;
-            case "SUBTRACT":
-              return left - right;
-            case "MULTIPLY":
-              return left * right;
-            case "DIVIDE":
-              return left / right;
-            case "POWER":
-              return Math.pow(left, right);
-          }
-        case "math_single":
-          const input = this.evaluateValue(field.operand) as number;
-          switch (field.operator) {
-            case "NEG":
-              return -input;
-            case "ABS":
-              return Math.abs(input);
-            case "ROOT":
-              return Math.sqrt(input);
-            case "LN":
-              return Math.log(input);
-            case "LOG10":
-              return Math.log10(input);
-            case "EXP":
-              return Math.exp(input);
-            case "POW10":
-              return Math.pow(10, input);
-          }
-        case "math_trig":
-          const trigInput = this.evaluateValue(field.operand) as number;
-          switch (field.operator) {
-            case "SIN":
-              return Math.sin(trigInput);
-            case "COS":
-              return Math.cos(trigInput);
-            case "TAN":
-              return Math.tan(trigInput);
-            case "ASIN":
-              return Math.asin(trigInput);
-            case "ACOS":
-              return Math.acos(trigInput);
-            case "ATAN":
-              return Math.atan(trigInput);
-          }
-        case "math_constant":
-          switch (field.constant) {
-            case "PI":
-              return Math.PI;
-            case "E":
-              return Math.E;
-            case "GOLDEN_RATIO":
-              return (1 + Math.sqrt(5)) / 2;
-            case "SQRT2":
-              return Math.SQRT2;
-            case "SQRT1_2":
-              return Math.SQRT1_2;
-            case "INFINITY":
-              return Infinity;
-          }
-        case "math_round":
-          const roundInput = this.evaluateValue(field.operand) as number;
-          switch (field.operator) {
-            case "ROUND":
-              return Math.round(roundInput);
-            case "ROUNDUP":
-              return Math.ceil(roundInput);
-            case "ROUNDDOWN":
-              return Math.floor(roundInput);
-          }
-        case "math_modulo":
-          const dividend = this.evaluateValue(field.dividend) as number;
-
-          const divisor = this.evaluateValue(field.divisor) as number;
-
-          return dividend % divisor;
-        case "math_constrain":
-          const value = this.evaluateValue(field.value) as number;
-          const low = this.evaluateValue(field.low) as number;
-          const high = this.evaluateValue(field.high) as number;
-          return Math.min(Math.max(value, low), high);
-        case "math_random_int":
-          const from = this.evaluateValue(field.from) as number;
-          const to = this.evaluateValue(field.to) as number;
-          return Math.floor(Math.random() * (to - from + 1)) + from;
-        case "math_random_float":
-          return Math.random();
-        case "math_atan2":
-          const y = this.evaluateValue(field.y) as number;
-          const x = this.evaluateValue(field.x) as number;
-          return Math.atan2(y, x);
-        case "variables_get":
-          const variableName = field.name;
-          if (!this._processingThread) {
-            throw new Error("No processing thread available");
-          }
-          const variableValue =
-            this._processingThread.target.variables.get(variableName);
-          const lastProcedureFrame = this._processingThread.stack
-            .slice()
-            .reverse()
-            .find((frame) => frame instanceof ProcedureFrame) as
-            | ProcedureFrame
-            | undefined;
-          if (lastProcedureFrame) {
-            const arg = lastProcedureFrame._arguments.find(
-              (arg) => arg.name === variableName,
-            );
-            if (arg) {
-              return arg.value;
-            }
-          }
-          if (variableValue === undefined) {
-            throw new Error(
-              `Variable ${variableName} is not defined. ${JSON.stringify(this._processingThread.target.variables)}`,
-            );
-          }
-          return variableValue;
-        case "screen_position_x": {
-          if (!this._processingThread) {
-            throw new Error("No processing thread available");
-          }
-          return this._processingThread.target.x;
-        }
-        case "screen_position_y": {
-          if (!this._processingThread) {
-            throw new Error("No processing thread available");
-          }
-          return this._processingThread.target.y;
-        }
-        case "procedures_callreturn": {
-          break;
-        }
-        default:
-          // check if field.type is one of the known types in the condition type and if so, call evaluateCondition
-          //@ts-expect-error
-          if (conditionTypes.includes(field.type as ConditionType)) {
-            return this.evaluateCondition(field as Condition) as boolean;
-          }
-          throw new Error(
-            //@ts-expect-error
-            `Unknown field type: ${field.type}. ${JSON.stringify(field)}`,
-          );
-      }
-    }
-    throw new Error("Invalid field value: " + JSON.stringify(field));
   }
 }

@@ -1,11 +1,12 @@
 import { Script } from "@/runner/script";
 import { Sprite } from "@/runner/sprite";
-import { StackFrame } from "./stackFrame";
+import { EvaluationFrame, StackFrame } from "./stackFrame";
 
 export class Thread {
   target: Sprite;
   script: Script;
   stack: StackFrame[] = [];
+  evaluationStack: EvaluationFrame[] = [];
   status: "running" | "waiting" | "done" = "running";
   count = 0;
   waitUntil = 0;
