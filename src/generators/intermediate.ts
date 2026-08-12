@@ -265,6 +265,36 @@ intermediateGenerator.forBlock["controls_whileUntil"] = function (
   });
 };
 
+intermediateGenerator.forBlock["controls_for"] = function (block, generator) {
+  const variableName = block.getFieldValue("VAR");
+  const from = generator.valueToCode(block, "FROM", Order.NONE) || "0";
+  const to = generator.valueToCode(block, "TO", Order.NONE) || "0";
+  const by = generator.valueToCode(block, "BY", Order.NONE) || "1";
+  const body = intermediateGenerator.statementToCode(block, "DO");
+  return JSON.stringify({
+    type: "controls_for",
+    variable: variableName,
+    from: getFormatted(from),
+    to: getFormatted(to),
+    by: getFormatted(by),
+    body: JSON.parse("[" + body + "]"),
+  });
+};
+
+intermediateGenerator.forBlock["controls_forEach"] = function (
+  block,
+  generator,
+) {
+  const variableName = block.getFieldValue("VAR");
+  const list = generator.valueToCode(block, "LIST", Order.NONE) || "[]";
+  const body = intermediateGenerator.statementToCode(block, "DO");
+  return JSON.stringify({
+    type: "controls_forEach",
+    variable: variableName,
+    list: getFormatted(list),
+    body: JSON.parse("[" + body + "]"),
+  });
+};
 
 intermediateGenerator.forBlock["logic_compare"] = function (block, generator) {
   const operator = block.getFieldValue("OP");
@@ -422,7 +452,6 @@ intermediateGenerator.forBlock["procedures_callnoreturn"] = function (
 
 intermediateGenerator.forBlock["procedures_callreturn"] =
   intermediateGenerator.forBlock["procedures_callnoreturn"];
-
 
 function getFormatted(value: string): number | object {
   let number = true;

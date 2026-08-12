@@ -52,6 +52,41 @@ export class RepeatWhileFrame extends StackFrame {
   }
 }
 
+export class ForFrame extends StackFrame {
+  _variableName: string;
+  _startValue: number;
+  _endValue: number;
+  _stepValue: number;
+  _currentValue: number;
+
+  constructor(
+    variableName: string,
+    startValue: number,
+    endValue: number,
+    stepValue: number,
+    body: Block[],
+  ) {
+    super(body);
+    this._variableName = variableName;
+    this._startValue = startValue;
+    this._endValue = endValue;
+    this._stepValue = stepValue;
+    this._currentValue = startValue;
+  }
+
+  increment() {
+    this._currentValue += this._stepValue;
+  }
+
+  hasMoreIterations(): boolean {
+    if (this._stepValue > 0) {
+      return this._currentValue <= this._endValue;
+    } else {
+      return this._currentValue >= this._endValue;
+    }
+  }
+}
+
 export class ProcedureFrameNoReturn extends StackFrame {
   _procedure: Procedure;
   _arguments: ProcedureCallArgument[] | { name: string; value: Value }[];

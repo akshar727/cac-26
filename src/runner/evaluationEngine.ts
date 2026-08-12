@@ -6,7 +6,7 @@ import {
   ValueType,
   valueTypes,
 } from "@/types/field";
-import { ProcedureFrameNoReturn } from "./stackFrame";
+import { ForFrame, ProcedureFrameNoReturn } from "./stackFrame";
 import { Thread } from "./thread";
 
 export class SuspendedReturn {}
@@ -237,6 +237,28 @@ export class EvaluationEngine {
             );
             if (arg) {
               return arg.value as number | string | boolean;
+            }
+          }
+          let allForFramesAfterLastProcedureFrame: any[] = [];
+          if (lastProcedureFrame) {
+            const lastProcedureFrameIndex =
+              processingThread.executionStack.indexOf(lastProcedureFrame);
+            allForFramesAfterLastProcedureFrame =
+              processingThread.executionStack
+                .slice(lastProcedureFrameIndex + 1)
+                .filter((frame) => frame instanceof ForFrame);
+          } else {
+            allForFramesAfterLastProcedureFrame =
+              processingThread.executionStack.filter(
+                (frame) => frame instanceof ForFrame,
+              );
+          }
+          for (const frame of allForFramesAfterLastProcedureFrame) {
+            if (
+              frame instanceof ForFrame &&
+              frame._variableName === variableName
+            ) {
+              return frame._currentValue;
             }
           }
           if (variableValue === undefined) {

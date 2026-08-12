@@ -54,4 +54,17 @@ export type Block =
       mode: "WHILE" | "UNTIL";
       condition: Condition;
       body: Block[];
+    }
+  | {
+      type: "controls_for";
+      variable: string;
+      from: Value;
+      to: Value;
+      by: Value;
+      body: Block[];
+    } | {
+      type: "controls_forEach";
+      variable: string;
+      list: Value;
+      body: Block[];
     };

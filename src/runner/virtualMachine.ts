@@ -1,6 +1,7 @@
 import { Runtime } from "./runtime";
 import { Thread } from "./thread";
 import {
+  ForFrame,
   IfFrame,
   ProcedureFrameNoReturn,
   RepeatFrame,
@@ -108,17 +109,47 @@ export class VirtualMachine {
                 thread.popFrame(); // so that the next block is selected
                 if (thread.executionStack.length === 0) {
                   blockToExecute = null; // so that we dont execute the next block in the body of the RepeatWhile frame after it has completed
+                  thread.count++;
                 } else {
+                  thread.currentFrame()!._position++;
                   blockToExecute =
                     thread.currentFrame()?._body[
-                      //@ts-expect-error
-                      thread.currentFrame()?._position
+                      thread.currentFrame()!._position
                     ];
                 }
                 console.warn(
                   "Marking RepeatWhile frame complete after condition evaluated to false for target:",
                   thread.target.id,
                 );
+              }
+            } else if (currentFrame instanceof ForFrame) {
+              currentFrame._currentValue += currentFrame._stepValue;
+              if (
+                (currentFrame._stepValue > 0 &&
+                  currentFrame._currentValue <= currentFrame._endValue) ||
+                (currentFrame._stepValue < 0 &&
+                  currentFrame._currentValue >= currentFrame._endValue)
+              ) {
+                currentFrame._position = 0;
+              } else {
+                console.warn("Current value:", currentFrame._currentValue);
+                thread.popFrame(); // so that the next block is selected
+                if (thread.executionStack.length === 0) {
+                  blockToExecute = null; // so that we dont execute the next block in the body of the RepeatWhile frame after it has completed
+                  thread.count++;
+                } else {
+                  thread.currentFrame()!._position++;
+                  blockToExecute =
+                    thread.currentFrame()?._body[
+                      thread.currentFrame()!._position
+                    ];
+                  console.log("Next block to execute:", blockToExecute);
+                }
+                if (thread.target.id === 6) {
+                  console.log(
+                    "Marking For frame complete after reaching end of body for target 6",
+                  );
+                }
               }
             }
           }
@@ -235,6 +266,30 @@ export class VirtualMachine {
           );
           thread.addFrame(newFrame);
         }
+        break;
+      }
+      case "controls_for": {
+        let startValue = this._evaluator.evaluate(
+          blockToExecute.from,
+          thread,
+        ) as number;
+        let endValue = this._evaluator.evaluate(
+          blockToExecute.to,
+          thread,
+        ) as number;
+        let stepValue = this._evaluator.evaluate(
+          blockToExecute.by,
+          thread,
+        ) as number;
+
+        let newFrame = new ForFrame(
+          blockToExecute.variable,
+          startValue,
+          endValue,
+          stepValue,
+          blockToExecute.body,
+        );
+        thread.addFrame(newFrame);
         break;
       }
 
