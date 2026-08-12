@@ -445,9 +445,24 @@ intermediateGenerator.forBlock["screen_set_y"] = function (
   });
 };
 
-intermediateGenerator.forBlock["when_started"] = function (
-  block: Blockly.Block,
-  generator: Blockly.CodeGenerator,
-) {
+intermediateGenerator.forBlock["screen_position_x"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_position_x",
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_position_y"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_position_y",
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["when_started"] = function (_, __) {
   return "";
 };

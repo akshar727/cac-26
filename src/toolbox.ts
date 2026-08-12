@@ -676,6 +676,14 @@ export const toolbox = {
             },
           },
         },
+        {
+          kind: "block",
+          type: "screen_position_x",
+        },
+        {
+          kind: "block",
+          type: "screen_position_y",
+        },
       ],
     },
     {

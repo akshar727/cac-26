@@ -1,10 +1,16 @@
-import { Condition, Procedure, Value } from "@/types/field";
+import {
+  Condition,
+  ConditionType,
+  conditionTypes,
+  ValueType,
+  valueTypes,
+  Procedure,
+  Value,
+} from "@/types/field";
 import { Runtime } from "./runtime";
 import { Thread } from "./thread";
 import { IfFrame, ProcedureFrame, RepeatFrame } from "./stackFrame";
 import { Block } from "../types/block";
-
-class SuspendedReturn {}
 
 export class VirtualMachine {
   _processingThread: Thread | null = null;
@@ -365,16 +371,16 @@ export class VirtualMachine {
     }
   }
 
-  evaluateCondition(predicate: Condition): boolean | null {
-    if (!predicate) {
-      console.error("Predicate is undefined or null:", predicate);
+  evaluateCondition(condition: Condition): boolean | null {
+    if (!condition) {
+      console.error("Condition is undefined or null:", condition);
       return false;
     }
-    switch (predicate.type) {
+    switch (condition.type) {
       case "logic_compare": {
-        const left = this.evaluateValue(predicate.left);
-        const right = this.evaluateValue(predicate.right);
-        switch (predicate.operator) {
+        const left = this.evaluateValue(condition.left);
+        const right = this.evaluateValue(condition.right);
+        switch (condition.operator) {
           case "EQ":
             return left === right;
           case "NEQ":
@@ -389,51 +395,50 @@ export class VirtualMachine {
             return left >= right;
           default:
             //@ts-ignore
-            console.error("Unknown operator:", predicate.operator);
+            console.error("Unknown operator:", condition.operator);
             return false;
         }
       }
       case "logic_operation": {
-        const left = this.evaluateCondition(predicate.left);
-        const right = this.evaluateCondition(predicate.right);
-        switch (predicate.operator) {
+        const left = this.evaluateCondition(condition.left);
+        const right = this.evaluateCondition(condition.right);
+        switch (condition.operator) {
           case "AND":
             return left && right;
           case "OR":
             return left || right;
           default:
             //@ts-ignore
-            console.error("Unknown operator:", predicate.operator);
+            console.error("Unknown operator:", condition.operator);
             return false;
         }
       }
       case "logic_negate": {
-        const operand = this.evaluateCondition(predicate.operand);
+        const operand = this.evaluateCondition(condition.operand);
         return !operand;
       }
       case "logic_boolean": {
-        return predicate.value;
+        return condition.value;
       }
       case "logic_null": {
         return null;
       }
       default:
-        //@ts-ignore
-        console.error("Unknown predicate type:", predicate.type);
-        return false;
+        //@ts-expect-error
+        if (valueTypes.includes(condition.type as ValueType)) {
+          return this.evaluateValue(condition as Value) as boolean;
+        }
+        throw new Error(
+          //@ts-expect-error
+          `Unknown condition type: ${condition.type}. ${JSON.stringify(condition)}`,
+        );
     }
   }
 
-  evaluateValue(field: Value): number | string | boolean | SuspendedReturn {
+  evaluateValue(field: Value): number | string | boolean {
     if (!field) {
       console.error("Field is undefined or null:", field);
       return 0;
-    }
-    if (field.type === "procedures_callreturn") {
-      if (!this._processingThread) {
-        throw new Error("No processing thread available");
-      }
-      // todo
     }
     if (field.type === "math_number") {
       return field.value;
@@ -561,9 +566,29 @@ export class VirtualMachine {
             );
           }
           return variableValue;
+        case "screen_position_x": {
+          if (!this._processingThread) {
+            throw new Error("No processing thread available");
+          }
+          return this._processingThread.target.x;
+        }
+        case "screen_position_y": {
+          if (!this._processingThread) {
+            throw new Error("No processing thread available");
+          }
+          return this._processingThread.target.y;
+        }
+        case "procedures_callreturn": {
+          break;
+        }
         default:
+          // check if field.type is one of the known types in the condition type and if so, call evaluateCondition
+          //@ts-expect-error
+          if (conditionTypes.includes(field.type as ConditionType)) {
+            return this.evaluateCondition(field as Condition) as boolean;
+          }
           throw new Error(
-            // @ts-ignore
+            //@ts-expect-error
             `Unknown field type: ${field.type}. ${JSON.stringify(field)}`,
           );
       }

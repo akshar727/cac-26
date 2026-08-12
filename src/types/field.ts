@@ -62,7 +62,33 @@ export type Value =
       type: "procedures_callreturn";
       name: string;
       arguments: { name: string; value: Value }[];
+    }
+  | {
+      type: "screen_position_x";
+    }
+  | {
+      type: "screen_position_y";
     };
+
+export const valueTypes = [
+  "math_arithmetic",
+  "math_single",
+  "math_trig",
+  "math_constant",
+  "math_round",
+  "math_number",
+  "math_modulo",
+  "math_constrain",
+  "math_random_int",
+  "math_random_float",
+  "math_atan2",
+  "variables_get",
+  "procedures_callreturn",
+  "screen_position_x",
+  "screen_position_y",
+] as const;
+
+export type ValueType = (typeof valueTypes)[number];
 
 export type Condition =
   | {
@@ -89,6 +115,16 @@ export type Condition =
       type: "logic_null";
       value: null;
     };
+
+export const conditionTypes = [
+  "logic_compare",
+  "logic_operation",
+  "logic_negate",
+  "logic_boolean",
+  "logic_null",
+] as const;
+
+export type ConditionType = (typeof conditionTypes)[number];
 
 export type ProcedureParameter = {
   name: string;

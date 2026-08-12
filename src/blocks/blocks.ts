@@ -91,10 +91,30 @@ const wait = {
   inputsInline: true,
 };
 
+const positionX = {
+  type: "screen_position_x",
+  message0: "position x",
+  output: "Number",
+  tooltip: "Returns the X position of the sprite",
+  extensions: ["parent_tooltip_when_inline"],
+  colour: 310,
+};
+
+const positionY = {
+  type: "screen_position_y",
+  message0: "position y",
+  output: "Number",
+  tooltip: "Returns the Y position of the sprite",
+  extensions: ["parent_tooltip_when_inline"],
+  colour: 310,
+};
+
 export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
   whenStarted,
   setPosition,
   setX,
   setY,
   wait,
+  positionX,
+  positionY,
 ]);
