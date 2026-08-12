@@ -9,8 +9,11 @@ import {
 import { ProcedureFrameNoReturn } from "./stackFrame";
 import { Thread } from "./thread";
 
+export class SuspendedReturn {}
+
 export class EvaluationEngine {
-  evaluateCondition(
+  // private nextEvaluationId = 1;
+  private evaluateCondition(
     condition: Condition,
     processingThread: Thread,
   ): boolean | null {
@@ -62,8 +65,11 @@ export class EvaluationEngine {
         }
       }
       case "logic_operation": {
-        const left = this.evaluateCondition(condition.left, processingThread);
-        const right = this.evaluateCondition(condition.right, processingThread);
+        const left = this.evaluate(condition.left, processingThread) as boolean;
+        const right = this.evaluate(
+          condition.right,
+          processingThread,
+        ) as boolean;
         switch (condition.operator) {
           case "AND":
             return left && right;
@@ -76,10 +82,10 @@ export class EvaluationEngine {
         }
       }
       case "logic_negate": {
-        const operand = this.evaluateCondition(
+        const operand = this.evaluate(
           condition.operand,
           processingThread,
-        );
+        ) as boolean;
         return !operand;
       }
       case "logic_boolean": {
@@ -93,7 +99,7 @@ export class EvaluationEngine {
     }
   }
 
-  evaluateValue(
+  private evaluateValue(
     field: Value,
     processingThread: Thread,
   ): number | string | boolean | null {
@@ -106,14 +112,8 @@ export class EvaluationEngine {
     } else if (typeof field === "object" && "type" in field && field !== null) {
       switch (field.type) {
         case "math_arithmetic":
-          const left = this.evaluate(
-            field.left,
-            processingThread,
-          ) as number;
-          const right = this.evaluate(
-            field.right,
-            processingThread,
-          ) as number;
+          const left = this.evaluate(field.left, processingThread) as number;
+          const right = this.evaluate(field.right, processingThread) as number;
           switch (field.operator) {
             case "ADD":
               return left + right;
@@ -207,21 +207,12 @@ export class EvaluationEngine {
 
           return dividend % divisor;
         case "math_constrain":
-          const value = this.evaluate(
-            field.value,
-            processingThread,
-          ) as number;
+          const value = this.evaluate(field.value, processingThread) as number;
           const low = this.evaluate(field.low, processingThread) as number;
-          const high = this.evaluate(
-            field.high,
-            processingThread,
-          ) as number;
+          const high = this.evaluate(field.high, processingThread) as number;
           return Math.min(Math.max(value, low), high);
         case "math_random_int":
-          const from = this.evaluate(
-            field.from,
-            processingThread,
-          ) as number;
+          const from = this.evaluate(field.from, processingThread) as number;
           const to = this.evaluate(field.to, processingThread) as number;
           return Math.floor(Math.random() * (to - from + 1)) + from;
         case "math_random_float":
@@ -234,7 +225,7 @@ export class EvaluationEngine {
           const variableName = field.name;
           const variableValue =
             processingThread.target.variables.get(variableName);
-          const lastProcedureFrame = processingThread.stack
+          const lastProcedureFrame = processingThread.executionStack
             .slice()
             .reverse()
             .find((frame) => frame instanceof ProcedureFrameNoReturn) as
@@ -260,9 +251,6 @@ export class EvaluationEngine {
         case "screen_position_y": {
           return processingThread.target.y;
         }
-        case "procedures_callreturn": {
-          break;
-        }
         default:
           throw new Error(
             //@ts-expect-error
@@ -276,7 +264,7 @@ export class EvaluationEngine {
   evaluate(
     field: Value | Condition,
     processingThread: Thread,
-  ): number | string | boolean | null {
+  ): number | string | boolean | null | SuspendedReturn {
     if (!field) {
       console.error("Field is undefined or null:", field);
       return 0;

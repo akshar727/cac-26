@@ -1,12 +1,11 @@
 import { Script } from "@/runner/script";
 import { Sprite } from "@/runner/sprite";
-import { EvaluationFrame, StackFrame } from "./stackFrame";
+import { StackFrame } from "./stackFrame";
 
 export class Thread {
   target: Sprite;
   script: Script;
-  stack: StackFrame[] = [];
-  evaluationStack: EvaluationFrame[] = [];
+  executionStack: StackFrame[] = []; // which sub-areas of the code are currently being executed
   status: "running" | "waiting" | "done" = "running";
   count = 0;
   waitUntil = 0;
@@ -16,14 +15,14 @@ export class Thread {
   }
 
   addFrame(frame: StackFrame) {
-    this.stack.push(frame);
+    this.executionStack.push(frame);
   }
 
   popFrame(): StackFrame | undefined {
-    return this.stack.pop();
+    return this.executionStack.pop();
   }
 
   currentFrame(): StackFrame | undefined {
-    return this.stack[this.stack.length - 1];
+    return this.executionStack[this.executionStack.length - 1];
   }
 }

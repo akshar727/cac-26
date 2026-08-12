@@ -59,11 +59,6 @@ export type Value =
       name: string;
     }
   | {
-      type: "procedures_callreturn";
-      name: string;
-      arguments: { name: string; value: Value }[];
-    }
-  | {
       type: "screen_position_x";
     }
   | {
@@ -83,7 +78,6 @@ export const valueTypes = [
   "math_random_float",
   "math_atan2",
   "variables_get",
-  "procedures_callreturn",
   "screen_position_x",
   "screen_position_y",
 ] as const;

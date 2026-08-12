@@ -250,6 +250,22 @@ intermediateGenerator.forBlock["controls_if"] = function (block, generator) {
   return JSON.stringify(base);
 };
 
+intermediateGenerator.forBlock["controls_whileUntil"] = function (
+  block,
+  generator,
+) {
+  const mode = block.getFieldValue("MODE");
+  const condition = generator.valueToCode(block, "BOOL", Order.NONE) || "false";
+  const body = intermediateGenerator.statementToCode(block, "DO");
+  return JSON.stringify({
+    type: "controls_whileUntil",
+    mode: mode,
+    condition: getFormatted(condition),
+    body: JSON.parse("[" + body + "]"),
+  });
+};
+
+
 intermediateGenerator.forBlock["logic_compare"] = function (block, generator) {
   const operator = block.getFieldValue("OP");
   const left = generator.valueToCode(block, "A", Order.NONE) || "0";
@@ -384,16 +400,16 @@ intermediateGenerator.forBlock["procedures_callnoreturn"] = function (
     });
   });
   if (block.type === "procedures_callreturn") {
-    console.log("a");
-    return [
-      JSON.stringify({
-        type: block.type,
-        name: name,
-        //@ts-ignore
-        arguments: args.map((arg) => getFormatted(arg)),
-      }),
-      Order.NONE,
-    ];
+    throw new Error("procedures_callreturn evaluation is not implemented yet.");
+    // return [
+    //   JSON.stringify({
+    //     type: block.type,
+    //     name: name,
+    //     //@ts-ignore
+    //     arguments: args.map((arg) => getFormatted(arg)),
+    //   }),
+    //   Order.NONE,
+    // ];
   } else {
     return JSON.stringify({
       type: block.type,
@@ -406,6 +422,7 @@ intermediateGenerator.forBlock["procedures_callnoreturn"] = function (
 
 intermediateGenerator.forBlock["procedures_callreturn"] =
   intermediateGenerator.forBlock["procedures_callnoreturn"];
+
 
 function getFormatted(value: string): number | object {
   let number = true;

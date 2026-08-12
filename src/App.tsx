@@ -103,7 +103,6 @@ function App() {
         (
           Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
         ).refreshToolboxSelection();
-        // console.log(activeSprite?.variables_map);
         (Blockly.getMainWorkspace() as Blockly.WorkspaceSvg).cleanUp();
       } finally {
         Blockly.Events.enable();
@@ -226,7 +225,9 @@ function App() {
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.75);
     Blockly.utils.colour.setHsvValue(0.65);
-    Blockly.common.defineBlocks(blocks);
+    if (!Blockly.getMainWorkspace()) {
+      Blockly.common.defineBlocks(blocks);
+    }
     const theme = Blockly.Theme.defineTheme("cac", {
       name: "cac",
       base: Blockly.Themes.Classic,

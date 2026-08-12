@@ -48,4 +48,10 @@ export type Block =
       type: "procedures_callnoreturn";
       name: string;
       arguments: { name: string; value: Value }[];
+    }
+  | {
+      type: "controls_whileUntil";
+      mode: "WHILE" | "UNTIL";
+      condition: Condition;
+      body: Block[];
     };
