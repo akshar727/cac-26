@@ -1,4 +1,4 @@
-import { Value, Predicate } from "@/types/field";
+import { Value, Condition } from "@/types/field";
 
 export type Block =
   | {
@@ -35,11 +35,17 @@ export type Block =
     }
   | {
       type: "controls_if";
-      condition: Predicate;
+      condition: Condition;
+      // of course there can be more thenbodies and conditions i just dont know how to type them yet
       thenBody: Block[];
       elseBody?: Block[];
     }
   | {
       type: "controls_flow_statements";
       flow: "BREAK" | "CONTINUE";
+    }
+  | {
+      type: "procedures_callnoreturn";
+      name: string;
+      arguments: { name: string; value: Value }[];
     };

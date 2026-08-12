@@ -1,3 +1,5 @@
+import { Procedure } from "@/types/field";
+
 export class Sprite {
   id: number = 0;
   x = 0;
@@ -6,6 +8,7 @@ export class Sprite {
   size = 100;
   visible = true;
   variables = new Map<string, number | string | boolean>();
+  procedures = new Map<string, Procedure>();
   _costumes: HTMLImageElement[] = [];
   currentCostumeIndex = 0;
 

@@ -53,6 +53,7 @@ function App() {
   >(null);
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
   const _appDataDir = React.useRef<string | null>(null);
+  const [codeStopped, setCodeStopped] = React.useState(false);
 
   // change ref
   React.useEffect(() => {
@@ -81,15 +82,10 @@ function App() {
       try {
         Blockly.getMainWorkspace().clear();
         if (!activeSprite || !activeSprite?.blocks_json) return;
-        for (const block of JSON.parse(activeSprite?.blocks_json || "[]")) {
-          Blockly.serialization.blocks.append(
-            block,
-            Blockly.getMainWorkspace(),
-          );
-        }
         for (const variable of JSON.parse(
           activeSprite?.variables_map || "[]",
         )) {
+          Blockly.getMainWorkspace().getVariableMap().clear();
           Blockly.getMainWorkspace()
             .getVariableMap()
             .createVariable(
@@ -98,10 +94,16 @@ function App() {
               variable.id,
             );
         }
+        for (const block of JSON.parse(activeSprite?.blocks_json || "[]")) {
+          Blockly.serialization.blocks.append(
+            block,
+            Blockly.getMainWorkspace(),
+          );
+        }
         (
           Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
         ).refreshToolboxSelection();
-        console.log(activeSprite?.variables_map);
+        // console.log(activeSprite?.variables_map);
         (Blockly.getMainWorkspace() as Blockly.WorkspaceSvg).cleanUp();
       } finally {
         Blockly.Events.enable();
@@ -152,18 +154,25 @@ function App() {
       window.addEventListener("keydown", (event) => {
         runtime.keyPressed(event.key);
       });
+      setCodeStopped(false);
       let prev = performance.now();
       function step() {
         const now = performance.now();
         const deltaTime = (now - prev) / 1000; // Convert to seconds
         prev = now;
         runtime.tick(deltaTime, now);
-        requestAnimationFrame(step);
+        if (!codeStopped) {
+          requestAnimationFrame(step);
+        }
       }
       requestAnimationFrame(step);
     } finally {
       Blockly.Events.enable();
     }
+  };
+
+  const stopCode = () => {
+    setCodeStopped(true);
   };
 
   function saveCurrentWorkspaceToDatabase() {
@@ -175,7 +184,7 @@ function App() {
       return;
     }
     const topBlocks = Blockly.getMainWorkspace().getTopBlocks(false);
-    console.log("Top blocks:", topBlocks);
+    // console.log("Top blocks:", topBlocks);
     let fullJson = [];
     for (const block of topBlocks) {
       const blockJson = Blockly.serialization.blocks.save(block);
@@ -544,6 +553,13 @@ function App() {
                   }}
                 >
                   Run Code
+                </Button>
+                <Button
+                  onClick={() => {
+                    stopCode();
+                  }}
+                >
+                  Stop Code
                 </Button>
               </CardFooter>
             </Card>

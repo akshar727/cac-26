@@ -1,8 +1,10 @@
-import { Predicate, Value } from "@/types/field";
+import { Condition, Procedure, Value } from "@/types/field";
 import { Runtime } from "./runtime";
 import { Thread } from "./thread";
-import { IfFrame, RepeatFrame } from "./stackFrame";
+import { IfFrame, ProcedureFrame, RepeatFrame } from "./stackFrame";
 import { Block } from "../types/block";
+
+class SuspendedReturn {}
 
 export class VirtualMachine {
   _processingThread: Thread | null = null;
@@ -43,80 +45,127 @@ export class VirtualMachine {
       let blockToExecute = null;
 
       if (thread.stack.length > 0) {
+        console.log(
+          "Current stack for target",
+          thread.target.id,
+          ":",
+          JSON.parse(JSON.stringify(thread.stack)),
+        );
         const currentFrame = thread.currentFrame();
 
-        if (currentFrame) {
+        if (!currentFrame?.isComplete() && currentFrame) {
+          console.log(
+            "Current frame",
+            JSON.parse(JSON.stringify(currentFrame)),
+          );
           blockToExecute = currentFrame._body[currentFrame._position];
-          //   console.log(
-          //     `Executing block of type ${blockToExecute.type} at position ${currentFrame._position} in frame for target ${thread.target.id}`,
-          //   );
+          console.log("Block to execute in current frame:", blockToExecute);
           currentFrame._position++;
-          if (currentFrame._position === currentFrame._body.length) {
+          if (currentFrame._position >= currentFrame._body.length) {
             if (currentFrame instanceof RepeatFrame) {
               currentFrame.incrementCount();
-
+              console.warn(
+                "Repeat frame incremented count to:",
+                currentFrame._currentCount,
+              );
               if (currentFrame.hasMoreIterations()) {
                 currentFrame._position = 0;
               } else {
-                thread.popFrame();
-                if (thread.stack.length === 0) {
-                  //   console.log("Stack is empty after popping RepeatFrame");
+                currentFrame.markComplete();
+                if (thread.target.id === 6) {
+                  console.log(
+                    "Marking Repeat frame complete after reaching end of body for target 6",
+                  );
                 }
               }
             } else if (currentFrame instanceof IfFrame) {
-              //   console.log("Popping If frame after reaching end of body");
-              thread.popFrame();
+              currentFrame.markComplete();
+            } else if (currentFrame instanceof ProcedureFrame) {
+              console.log(
+                "Marking Procedure frame complete after reaching end of body for procedure:",
+                currentFrame._procedure.name,
+              );
+              currentFrame.markComplete();
             }
           }
+        } else if (currentFrame?.isComplete()) {
+          console.log(
+            "Current frame is complete, popping frame from stack for target:",
+            thread.target.id,
+          );
+          thread.popFrame();
+          if (thread.stack.length === 0) {
+            thread.count++;
+          }
+          continue;
         }
       }
 
-      if (thread.stack.length === 0 && blockToExecute === null) {
+      if (
+        thread.stack.length === 0 &&
+        (blockToExecute === null || blockToExecute === undefined)
+      ) {
         blockToExecute = thread.script.blocks[thread.count];
       }
 
       if (!blockToExecute) {
         thread.status = "done";
-        console.log(
-          "Thread completed for target:",
-          thread.target,
-          "program counter:",
+        console.warn(
+          "No block to execute and stack is empty. Marking thread as done for target:",
+          thread.target.id,
+        );
+        console.warn(
+          "Thread state:",
+          thread,
+          "Current count:",
           thread.count,
+          "Length of blocks:",
+          thread.script.blocks.length,
+          "Stack",
+          thread.stack,
         );
         this._processingThread = null;
         return;
       }
+      if (thread.target.id === 6) {
+        console.log(
+          "Executing block of type",
+          blockToExecute.type,
+          "for target",
+          thread.target.id,
+        );
+      }
       switch (blockToExecute.type) {
         case "screen_set_position": {
-          thread.target.x = this.evaluateMath(blockToExecute.x) as number;
-          thread.target.y = this.evaluateMath(blockToExecute.y) as number;
+          let targetX = this.evaluateValue(blockToExecute.x);
+          let targetY = this.evaluateValue(blockToExecute.y);
+          thread.target.x = targetX as number;
+          thread.target.y = targetY as number;
           break;
         }
 
         case "screen_set_x": {
-          thread.target.x = this.evaluateMath(blockToExecute.x) as number;
+          let targetX = this.evaluateValue(blockToExecute.x);
+          thread.target.x = targetX as number;
           break;
         }
         case "screen_set_y": {
-          thread.target.y = this.evaluateMath(blockToExecute.y) as number;
+          let targetY = this.evaluateValue(blockToExecute.y);
+          thread.target.y = targetY as number;
           break;
         }
 
         case "logic_wait": {
-          console.log(
-            `Thread for target ${thread.target.id} is waiting for ${this.evaluateMath(blockToExecute.duration)} seconds.`,
-          );
           thread.status = "waiting";
           thread.waitUntil =
             currentTime +
-            (this.evaluateMath(blockToExecute.duration) as number) * 1000;
+            (this.evaluateValue(blockToExecute.duration) as number) * 1000;
           this._processingThread = null;
-          console.log(thread);
           return;
         }
         case "variables_set": {
           const variableName = blockToExecute.name;
-          const value = this.evaluateMath(blockToExecute.value);
+          const value = this.evaluateValue(blockToExecute.value) as number;
 
           thread.target.variables.set(variableName, value);
           break;
@@ -124,13 +173,13 @@ export class VirtualMachine {
 
         case "math_change": {
           const variableName = blockToExecute.name;
-          const changeValue = this.evaluateMath(blockToExecute.value) as number;
+          const changeValue = this.evaluateValue(blockToExecute.value);
           const currentValue = thread.target.variables.get(variableName);
 
           if (typeof currentValue === "number") {
             thread.target.variables.set(
               variableName,
-              currentValue + changeValue,
+              currentValue + (changeValue as number),
             );
           } else {
             console.error(
@@ -142,10 +191,12 @@ export class VirtualMachine {
         }
 
         case "controls_repeat_ext": {
-          const times = this.evaluateMath(blockToExecute.times) as number;
-
-          if (times > 0 && blockToExecute.body.length > 0) {
-            const repeatFrame = new RepeatFrame(times, blockToExecute.body);
+          let times = this.evaluateValue(blockToExecute.times);
+          if ((times as number) > 0 && blockToExecute.body.length > 0) {
+            const repeatFrame = new RepeatFrame(
+              times as number,
+              blockToExecute.body,
+            );
 
             thread.addFrame(repeatFrame);
           }
@@ -164,15 +215,12 @@ export class VirtualMachine {
               blockToExecute.hasOwnProperty(thenBodyKey)
             ) {
               //@ts-expect-error
-              const condition = blockToExecute[conditionKey] as Predicate;
+              const condition = blockToExecute[conditionKey] as Condition;
               //@ts-expect-error
               const thenBody = blockToExecute[thenBodyKey] as Block[];
 
-              if (this.evaluatePredicate(condition)) {
+              if (this.evaluateCondition(condition)) {
                 thread.addFrame(new IfFrame(thenBody));
-                // console.log(
-                //   `Condition met for IF block in target ${thread.target.id}. Executing thenBody.`,
-                // );
                 conditionMet = true;
                 break;
               }
@@ -181,12 +229,21 @@ export class VirtualMachine {
           } while (blockToExecute.hasOwnProperty("condition" + n));
 
           if (!conditionMet && blockToExecute.hasOwnProperty("elseBody")) {
-            // console.log(
-            //   `No conditions met for IF block in target ${thread.target.id}. Executing elseBody.`,
-            // );
             //@ts-expect-error
             thread.addFrame(new IfFrame(blockToExecute.elseBody));
           }
+          break;
+        }
+        case "procedures_callnoreturn": {
+          const newFrame = new ProcedureFrame(
+            thread.target.procedures.get(blockToExecute.name) as Procedure,
+            blockToExecute.arguments,
+          );
+          newFrame.returnLocation =
+            thread.stack.length === 0
+              ? thread.count + 1
+              : thread.stack[thread.stack.length - 1]._position + 1;
+          thread.addFrame(newFrame);
           break;
         }
         case "controls_flow_statements": {
@@ -228,8 +285,8 @@ export class VirtualMachine {
       if (thread.stack.length === 0) {
         thread.count++;
         if (thread.target.id === 6) {
-          //   console.log("Thread count incremented to:", thread.count);
-          console.log(thread.target);
+          console.log("Thread count incremented to:", thread.count);
+          //   console.log(thread.target);
         }
       }
     }
@@ -237,15 +294,15 @@ export class VirtualMachine {
     this._processingThread = null;
   }
 
-  evaluatePredicate(predicate: Predicate): boolean | null {
+  evaluateCondition(predicate: Condition): boolean | null {
     if (!predicate) {
       console.error("Predicate is undefined or null:", predicate);
       return false;
     }
     switch (predicate.type) {
       case "logic_compare": {
-        const left = this.evaluateMath(predicate.left);
-        const right = this.evaluateMath(predicate.right);
+        const left = this.evaluateValue(predicate.left);
+        const right = this.evaluateValue(predicate.right);
         switch (predicate.operator) {
           case "EQ":
             return left === right;
@@ -266,8 +323,8 @@ export class VirtualMachine {
         }
       }
       case "logic_operation": {
-        const left = this.evaluatePredicate(predicate.left);
-        const right = this.evaluatePredicate(predicate.right);
+        const left = this.evaluateCondition(predicate.left);
+        const right = this.evaluateCondition(predicate.right);
         switch (predicate.operator) {
           case "AND":
             return left && right;
@@ -280,7 +337,7 @@ export class VirtualMachine {
         }
       }
       case "logic_negate": {
-        const operand = this.evaluatePredicate(predicate.operand);
+        const operand = this.evaluateCondition(predicate.operand);
         return !operand;
       }
       case "logic_boolean": {
@@ -296,18 +353,24 @@ export class VirtualMachine {
     }
   }
 
-  evaluateMath(field: Value): number | string | boolean {
+  evaluateValue(field: Value): number | string | boolean | SuspendedReturn {
     if (!field) {
       console.error("Field is undefined or null:", field);
       return 0;
+    }
+    if (field.type === "procedures_callreturn") {
+      if (!this._processingThread) {
+        throw new Error("No processing thread available");
+      }
+      // todo
     }
     if (field.type === "math_number") {
       return field.value;
     } else if (typeof field === "object" && "type" in field && field !== null) {
       switch (field.type) {
         case "math_arithmetic":
-          const left = this.evaluateMath(field.left) as number;
-          const right = this.evaluateMath(field.right) as number;
+          const left = this.evaluateValue(field.left) as number;
+          const right = this.evaluateValue(field.right) as number;
           switch (field.operator) {
             case "ADD":
               return left + right;
@@ -321,7 +384,7 @@ export class VirtualMachine {
               return Math.pow(left, right);
           }
         case "math_single":
-          const input = this.evaluateMath(field.operand) as number;
+          const input = this.evaluateValue(field.operand) as number;
           switch (field.operator) {
             case "NEG":
               return -input;
@@ -339,7 +402,7 @@ export class VirtualMachine {
               return Math.pow(10, input);
           }
         case "math_trig":
-          const trigInput = this.evaluateMath(field.operand) as number;
+          const trigInput = this.evaluateValue(field.operand) as number;
           switch (field.operator) {
             case "SIN":
               return Math.sin(trigInput);
@@ -370,7 +433,7 @@ export class VirtualMachine {
               return Infinity;
           }
         case "math_round":
-          const roundInput = this.evaluateMath(field.operand) as number;
+          const roundInput = this.evaluateValue(field.operand) as number;
           switch (field.operator) {
             case "ROUND":
               return Math.round(roundInput);
@@ -380,23 +443,25 @@ export class VirtualMachine {
               return Math.floor(roundInput);
           }
         case "math_modulo":
-          const dividend = this.evaluateMath(field.dividend) as number;
-          const divisor = this.evaluateMath(field.divisor) as number;
+          const dividend = this.evaluateValue(field.dividend) as number;
+
+          const divisor = this.evaluateValue(field.divisor) as number;
+
           return dividend % divisor;
         case "math_constrain":
-          const value = this.evaluateMath(field.value) as number;
-          const low = this.evaluateMath(field.low) as number;
-          const high = this.evaluateMath(field.high) as number;
+          const value = this.evaluateValue(field.value) as number;
+          const low = this.evaluateValue(field.low) as number;
+          const high = this.evaluateValue(field.high) as number;
           return Math.min(Math.max(value, low), high);
         case "math_random_int":
-          const from = this.evaluateMath(field.from) as number;
-          const to = this.evaluateMath(field.to) as number;
+          const from = this.evaluateValue(field.from) as number;
+          const to = this.evaluateValue(field.to) as number;
           return Math.floor(Math.random() * (to - from + 1)) + from;
         case "math_random_float":
           return Math.random();
         case "math_atan2":
-          const y = this.evaluateMath(field.y) as number;
-          const x = this.evaluateMath(field.x) as number;
+          const y = this.evaluateValue(field.y) as number;
+          const x = this.evaluateValue(field.x) as number;
           return Math.atan2(y, x);
         case "variables_get":
           const variableName = field.name;
@@ -405,6 +470,20 @@ export class VirtualMachine {
           }
           const variableValue =
             this._processingThread.target.variables.get(variableName);
+          const lastProcedureFrame = this._processingThread.stack
+            .slice()
+            .reverse()
+            .find((frame) => frame instanceof ProcedureFrame) as
+            | ProcedureFrame
+            | undefined;
+          if (lastProcedureFrame) {
+            const arg = lastProcedureFrame._arguments.find(
+              (arg) => arg.name === variableName,
+            );
+            if (arg) {
+              return this.evaluateValue(arg.value);
+            }
+          }
           if (variableValue === undefined) {
             throw new Error(`Variable ${variableName} is not defined`);
           }
@@ -416,6 +495,6 @@ export class VirtualMachine {
           );
       }
     }
-    throw new Error("Invalid field value");
+    throw new Error("Invalid field value: " + JSON.stringify(field));
   }
 }

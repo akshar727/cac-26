@@ -6,6 +6,7 @@ import { Sprite } from "@/runner/sprite";
 import { AssetDatabaseSprite } from "@/types/sprite";
 import { VirtualMachine } from "./virtualMachine";
 import { Renderer } from "./renderer";
+import { Procedure } from "@/types/field";
 
 export class Runtime {
   _targets: Sprite[] = [];
@@ -30,11 +31,33 @@ export class Runtime {
       this._targets.push(sprite);
       let topBlocks = spriteWorkspace.getTopBlocks(false);
       for (const block of topBlocks) {
-        let outputScript = this.compileScript(sprite.id, block);
-        if (outputScript) {
-          this._scripts.push(outputScript);
+        if (
+          block.type === "procedures_defnoreturn" ||
+          block.type === "procedures_defreturn"
+        ) {
+          const generated = JSON.parse(
+            //@ts-ignore
+            intermediateGenerator.blockToCode(block),
+          );
+          console.log("Generated procedure definition:", generated);
+          sprite.procedures.set(block.getFieldValue("NAME"), {
+            name: block.getFieldValue("NAME"),
+            parameters: generated.parameters,
+            body: generated.body,
+            returnValue: generated.returnValue || null,
+          } as Procedure);
+        } else if (
+          block.type === "when_started" ||
+          block.type === "when_key_pressed" ||
+          block.type === "when_broadcast_received"
+        ) {
+          let outputScript = this.compileScript(sprite.id, block);
+          if (outputScript) {
+            this._scripts.push(outputScript);
+          }
         }
       }
+      console.log(sprite);
       spriteWorkspace.dispose();
     }
   }

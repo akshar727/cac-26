@@ -1,3 +1,5 @@
+import { Block } from "./block";
+
 export type Value =
   | {
       type: "math_arithmetic";
@@ -55,9 +57,14 @@ export type Value =
   | {
       type: "variables_get";
       name: string;
+    }
+  | {
+      type: "procedures_callreturn";
+      name: string;
+      arguments: { name: string; value: Value }[];
     };
 
-export type Predicate =
+export type Condition =
   | {
       type: "logic_compare";
       operator: "EQ" | "NEQ" | "LT" | "LTE" | "GT" | "GTE";
@@ -67,12 +74,12 @@ export type Predicate =
   | {
       type: "logic_operation";
       operator: "AND" | "OR";
-      left: Predicate;
-      right: Predicate;
+      left: Condition;
+      right: Condition;
     }
   | {
       type: "logic_negate";
-      operand: Predicate;
+      operand: Condition;
     }
   | {
       type: "logic_boolean";
@@ -82,3 +89,20 @@ export type Predicate =
       type: "logic_null";
       value: null;
     };
+
+export type ProcedureParameter = {
+  name: string;
+  id: string;
+};
+
+export type Procedure = {
+  name: string;
+  parameters: ProcedureParameter[];
+  body: Block[];
+  returnValue: Value | null;
+};
+
+export type ProcedureCallArgument = {
+  name: string;
+  value: Value;
+};

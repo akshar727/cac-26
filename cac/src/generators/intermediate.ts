@@ -339,6 +339,74 @@ intermediateGenerator.forBlock["controls_flow_statements"] = function (
   });
 };
 
+intermediateGenerator.forBlock["procedures_defnoreturn"] = function (
+  block,
+  generator,
+) {
+  const name = block.getFieldValue("NAME");
+  let body = [];
+  if (block.getInput("STACK")) {
+    body = JSON.parse(
+      `[${intermediateGenerator.statementToCode(block, "STACK")}]`,
+    );
+  }
+  let returnValue = null;
+  if (block.getInput("RETURN")) {
+    returnValue = generator.valueToCode(block, "RETURN", Order.NONE) || "0";
+  }
+  const variables = block.getVarModels();
+  console.log("Variables for procedure", name, ":", variables);
+  return JSON.stringify({
+    type: block.type,
+    name: name,
+    parameters: variables.map((v) => {
+      //@ts-ignore
+      return { name: v.name, id: v.id };
+    }),
+    body: body || [],
+    returnValue: returnValue ? getFormatted(returnValue) : null,
+  });
+};
+intermediateGenerator.forBlock["procedures_defreturn"] =
+  intermediateGenerator.forBlock["procedures_defnoreturn"];
+//@ts-ignore
+intermediateGenerator.forBlock["procedures_callnoreturn"] = function (
+  block,
+  generator,
+) {
+  const name = block.getFieldValue("NAME");
+  const args = block.getVarModels().map((varName, index) => {
+    return JSON.stringify({
+      name: varName.getId(),
+      value: getFormatted(
+        generator.valueToCode(block, "ARG" + index, Order.NONE) || "0",
+      ),
+    });
+  });
+  if (block.type === "procedures_callreturn") {
+    console.log("a");
+    return [
+      JSON.stringify({
+        type: block.type,
+        name: name,
+        //@ts-ignore
+        arguments: args.map((arg) => getFormatted(arg)),
+      }),
+      Order.NONE,
+    ];
+  } else {
+    return JSON.stringify({
+      type: block.type,
+      name: name,
+      //@ts-ignore
+      arguments: args.map((arg) => getFormatted(arg)),
+    });
+  }
+};
+
+intermediateGenerator.forBlock["procedures_callreturn"] =
+  intermediateGenerator.forBlock["procedures_callnoreturn"];
+
 function getFormatted(value: string): number | object {
   let number = true;
   let json = true;
