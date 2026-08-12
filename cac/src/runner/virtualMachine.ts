@@ -17,9 +17,6 @@ export class VirtualMachine {
       }
 
       thread.status = "running";
-      if (thread.stack.length === 0) {
-        thread.count++;
-      }
     }
 
     const MAX_OPERATIONS = 1000;
@@ -52,8 +49,23 @@ export class VirtualMachine {
           JSON.parse(JSON.stringify(thread.stack)),
         );
         const currentFrame = thread.currentFrame();
+        if (currentFrame) {
+          if (currentFrame.isComplete()) {
+            console.log(
+              "Current frame is complete, popping frame from stack for target:",
+              thread.target.id,
+            );
+            thread.popFrame();
+            if (thread.stack.length === 0) {
+              thread.count++;
+              console.warn(
+                "Thread count incremented to (due to frame completion):",
+                thread.count,
+              );
+            }
+            continue;
+          }
 
-        if (!currentFrame?.isComplete() && currentFrame) {
           console.log(
             "Current frame",
             JSON.parse(JSON.stringify(currentFrame)),
@@ -61,7 +73,7 @@ export class VirtualMachine {
           blockToExecute = currentFrame._body[currentFrame._position];
           console.log("Block to execute in current frame:", blockToExecute);
           currentFrame._position++;
-          if (currentFrame._position >= currentFrame._body.length) {
+          if (currentFrame._position === currentFrame._body.length) {
             if (currentFrame instanceof RepeatFrame) {
               currentFrame.incrementCount();
               console.warn(
@@ -88,16 +100,6 @@ export class VirtualMachine {
               currentFrame.markComplete();
             }
           }
-        } else if (currentFrame?.isComplete()) {
-          console.log(
-            "Current frame is complete, popping frame from stack for target:",
-            thread.target.id,
-          );
-          thread.popFrame();
-          if (thread.stack.length === 0) {
-            thread.count++;
-          }
-          continue;
         }
       }
 
@@ -135,152 +137,7 @@ export class VirtualMachine {
           thread.target.id,
         );
       }
-      switch (blockToExecute.type) {
-        case "screen_set_position": {
-          let targetX = this.evaluateValue(blockToExecute.x);
-          let targetY = this.evaluateValue(blockToExecute.y);
-          thread.target.x = targetX as number;
-          thread.target.y = targetY as number;
-          break;
-        }
-
-        case "screen_set_x": {
-          let targetX = this.evaluateValue(blockToExecute.x);
-          thread.target.x = targetX as number;
-          break;
-        }
-        case "screen_set_y": {
-          let targetY = this.evaluateValue(blockToExecute.y);
-          thread.target.y = targetY as number;
-          break;
-        }
-
-        case "logic_wait": {
-          thread.status = "waiting";
-          thread.waitUntil =
-            currentTime +
-            (this.evaluateValue(blockToExecute.duration) as number) * 1000;
-          this._processingThread = null;
-          return;
-        }
-        case "variables_set": {
-          const variableName = blockToExecute.name;
-          const value = this.evaluateValue(blockToExecute.value) as number;
-
-          thread.target.variables.set(variableName, value);
-          break;
-        }
-
-        case "math_change": {
-          const variableName = blockToExecute.name;
-          const changeValue = this.evaluateValue(blockToExecute.value);
-          const currentValue = thread.target.variables.get(variableName);
-
-          if (typeof currentValue === "number") {
-            thread.target.variables.set(
-              variableName,
-              currentValue + (changeValue as number),
-            );
-          } else {
-            console.error(
-              `Variable ${variableName} is not a number and cannot be changed.`,
-            );
-          }
-
-          break;
-        }
-
-        case "controls_repeat_ext": {
-          let times = this.evaluateValue(blockToExecute.times);
-          if ((times as number) > 0 && blockToExecute.body.length > 0) {
-            const repeatFrame = new RepeatFrame(
-              times as number,
-              blockToExecute.body,
-            );
-
-            thread.addFrame(repeatFrame);
-          }
-          break;
-        }
-        case "controls_if": {
-          let conditionMet = false;
-          let n = 0;
-
-          do {
-            const conditionKey = "condition" + n;
-            const thenBodyKey = "thenBody" + n;
-
-            if (
-              blockToExecute.hasOwnProperty(conditionKey) &&
-              blockToExecute.hasOwnProperty(thenBodyKey)
-            ) {
-              //@ts-expect-error
-              const condition = blockToExecute[conditionKey] as Condition;
-              //@ts-expect-error
-              const thenBody = blockToExecute[thenBodyKey] as Block[];
-
-              if (this.evaluateCondition(condition)) {
-                thread.addFrame(new IfFrame(thenBody));
-                conditionMet = true;
-                break;
-              }
-            }
-            n++;
-          } while (blockToExecute.hasOwnProperty("condition" + n));
-
-          if (!conditionMet && blockToExecute.hasOwnProperty("elseBody")) {
-            //@ts-expect-error
-            thread.addFrame(new IfFrame(blockToExecute.elseBody));
-          }
-          break;
-        }
-        case "procedures_callnoreturn": {
-          const newFrame = new ProcedureFrame(
-            thread.target.procedures.get(blockToExecute.name) as Procedure,
-            blockToExecute.arguments,
-          );
-          newFrame.returnLocation =
-            thread.stack.length === 0
-              ? thread.count + 1
-              : thread.stack[thread.stack.length - 1]._position + 1;
-          thread.addFrame(newFrame);
-          break;
-        }
-        case "controls_flow_statements": {
-          if (blockToExecute.flow === "BREAK") {
-            while (thread.stack.length > 0) {
-              // break out of the innermost loop only just like in actual programming languages
-              // loop through the stack frames backwards to find the nearest RepeatFrame
-              let foundRepeatFrame = false;
-              for (let i = thread.stack.length - 1; i >= 0; i--) {
-                if (thread.stack[i] instanceof RepeatFrame) {
-                  // Found the nearest RepeatFrame, pop it and break out of the loop
-                  thread.stack.splice(i, 1);
-                  foundRepeatFrame = true;
-                  break;
-                }
-              }
-              if (foundRepeatFrame) {
-                break; // Exit the while loop after breaking out of the innermost loop
-              }
-            }
-          } else if (blockToExecute.flow === "CONTINUE") {
-            // Similar to BREAK, but we just want to skip to the next iteration of the innermost loop
-            for (let i = thread.stack.length - 1; i >= 0; i--) {
-              if (thread.stack[i] instanceof RepeatFrame) {
-                const repeatFrame = thread.stack[i] as RepeatFrame;
-                repeatFrame._position = repeatFrame._body.length - 1 - 1; // set to second to last position so that after incrementing in the next step, it will point to the last position
-                break;
-              }
-            }
-          }
-          break;
-        }
-        default:
-          //@ts-ignore
-          console.warn("Unknown block type:", blockToExecute.type);
-          break;
-      }
+      this.executeBlock(blockToExecute, thread, currentTime);
 
       if (thread.stack.length === 0) {
         thread.count++;
@@ -292,6 +149,151 @@ export class VirtualMachine {
     }
 
     this._processingThread = null;
+  }
+
+  executeBlock(blockToExecute: Block, thread: Thread, currentTime: number) {
+    switch (blockToExecute.type) {
+      case "screen_set_position": {
+        let targetX = this.evaluateValue(blockToExecute.x);
+        let targetY = this.evaluateValue(blockToExecute.y);
+        thread.target.x = targetX as number;
+        thread.target.y = targetY as number;
+        break;
+      }
+
+      case "screen_set_x": {
+        let targetX = this.evaluateValue(blockToExecute.x);
+        thread.target.x = targetX as number;
+        break;
+      }
+      case "screen_set_y": {
+        let targetY = this.evaluateValue(blockToExecute.y);
+        thread.target.y = targetY as number;
+        break;
+      }
+
+      case "logic_wait": {
+        thread.status = "waiting";
+        thread.waitUntil =
+          currentTime +
+          (this.evaluateValue(blockToExecute.duration) as number) * 1000;
+        this._processingThread = null;
+        return;
+      }
+      case "variables_set": {
+        const variableName = blockToExecute.name;
+        const value = this.evaluateValue(blockToExecute.value) as number;
+
+        thread.target.variables.set(variableName, value);
+        break;
+      }
+
+      case "math_change": {
+        const variableName = blockToExecute.name;
+        const changeValue = this.evaluateValue(blockToExecute.value);
+        const currentValue = thread.target.variables.get(variableName);
+
+        if (typeof currentValue === "number") {
+          thread.target.variables.set(
+            variableName,
+            currentValue + (changeValue as number),
+          );
+        } else {
+          console.error(
+            `Variable ${variableName} is not a number and cannot be changed.`,
+          );
+        }
+
+        break;
+      }
+
+      case "controls_repeat_ext": {
+        let times = this.evaluateValue(blockToExecute.times);
+        if ((times as number) > 0 && blockToExecute.body.length > 0) {
+          const repeatFrame = new RepeatFrame(
+            times as number,
+            blockToExecute.body,
+          );
+
+          thread.addFrame(repeatFrame);
+        }
+        break;
+      }
+      case "controls_if": {
+        let conditionMet = false;
+        let n = 0;
+
+        do {
+          const conditionKey = "condition" + n;
+          const thenBodyKey = "thenBody" + n;
+
+          if (
+            blockToExecute.hasOwnProperty(conditionKey) &&
+            blockToExecute.hasOwnProperty(thenBodyKey)
+          ) {
+            //@ts-expect-error
+            const condition = blockToExecute[conditionKey] as Condition;
+            //@ts-expect-error
+            const thenBody = blockToExecute[thenBodyKey] as Block[];
+
+            if (this.evaluateCondition(condition)) {
+              thread.addFrame(new IfFrame(thenBody));
+              conditionMet = true;
+              break;
+            }
+          }
+          n++;
+        } while (blockToExecute.hasOwnProperty("condition" + n));
+
+        if (!conditionMet && blockToExecute.hasOwnProperty("elseBody")) {
+          //@ts-expect-error
+          thread.addFrame(new IfFrame(blockToExecute.elseBody));
+        }
+        break;
+      }
+      case "procedures_callnoreturn": {
+        const newFrame = new ProcedureFrame(
+          thread.target.procedures.get(blockToExecute.name) as Procedure,
+          blockToExecute.arguments,
+        );
+        thread.addFrame(newFrame);
+        break;
+      }
+      case "controls_flow_statements": {
+        if (blockToExecute.flow === "BREAK") {
+          while (thread.stack.length > 0) {
+            // break out of the innermost loop only just like in actual programming languages
+            // loop through the stack frames backwards to find the nearest RepeatFrame
+            let foundRepeatFrame = false;
+            for (let i = thread.stack.length - 1; i >= 0; i--) {
+              if (thread.stack[i] instanceof RepeatFrame) {
+                // Found the nearest RepeatFrame, pop it and break out of the loop
+                thread.stack.splice(i, 1);
+                foundRepeatFrame = true;
+                break;
+              }
+            }
+            if (foundRepeatFrame) {
+              break; // Exit the while loop after breaking out of the innermost loop
+            }
+          }
+        } else if (blockToExecute.flow === "CONTINUE") {
+          // Similar to BREAK, but we just want to skip to the next iteration of the innermost loop
+          for (let i = thread.stack.length - 1; i >= 0; i--) {
+            if (thread.stack[i] instanceof RepeatFrame) {
+              const repeatFrame = thread.stack[i] as RepeatFrame;
+              repeatFrame._position = repeatFrame._body.length - 1 - 1; // set to second to last position so that after incrementing in the next step, it will point to the last position
+              break;
+            }
+          }
+        }
+        break;
+      }
+      default:
+        //@ts-ignore
+        console.warn("Unknown block type:", blockToExecute.type);
+        break;
+    }
   }
 
   evaluateCondition(predicate: Condition): boolean | null {
