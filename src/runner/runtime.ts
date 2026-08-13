@@ -60,7 +60,7 @@ export class Runtime {
           }
         }
       }
-      console.log(sprite);
+      console.log(JSON.parse(JSON.stringify(sprite)));
       spriteWorkspace.dispose();
     }
   }

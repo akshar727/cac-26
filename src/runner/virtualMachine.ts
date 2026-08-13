@@ -56,15 +56,72 @@ export class VirtualMachine {
         const currentFrame = thread.currentFrame();
         if (currentFrame) {
           if (currentFrame.isComplete()) {
-            // console.log(
-            //   "Current frame is complete, popping frame from stack for target:",
-            //   thread.target.id,
-            // );
-            thread.popFrame();
-            if (thread.executionStack.length === 0) {
-              thread.count++;
+            if (currentFrame instanceof ForFrame) {
+              currentFrame._currentValue += currentFrame._stepValue;
+              console.warn(
+                "Current value after increment:",
+                currentFrame._currentValue,
+              );
+              if (
+                (currentFrame._stepValue > 0 &&
+                  currentFrame._currentValue <= currentFrame._endValue) ||
+                (currentFrame._stepValue < 0 &&
+                  currentFrame._currentValue >= currentFrame._endValue)
+              ) {
+                currentFrame._position = 0;
+                currentFrame._finished = false;
+              } else {
+                console.warn("Current value:", currentFrame._currentValue);
+                thread.popFrame(); // so that the next block is selected
+                if (thread.executionStack.length === 0) {
+                  blockToExecute = null; // so that we dont execute the next block in the body of the RepeatWhile frame after it has completed
+                  thread.count++;
+                } else {
+                  thread.currentFrame()!._position++;
+                  blockToExecute =
+                    thread.currentFrame()?._body[
+                      thread.currentFrame()!._position
+                    ];
+                  while (
+                    blockToExecute === undefined &&
+                    thread.executionStack.length > 0
+                  ) {
+                    thread.popFrame();
+                    console.warn(
+                      "Popped frame from stack, current stack length:",
+                      thread.executionStack.length,
+                    );
+                    if (thread.executionStack.length === 0) {
+                      blockToExecute = null;
+                      thread.count++;
+                      break;
+                    } else {
+                      thread.currentFrame()!._position++;
+                      blockToExecute =
+                        thread.currentFrame()?._body[
+                          thread.currentFrame()!._position
+                        ];
+                    }
+                  }
+                  console.log("Next block to execute:", blockToExecute);
+                }
+                if (thread.target.id === 6) {
+                  console.log(
+                    "Marking For frame complete after reaching end of body for target 6",
+                  );
+                }
+              }
+            } else {
+              console.log(
+                "Current frame is complete, popping frame from stack for target:",
+                thread.target.id,
+              );
+              thread.popFrame();
+              if (thread.executionStack.length === 0) {
+                thread.count++;
+              }
+              continue;
             }
-            continue;
           }
 
           // console.log(
@@ -89,6 +146,10 @@ export class VirtualMachine {
               }
             } else if (currentFrame instanceof IfFrame) {
               currentFrame.markComplete();
+              console.log(
+                "Marking If frame complete after reaching end of body for target:",
+                thread.target.id,
+              );
             } else if (currentFrame instanceof ProcedureFrameNoReturn) {
               console.log(
                 "Marking Procedure frame complete after reaching end of body for procedure:",
@@ -116,6 +177,27 @@ export class VirtualMachine {
                     thread.currentFrame()?._body[
                       thread.currentFrame()!._position
                     ];
+                  while (
+                    blockToExecute === undefined &&
+                    thread.executionStack.length > 0
+                  ) {
+                    thread.popFrame();
+                    console.warn(
+                      "Popped frame from stack, current stack length:",
+                      thread.executionStack.length,
+                    );
+                    if (thread.executionStack.length === 0) {
+                      blockToExecute = null;
+                      thread.count++;
+                      break;
+                    } else {
+                      thread.currentFrame()!._position++;
+                      blockToExecute =
+                        thread.currentFrame()?._body[
+                          thread.currentFrame()!._position
+                        ];
+                    }
+                  }
                 }
                 console.warn(
                   "Marking RepeatWhile frame complete after condition evaluated to false for target:",
@@ -123,34 +205,7 @@ export class VirtualMachine {
                 );
               }
             } else if (currentFrame instanceof ForFrame) {
-              currentFrame._currentValue += currentFrame._stepValue;
-              if (
-                (currentFrame._stepValue > 0 &&
-                  currentFrame._currentValue <= currentFrame._endValue) ||
-                (currentFrame._stepValue < 0 &&
-                  currentFrame._currentValue >= currentFrame._endValue)
-              ) {
-                currentFrame._position = 0;
-              } else {
-                console.warn("Current value:", currentFrame._currentValue);
-                thread.popFrame(); // so that the next block is selected
-                if (thread.executionStack.length === 0) {
-                  blockToExecute = null; // so that we dont execute the next block in the body of the RepeatWhile frame after it has completed
-                  thread.count++;
-                } else {
-                  thread.currentFrame()!._position++;
-                  blockToExecute =
-                    thread.currentFrame()?._body[
-                      thread.currentFrame()!._position
-                    ];
-                  console.log("Next block to execute:", blockToExecute);
-                }
-                if (thread.target.id === 6) {
-                  console.log(
-                    "Marking For frame complete after reaching end of body for target 6",
-                  );
-                }
-              }
+              thread.currentFrame()?.markComplete();
             }
           }
         }
@@ -297,6 +352,10 @@ export class VirtualMachine {
         const variableName = blockToExecute.name;
 
         let currentValue = thread.target.variables.get(variableName);
+        console.log(
+          `Current value of variable ${variableName} for target ${thread.target.id}:`,
+          currentValue,
+        );
         if (currentValue === undefined) {
           // check in the last procedure frame if it exists
           const filteredStack = thread.executionStack.filter(
@@ -315,6 +374,22 @@ export class VirtualMachine {
                 thread,
               ) as number;
               break;
+            }
+            let forFramesAfterProcedureFrame = thread.executionStack.filter(
+              (frame) =>
+                frame instanceof ForFrame &&
+                thread.executionStack.indexOf(frame) >
+                  thread.executionStack.indexOf(lastProcedureFrame),
+            );
+            for (let forFrame of forFramesAfterProcedureFrame) {
+              if (
+                forFrame instanceof ForFrame &&
+                forFrame._variableName === variableName
+              ) {
+                throw new Error(
+                  `Variable ${variableName} is a loop variable and cannot be modified.`,
+                );
+              }
             }
           }
           console.error(
@@ -336,6 +411,10 @@ export class VirtualMachine {
           thread,
         ) as number;
         let currentValue = thread.target.variables.get(variableName);
+        console.log(
+          `Current value of variable ${variableName} for target ${thread.target.id}:`,
+          currentValue,
+        );
         if (currentValue === undefined) {
           // check in the last procedure frame if it exists
           const filteredStack = thread.executionStack.filter(
@@ -358,6 +437,23 @@ export class VirtualMachine {
                 console.error(
                   `Argument ${variableName} is not a number and cannot be changed. Value: ${arg.value}`,
                 );
+              }
+            } else {
+              let forFramesAfterProcedureFrame = thread.executionStack.filter(
+                (frame) =>
+                  frame instanceof ForFrame &&
+                  thread.executionStack.indexOf(frame) >
+                    thread.executionStack.indexOf(lastProcedureFrame),
+              );
+              for (let forFrame of forFramesAfterProcedureFrame) {
+                if (
+                  forFrame instanceof ForFrame &&
+                  forFrame._variableName === variableName
+                ) {
+                  throw new Error(
+                    `Variable ${variableName} is a loop variable and cannot be modified.`,
+                  );
+                }
               }
             }
           }
@@ -446,7 +542,8 @@ export class VirtualMachine {
             for (let i = thread.executionStack.length - 1; i >= 0; i--) {
               if (
                 thread.executionStack[i] instanceof RepeatFrame ||
-                thread.executionStack[i] instanceof RepeatWhileFrame
+                thread.executionStack[i] instanceof RepeatWhileFrame ||
+                thread.executionStack[i] instanceof ForFrame
               ) {
                 // Found the nearest RepeatFrame, pop it and break out of the loop
                 thread.executionStack.splice(i, 1);
@@ -461,13 +558,24 @@ export class VirtualMachine {
         } else if (blockToExecute.flow === "CONTINUE") {
           // Similar to BREAK, but we just want to skip to the next iteration of the innermost loop
           for (let i = thread.executionStack.length - 1; i >= 0; i--) {
-            if (thread.executionStack[i] instanceof RepeatFrame) {
-              const repeatFrame = thread.executionStack[i] as RepeatFrame;
-              repeatFrame.incrementCount();
-              if (repeatFrame.hasMoreIterations()) {
-                repeatFrame._position = 0; // Reset position to the start of the loop body
+            if (
+              thread.executionStack[i] instanceof RepeatFrame ||
+              thread.executionStack[i] instanceof ForFrame
+            ) {
+              const frame = thread.executionStack[i] as RepeatFrame | ForFrame;
+              if (frame instanceof RepeatFrame) {
+                frame.incrementCount();
+              } else if (frame instanceof ForFrame) {
+                frame._currentValue += frame._stepValue;
+                console.warn(
+                  "Loop was skipped to next iteration. Current value after increment:",
+                  frame._currentValue,
+                );
+              }
+              if (frame.hasMoreIterations()) {
+                frame._position = 0; // Reset position to the start of the loop body
               } else {
-                repeatFrame.markComplete(); // Mark the loop as complete if no more iterations
+                frame.markComplete(); // Mark the loop as complete if no more iterations
               }
               break;
             } else if (thread.executionStack[i] instanceof RepeatWhileFrame) {
