@@ -329,6 +329,69 @@ intermediateGenerator.forBlock["logic_operation"] = function (
   ];
 };
 
+intermediateGenerator.forBlock["screen_change_x"] = function (
+  block,
+  generator,
+) {
+  const delta = generator.valueToCode(block, "DX", Order.NONE) || "0";
+  return JSON.stringify({
+    type: "screen_change_x",
+    delta: getFormatted(delta),
+  });
+};
+
+intermediateGenerator.forBlock["screen_change_y"] = function (
+  block,
+  generator,
+) {
+  const delta = generator.valueToCode(block, "DY", Order.NONE) || "0";
+  return JSON.stringify({
+    type: "screen_change_y",
+    delta: getFormatted(delta),
+  });
+};
+intermediateGenerator.forBlock["screen_rotate_clockwise"] = function (
+  block,
+  generator,
+) {
+  const degrees = generator.valueToCode(block, "DEGREES", Order.NONE) || "0";
+  return JSON.stringify({
+    type: "screen_rotate_clockwise",
+    degrees: getFormatted(degrees),
+  });
+};
+
+intermediateGenerator.forBlock["screen_rotate_counterclockwise"] = function (
+  block,
+  generator,
+) {
+  const degrees = generator.valueToCode(block, "DEGREES", Order.NONE) || "0";
+  return JSON.stringify({
+    type: "screen_rotate_counterclockwise",
+    degrees: getFormatted(degrees),
+  });
+};
+
+intermediateGenerator.forBlock["screen_set_rotation"] = function (
+  block,
+  generator,
+) {
+  const degrees = generator.valueToCode(block, "DEGREES", Order.NONE) || "0";
+  return JSON.stringify({
+    type: "screen_set_rotation",
+    degrees: getFormatted(degrees),
+  });
+};
+
+intermediateGenerator.forBlock["screen_rotation"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_rotation",
+    }),
+    Order.NONE,
+  ];
+};
+
 intermediateGenerator.forBlock["logic_negate"] = function (block, generator) {
   const operand = generator.valueToCode(block, "BOOL", Order.NONE) || "false";
   return [

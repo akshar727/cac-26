@@ -1,12 +1,12 @@
 import { Procedure, ProcedureCallArgument, Value } from "@/types/field";
-import { Block } from "../types/block";
+import { IntermediateBlock } from "../types/intermediateBlock";
 
 export class StackFrame {
-  _body: Block[];
+  _body: IntermediateBlock[];
   _position: number;
   _finished = false;
 
-  constructor(body: Block[]) {
+  constructor(body: IntermediateBlock[]) {
     this._body = body;
     this._position = 0;
   }
@@ -24,7 +24,7 @@ export class RepeatFrame extends StackFrame {
   _times: number;
   _currentCount: number;
 
-  constructor(times: number, body: Block[]) {
+  constructor(times: number, body: IntermediateBlock[]) {
     super(body);
     this._times = times;
     this._currentCount = 0;
@@ -45,7 +45,11 @@ export class RepeatWhileFrame extends StackFrame {
   _condition: any;
   _mode: "WHILE" | "UNTIL";
 
-  constructor(condition: any, body: Block[], mode: "WHILE" | "UNTIL") {
+  constructor(
+    condition: any,
+    body: IntermediateBlock[],
+    mode: "WHILE" | "UNTIL",
+  ) {
     super(body);
     this._condition = condition;
     this._mode = mode;
@@ -64,7 +68,7 @@ export class ForFrame extends StackFrame {
     startValue: number,
     endValue: number,
     stepValue: number,
-    body: Block[],
+    body: IntermediateBlock[],
   ) {
     super(body);
     this._variableName = variableName;

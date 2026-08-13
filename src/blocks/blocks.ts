@@ -144,13 +144,12 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
       {
         type: "input_value",
         name: "DEGREES",
-        // mode: "compass",
         check: "Number",
       },
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 210,
+    colour: 310,
     inputsInline: true,
   },
   {
@@ -161,13 +160,12 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
       {
         type: "input_value",
         name: "DEGREES",
-        // mode: "compass",
         check: "Number",
       },
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 210,
+    colour: 310,
     inputsInline: true,
   },
   {
@@ -178,13 +176,12 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
       {
         type: "input_value",
         name: "DEGREES",
-        // mode: "compass",
         check: "Number",
       },
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 210,
+    colour: 310,
     inputsInline: true,
   },
   {
@@ -193,6 +190,6 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     output: "Number",
     tooltip: "Returns the rotation of the sprite",
     extensions: ["parent_tooltip_when_inline"],
-    colour: 210,
+    colour: 310,
   },
 ]);

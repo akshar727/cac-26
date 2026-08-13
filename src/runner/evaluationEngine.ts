@@ -117,7 +117,7 @@ export class EvaluationEngine {
           switch (field.operator) {
             case "ADD":
               return left + right;
-            case "SUBTRACT":
+            case "MINUS":
               return left - right;
             case "MULTIPLY":
               return left * right;
@@ -126,6 +126,10 @@ export class EvaluationEngine {
             case "POWER":
               return Math.pow(left, right);
           }
+          throw new Error(
+            //@ts-ignore
+            `Unknown operator: ${field.operator}. ${JSON.stringify(field)}`,
+          );
         case "math_single":
           const input = this.evaluate(
             field.operand,
@@ -222,7 +226,7 @@ export class EvaluationEngine {
           const x = this.evaluate(field.x, processingThread) as number;
           return Math.atan2(y, x);
         case "variables_get":
-            // for frames (after last procedure frame if applicable), procedure arguments, and then sprite variables
+          // for frames (after last procedure frame if applicable), procedure arguments, and then sprite variables
           const variableName = field.name;
           const variableValue =
             processingThread.target.variables.get(variableName);
@@ -274,9 +278,12 @@ export class EvaluationEngine {
         case "screen_position_y": {
           return processingThread.target.y;
         }
+        case "screen_rotation": {
+          return processingThread.target.direction;
+        }
         default:
           throw new Error(
-            //@ts-expect-error
+            //@ts-ignore
             `Unknown field type: ${field.type}. ${JSON.stringify(field)}`,
           );
       }

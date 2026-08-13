@@ -1,4 +1,4 @@
-import { Block } from "@/types/block";
+import { IntermediateBlock } from "@/types/intermediateBlock";
 
 export interface ScriptInterface {
   id: string;
@@ -9,7 +9,7 @@ export interface ScriptInterface {
     value?: string;
   };
 
-  blocks: Block[];
+  blocks: IntermediateBlock[];
 }
 
 export class Script implements ScriptInterface {
@@ -19,7 +19,7 @@ export class Script implements ScriptInterface {
     type: "start" | "key_pressed" | "broadcast";
     value?: string;
   };
-  blocks: Block[];
+  blocks: IntermediateBlock[];
 
   constructor() {
     this.id = crypto.randomUUID();

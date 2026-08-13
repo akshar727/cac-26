@@ -1,9 +1,9 @@
-import { Block } from "./block";
+import { IntermediateBlock } from "./intermediateBlock";
 
 export type Value =
   | {
       type: "math_arithmetic";
-      operator: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "POWER";
+      operator: "ADD" | "MINUS" | "MULTIPLY" | "DIVIDE" | "POWER";
       left: Value;
       right: Value;
     }
@@ -63,6 +63,9 @@ export type Value =
     }
   | {
       type: "screen_position_y";
+    }
+  | {
+      type: "screen_rotation";
     };
 
 export const valueTypes = [
@@ -80,6 +83,7 @@ export const valueTypes = [
   "variables_get",
   "screen_position_x",
   "screen_position_y",
+  "screen_rotation",
 ] as const;
 
 export type ValueType = (typeof valueTypes)[number];
@@ -128,7 +132,7 @@ export type ProcedureParameter = {
 export type Procedure = {
   name: string;
   parameters: ProcedureParameter[];
-  body: Block[];
+  body: IntermediateBlock[];
   returnValue: Value | null;
 };
 

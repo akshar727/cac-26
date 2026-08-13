@@ -7,7 +7,7 @@ import {
   RepeatFrame,
   RepeatWhileFrame,
 } from "./stackFrame";
-import { Block } from "../types/block";
+import { IntermediateBlock } from "../types/intermediateBlock";
 import { EvaluationEngine } from "./evaluationEngine";
 import { Procedure } from "@/types/field";
 
@@ -256,7 +256,11 @@ export class VirtualMachine {
     }
   }
 
-  executeBlock(blockToExecute: Block, thread: Thread, currentTime: number) {
+  executeBlock(
+    blockToExecute: IntermediateBlock,
+    thread: Thread,
+    currentTime: number,
+  ) {
     switch (blockToExecute.type) {
       case "screen_set_position": {
         let targetX = this._evaluator.evaluate(
@@ -495,7 +499,7 @@ export class VirtualMachine {
             //@ts-expect-error
             const condition = blockToExecute[conditionKey] as Condition;
             //@ts-expect-error
-            const thenBody = blockToExecute[thenBodyKey] as Block[];
+            const thenBody = blockToExecute[thenBodyKey] as IntermediateBlock[];
 
             if (this._evaluator.evaluate(condition, thread)) {
               thread.addFrame(new IfFrame(thenBody));
@@ -591,6 +595,46 @@ export class VirtualMachine {
             }
           }
         }
+        break;
+      }
+      case "screen_change_x": {
+        let changeValue = this._evaluator.evaluate(
+          blockToExecute.delta,
+          thread,
+        ) as number;
+        thread.target.x += changeValue;
+        break;
+      }
+      case "screen_change_y": {
+        let changeValue = this._evaluator.evaluate(
+          blockToExecute.delta,
+          thread,
+        ) as number;
+        thread.target.y += changeValue;
+        break;
+      }
+      case "screen_rotate_clockwise": {
+        let changeValue = this._evaluator.evaluate(
+          blockToExecute.degrees,
+          thread,
+        ) as number;
+        thread.target.direction += changeValue;
+        break;
+      }
+      case "screen_rotate_counterclockwise": {
+        let changeValue = this._evaluator.evaluate(
+          blockToExecute.degrees,
+          thread,
+        ) as number;
+        thread.target.direction -= changeValue;
+        break;
+      }
+      case "screen_set_rotation": {
+        let targetRotation = this._evaluator.evaluate(
+          blockToExecute.degrees,
+          thread,
+        ) as number;
+        thread.target.direction = targetRotation;
         break;
       }
       default:

@@ -1,6 +1,6 @@
 import { Value, Condition } from "@/types/field";
 
-export type Block =
+export type IntermediateBlock =
   | {
       type: "screen_set_position";
       x: Value;
@@ -31,14 +31,14 @@ export type Block =
   | {
       type: "controls_repeat_ext";
       times: Value;
-      body: Block[];
+      body: IntermediateBlock[];
     }
   | {
       type: "controls_if";
       condition: Condition;
       // of course there can be more thenbodies and conditions i just dont know how to type them yet
-      thenBody: Block[];
-      elseBody?: Block[];
+      thenBody: IntermediateBlock[];
+      elseBody?: IntermediateBlock[];
     }
   | {
       type: "controls_flow_statements";
@@ -53,7 +53,7 @@ export type Block =
       type: "controls_whileUntil";
       mode: "WHILE" | "UNTIL";
       condition: Condition;
-      body: Block[];
+      body: IntermediateBlock[];
     }
   | {
       type: "controls_for";
@@ -61,10 +61,31 @@ export type Block =
       from: Value;
       to: Value;
       by: Value;
-      body: Block[];
-    } | {
+      body: IntermediateBlock[];
+    }
+  | {
       type: "controls_forEach";
       variable: string;
       list: Value;
-      body: Block[];
+      body: IntermediateBlock[];
+    }
+  | {
+      type: "screen_change_x";
+      delta: Value;
+    }
+  | {
+      type: "screen_change_y";
+      delta: Value;
+    }
+  | {
+      type: "screen_rotate_clockwise";
+      degrees: Value;
+    }
+  | {
+      type: "screen_rotate_counterclockwise";
+      degrees: Value;
+    }
+  | {
+      type: "screen_set_rotation";
+      degrees: Value;
     };

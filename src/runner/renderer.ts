@@ -14,11 +14,18 @@ export class Renderer {
     );
     for (const target of targets) {
       if (target.visible) {
+        foregroundContext?.save();
+        foregroundContext?.translate(
+          target.x + target._costumes[target.currentCostumeIndex].width / 2,
+          target.y + target._costumes[target.currentCostumeIndex].height / 2,
+        );
+        foregroundContext?.rotate(((target.direction - 90) * Math.PI) / 180);
         foregroundContext?.drawImage(
           target._costumes[target.currentCostumeIndex],
-          target.x,
-          target.y,
+          -target._costumes[target.currentCostumeIndex].width / 2,
+          -target._costumes[target.currentCostumeIndex].height / 2,
         );
+        foregroundContext?.restore();
       }
     }
   }
