@@ -678,11 +678,85 @@ export const toolbox = {
         },
         {
           kind: "block",
+          type: "screen_change_x",
+          inputs: {
+            DX: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 10,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_change_y",
+          inputs: {
+            DY: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 10,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_rotate_clockwise",
+          inputs: {
+            DEGREES: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 15,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_rotate_counterclockwise",
+          inputs: {
+            DEGREES: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 15,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_set_rotation",
+          inputs: {
+            DEGREES: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
           type: "screen_position_x",
         },
         {
           kind: "block",
           type: "screen_position_y",
+        },
+        {
+          kind: "block",
+          type: "screen_rotation",
         },
       ],
     },

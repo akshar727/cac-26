@@ -350,57 +350,49 @@ export class VirtualMachine {
 
       case "variables_set": {
         const variableName = blockToExecute.name;
-
+        const filteredStack = thread.executionStack.filter(
+          (frame) => frame instanceof ProcedureFrameNoReturn,
+        );
+        const lastProcedureFrame = filteredStack[
+          filteredStack.length - 1
+        ] as ProcedureFrameNoReturn;
+        let forFramesAfterProcedureFrame = thread.executionStack.filter(
+          (frame) =>
+            frame instanceof ForFrame &&
+            thread.executionStack.indexOf(frame) >
+              (thread.executionStack.indexOf(lastProcedureFrame) || 0),
+        );
+        for (let forFrame of forFramesAfterProcedureFrame) {
+          if (
+            forFrame instanceof ForFrame &&
+            forFrame._variableName === variableName
+          ) {
+            throw new Error(
+              `Variable ${variableName} is a loop variable and cannot be modified.`,
+            );
+          }
+        }
+        if (filteredStack.length > 0) {
+          const arg = lastProcedureFrame._arguments.find(
+            (arg) => arg.name === variableName,
+          );
+          if (arg) {
+            arg.value = this._evaluator.evaluate(
+              blockToExecute.value,
+              thread,
+            ) as number;
+            break;
+          }
+        }
         let currentValue = thread.target.variables.get(variableName);
         console.log(
           `Current value of variable ${variableName} for target ${thread.target.id}:`,
           currentValue,
         );
-        if (currentValue === undefined) {
-          // check in the last procedure frame if it exists
-          const filteredStack = thread.executionStack.filter(
-            (frame) => frame instanceof ProcedureFrameNoReturn,
-          );
-          if (filteredStack.length > 0) {
-            const lastProcedureFrame = filteredStack[
-              filteredStack.length - 1
-            ] as ProcedureFrameNoReturn;
-            const arg = lastProcedureFrame._arguments.find(
-              (arg) => arg.name === variableName,
-            );
-            if (arg) {
-              arg.value = this._evaluator.evaluate(
-                blockToExecute.value,
-                thread,
-              ) as number;
-              break;
-            }
-            let forFramesAfterProcedureFrame = thread.executionStack.filter(
-              (frame) =>
-                frame instanceof ForFrame &&
-                thread.executionStack.indexOf(frame) >
-                  thread.executionStack.indexOf(lastProcedureFrame),
-            );
-            for (let forFrame of forFramesAfterProcedureFrame) {
-              if (
-                forFrame instanceof ForFrame &&
-                forFrame._variableName === variableName
-              ) {
-                throw new Error(
-                  `Variable ${variableName} is a loop variable and cannot be modified.`,
-                );
-              }
-            }
-          }
-          console.error(
-            `Variable ${variableName} is not defined for target ${thread.target.id} and not found in procedure frame arguments.`,
-          );
-        } else {
-          thread.target.variables.set(
-            variableName,
-            this._evaluator.evaluate(blockToExecute.value, thread) as number,
-          );
-        }
+        thread.target.variables.set(
+          variableName,
+          this._evaluator.evaluate(blockToExecute.value, thread) as number,
+        );
         break;
       }
 
@@ -410,64 +402,65 @@ export class VirtualMachine {
           blockToExecute.value,
           thread,
         ) as number;
+        // check for frames after the last procedure, then last procedure, then sprite variables
+        const filteredStack = thread.executionStack.filter(
+          (frame) => frame instanceof ProcedureFrameNoReturn,
+        );
+        const lastProcedureFrame = filteredStack[
+          filteredStack.length - 1
+        ] as ProcedureFrameNoReturn;
+        let forFramesAfterProcedureFrame = thread.executionStack.filter(
+          (frame) =>
+            (frame instanceof ForFrame &&
+              thread.executionStack.indexOf(frame) >
+                thread.executionStack.indexOf(lastProcedureFrame)) ||
+            0,
+        );
+        for (let forFrame of forFramesAfterProcedureFrame) {
+          if (
+            forFrame instanceof ForFrame &&
+            forFrame._variableName === variableName
+          ) {
+            throw new Error(
+              `Variable ${variableName} is a loop variable and cannot be modified.`,
+            );
+          }
+        }
+        if (filteredStack.length > 0) {
+          const lastProcedureFrame = filteredStack[
+            filteredStack.length - 1
+          ] as ProcedureFrameNoReturn;
+          const arg = lastProcedureFrame._arguments.find(
+            (arg) => arg.name === variableName,
+          );
+          if (arg) {
+            if (
+              typeof arg.value === "number" &&
+              typeof changeValue === "number"
+            ) {
+              arg.value += changeValue;
+              break;
+            } else {
+              console.error(
+                `Argument ${variableName} is not a number and cannot be changed. Value: ${arg.value}`,
+              );
+            }
+          }
+        }
         let currentValue = thread.target.variables.get(variableName);
         console.log(
           `Current value of variable ${variableName} for target ${thread.target.id}:`,
           currentValue,
         );
-        if (currentValue === undefined) {
-          // check in the last procedure frame if it exists
-          const filteredStack = thread.executionStack.filter(
-            (frame) => frame instanceof ProcedureFrameNoReturn,
+        if (typeof currentValue === "number") {
+          thread.target.variables.set(
+            variableName,
+            currentValue + (changeValue as number),
           );
-          if (filteredStack.length > 0) {
-            const lastProcedureFrame = filteredStack[
-              filteredStack.length - 1
-            ] as ProcedureFrameNoReturn;
-            const arg = lastProcedureFrame._arguments.find(
-              (arg) => arg.name === variableName,
-            );
-            if (arg) {
-              if (
-                typeof arg.value === "number" &&
-                typeof changeValue === "number"
-              ) {
-                arg.value += changeValue;
-              } else {
-                console.error(
-                  `Argument ${variableName} is not a number and cannot be changed. Value: ${arg.value}`,
-                );
-              }
-            } else {
-              let forFramesAfterProcedureFrame = thread.executionStack.filter(
-                (frame) =>
-                  frame instanceof ForFrame &&
-                  thread.executionStack.indexOf(frame) >
-                    thread.executionStack.indexOf(lastProcedureFrame),
-              );
-              for (let forFrame of forFramesAfterProcedureFrame) {
-                if (
-                  forFrame instanceof ForFrame &&
-                  forFrame._variableName === variableName
-                ) {
-                  throw new Error(
-                    `Variable ${variableName} is a loop variable and cannot be modified.`,
-                  );
-                }
-              }
-            }
-          }
         } else {
-          if (typeof currentValue === "number") {
-            thread.target.variables.set(
-              variableName,
-              currentValue + (changeValue as number),
-            );
-          } else {
-            console.error(
-              `Variable ${variableName} is not a number and cannot be changed. Value: ${currentValue}`,
-            );
-          }
+          console.error(
+            `Variable ${variableName} is not a number and cannot be changed. Value: ${currentValue}`,
+          );
         }
         break;
       }

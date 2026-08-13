@@ -222,6 +222,7 @@ export class EvaluationEngine {
           const x = this.evaluate(field.x, processingThread) as number;
           return Math.atan2(y, x);
         case "variables_get":
+            // for frames (after last procedure frame if applicable), procedure arguments, and then sprite variables
           const variableName = field.name;
           const variableValue =
             processingThread.target.variables.get(variableName);
@@ -231,14 +232,6 @@ export class EvaluationEngine {
             .find((frame) => frame instanceof ProcedureFrameNoReturn) as
             | ProcedureFrameNoReturn
             | undefined;
-          if (lastProcedureFrame) {
-            const arg = lastProcedureFrame._arguments.find(
-              (arg) => arg.name === variableName,
-            );
-            if (arg) {
-              return arg.value as number | string | boolean;
-            }
-          }
           let allForFramesAfterLastProcedureFrame: any[] = [];
           if (lastProcedureFrame) {
             const lastProcedureFrameIndex =
@@ -259,6 +252,14 @@ export class EvaluationEngine {
               frame._variableName === variableName
             ) {
               return frame._currentValue;
+            }
+          }
+          if (lastProcedureFrame) {
+            const arg = lastProcedureFrame._arguments.find(
+              (arg) => arg.name === variableName,
+            );
+            if (arg) {
+              return arg.value as number | string | boolean;
             }
           }
           if (variableValue === undefined) {

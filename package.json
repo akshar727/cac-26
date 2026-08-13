@@ -13,6 +13,7 @@
     "@base-ui/react": "^1.6.0",
     "@blockly/block-shareable-procedures": "^13.2.0",
     "@blockly/continuous-toolbox": "^13.2.0",
+    "@blockly/field-angle": "^13.2.0",
     "@blockly/field-colour-hsv-sliders": "^13.2.0",
     "@blockly/shadow-block-converter": "^13.2.0",
     "@blockly/theme-dark": "^13.2.0",
