@@ -1,9 +1,9 @@
 import { Script } from "@/runner/script";
 import * as Blockly from "blockly";
-import { intermediateGenerator } from "@/generators/intermediate";
+import { intermediateGenerator } from "@/generators/intermediateGenerator";
 import { Thread } from "./thread";
 import { Sprite } from "@/runner/sprite";
-import { AssetDatabaseSprite } from "@/types/sprite";
+import { DatabaseSprite } from "@/types/sprite";
 import { VirtualMachine } from "./virtualMachine";
 import { Renderer } from "./renderer";
 import { Procedure } from "@/types/field";
@@ -15,19 +15,18 @@ export class Runtime {
   _vm: VirtualMachine;
   _renderer: Renderer;
 
-  constructor(sprites: AssetDatabaseSprite[]) {
+  constructor(sprites: DatabaseSprite[]) {
     this._vm = new VirtualMachine();
     this._renderer = new Renderer();
     for (const databaseSprite of sprites) {
       const spriteWorkspace = new Blockly.Workspace();
-      for (const block of JSON.parse(databaseSprite.blocks_json || "[]")) {
+      for (const block of databaseSprite.blocks_json) {
         Blockly.serialization.blocks.append(block, spriteWorkspace);
       }
       let sprite = new Sprite(
-        sprites.find((s) => s.id === databaseSprite.id)?.loadableImagePaths ||
-          [],
+        sprites.find((s) => s.id === databaseSprite.id)?.image_paths || [],
       );
-      for (const thing of JSON.parse(databaseSprite.variables_map || "[]")) {
+      for (const thing of databaseSprite.variables_map) {
         sprite.variables.set(thing.id, 0);
       }
       sprite.id = databaseSprite.id;

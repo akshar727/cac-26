@@ -24,6 +24,10 @@ export class Renderer {
           target._costumes[target.currentCostumeIndex],
           -target._costumes[target.currentCostumeIndex].width / 2,
           -target._costumes[target.currentCostumeIndex].height / 2,
+          target._costumes[target.currentCostumeIndex].width *
+            (target.size / 100),
+          target._costumes[target.currentCostumeIndex].height *
+            (target.size / 100),
         );
         foregroundContext?.restore();
       }

@@ -41,7 +41,7 @@ export class RepeatFrame extends StackFrame {
 
 export class IfFrame extends StackFrame {}
 
-export class RepeatWhileFrame extends StackFrame {
+export class RepeatWhileUntilFrame extends StackFrame {
   _condition: any;
   _mode: "WHILE" | "UNTIL";
 

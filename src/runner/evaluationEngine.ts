@@ -281,6 +281,17 @@ export class EvaluationEngine {
         case "screen_rotation": {
           return processingThread.target.direction;
         }
+        case "logic_ternary": {
+          const conditionResult = this.evaluate(
+            field.condition,
+            processingThread,
+          ) as boolean;
+          if (conditionResult) {
+            return this.evaluate(field.trueValue, processingThread);
+          } else {
+            return this.evaluate(field.falseValue, processingThread);
+          }
+        }
         default:
           throw new Error(
             //@ts-ignore
@@ -294,7 +305,7 @@ export class EvaluationEngine {
   evaluate(
     field: Value | Condition,
     processingThread: Thread,
-  ): number | string | boolean | null | SuspendedReturn {
+  ): number | string | boolean | null {
     if (!field) {
       console.error("Field is undefined or null:", field);
       return 0;

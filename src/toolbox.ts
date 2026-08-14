@@ -748,6 +748,50 @@ export const toolbox = {
         },
         {
           kind: "block",
+          type: "screen_next_costume",
+        },
+        {
+          kind: "block",
+          type: "screen_set_costume",
+        },
+        {
+          kind: "block",
+          type: "screen_show",
+        },
+        {
+          kind: "block",
+          type: "screen_hide",
+        },
+        {
+          kind: "block",
+          type: "screen_set_size",
+          inputs: {
+            SIZE_SET: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 100,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_change_size",
+          inputs: {
+            SIZE_CHANGE: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 10,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
           type: "screen_position_x",
         },
         {
@@ -773,7 +817,7 @@ export const toolbox = {
       kind: "category",
       name: "Functions",
       categorystyle: "procedure_category",
-      custom: "PROCEDURE",
+      custom: "PROCEDURE_NORETURNS",
     },
   ],
 };

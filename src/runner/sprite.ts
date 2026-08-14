@@ -12,10 +12,12 @@ export class Sprite {
   _costumes: HTMLImageElement[] = [];
   currentCostumeIndex = 0;
 
-  constructor(imagePaths: string[] = []) {
+  constructor(
+    imagePaths: { costumeName: string; loadablePath: string }[] = [],
+  ) {
     for (const path of imagePaths) {
       const img = new Image();
-      img.src = path;
+      img.src = path.loadablePath;
       this._costumes.push(img);
     }
     this.currentCostumeIndex = 0;

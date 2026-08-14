@@ -1,6 +1,5 @@
 import "./App.css";
 import * as React from "react";
-import Database from "@tauri-apps/plugin-sql";
 import * as Blockly from "blockly";
 import { blocks } from "./blocks/blocks";
 import { openPath } from "@tauri-apps/plugin-opener";
@@ -29,13 +28,14 @@ import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "./components/ui/skeleton";
 import { appDataDir } from "@tauri-apps/api/path";
-import { AssetDatabaseSprite, DatabaseSprite } from "@/types/sprite";
+import { DatabaseSprite } from "@/types/sprite";
 import { Runtime } from "@/runner/runtime";
-import { registerFieldAngle } from "@blockly/field-angle";
+import { DatabaseManager } from "./lib/database";
+import CostumeEditor from "./components/CostumeEditor";
+import { cn } from "./lib/utils";
 
 function App() {
   const activeSpriteRef = useRef<DatabaseSprite | null>(null);
-  const [codePreview, setCodePreview] = React.useState<string>("");
   const [workspace, setWorkspace] = React.useState<Blockly.WorkspaceSvg | null>(
     null,
   );
@@ -43,9 +43,6 @@ function App() {
     null,
   );
   const [sprites, setSprites] = React.useState<DatabaseSprite[]>([]);
-  const [assetSprites, setAssetSprites] = React.useState<AssetDatabaseSprite[]>(
-    [],
-  );
   const [spriteImageDialogValue, setSpriteImageDialogValue] = React.useState<
     string | null
   >(null);
@@ -53,6 +50,7 @@ function App() {
     string | null
   >(null);
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
+  const [newCostumeDialogOpen, setNewCostumeDialogOpen] = React.useState(false);
   const _appDataDir = React.useRef<string | null>(null);
   const [codeStopped, setCodeStopped] = React.useState(false);
 
@@ -60,20 +58,6 @@ function App() {
   React.useEffect(() => {
     activeSpriteRef.current = activeSprite;
   }, [activeSprite]);
-
-  React.useEffect(() => {
-    const newAssetSprites: AssetDatabaseSprite[] = sprites.map((sprite) => {
-      return {
-        ...sprite,
-        loadableImagePaths: JSON.parse(sprite.image_paths || "[]").map(
-          (path: string) => {
-            return convertFileSrc(`${_appDataDir.current}/${path}`);
-          },
-        ),
-      };
-    });
-    setAssetSprites(newAssetSprites);
-  }, [sprites]);
 
   // this effect should only add stuff into the workspace, not fetch data.
   React.useEffect(() => {
@@ -83,9 +67,7 @@ function App() {
       try {
         Blockly.getMainWorkspace().clear();
         if (!activeSprite || !activeSprite?.blocks_json) return;
-        for (const variable of JSON.parse(
-          activeSprite?.variables_map || "[]",
-        )) {
+        for (const variable of activeSprite.variables_map) {
           Blockly.getMainWorkspace().getVariableMap().clear();
           Blockly.getMainWorkspace()
             .getVariableMap()
@@ -95,7 +77,7 @@ function App() {
               variable.id,
             );
         }
-        for (const block of JSON.parse(activeSprite?.blocks_json || "[]")) {
+        for (const block of activeSprite.blocks_json) {
           Blockly.serialization.blocks.append(
             block,
             Blockly.getMainWorkspace(),
@@ -123,15 +105,12 @@ function App() {
   }, []);
 
   async function importDatabaseData() {
-    const db = await Database.load("sqlite:cac.db");
-    const result = await db.select<DatabaseSprite[]>(
-      `SELECT * from sprites WHERE project_id = 1`,
-    );
-    // console.log("Sprites from database:", result);
+    let result = await new DatabaseManager().getSpritesForProject(1);
     setSprites(result);
     if (!activeSprite && result.length > 0) {
       setActiveSprite(result[0]);
-      // console.log("Active sprite set to:", result[0]);
+      console.log("Active sprite set to:", result[0]);
+      console.log("All sprites:", result);
     } else {
       setActiveSprite((prevActiveSprite) => {
         if (prevActiveSprite) {
@@ -149,7 +128,7 @@ function App() {
     if (!Blockly.getMainWorkspace()) return;
     Blockly.Events.disable();
     try {
-      const runtime = new Runtime(assetSprites);
+      const runtime = new Runtime(sprites);
       runtime.start();
       window.addEventListener("keydown", (event) => {
         runtime.keyPressed(event.key);
@@ -199,22 +178,18 @@ function App() {
         name: v.getName(),
         type: v.getType() || "",
       }));
-      const db = await Database.load("sqlite:cac.db");
-      await db.execute(`UPDATE sprites SET blocks_json = ? WHERE id = ?`, [
-        JSON.stringify(fullJson),
+      new DatabaseManager().updateSpriteBlocksAndVariables(
         currentActiveSprite.id,
-      ]);
-      await db.execute(`UPDATE sprites SET variables_map = ? WHERE id = ?`, [
-        JSON.stringify(savedVariables),
-        currentActiveSprite.id,
-      ]);
+        fullJson,
+        savedVariables,
+      );
       setSprites((prevSprites) =>
         prevSprites.map((sprite) =>
           sprite.id === currentActiveSprite.id
             ? {
                 ...sprite,
-                blocks_json: JSON.stringify(fullJson),
-                variables_map: JSON.stringify(savedVariables),
+                blocks_json: fullJson,
+                variables_map: savedVariables,
               }
             : sprite,
         ),
@@ -222,12 +197,223 @@ function App() {
     })();
   }
 
+  function SpriteSelector() {
+    return (
+      <Card className="flex-2 justify-between">
+        <CardContent className="flex flex-col gap-2">
+          <CardTitle>Sprites</CardTitle>
+          {sprites.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2">
+              {sprites.map((sprite: DatabaseSprite) => {
+                return (
+                  <Card
+                    className={cn(
+                      "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200",
+                      activeSprite?.id === sprite.id ? "bg-slate-100" : "",
+                    )}
+                    onClick={() => {
+                      setActiveSprite(sprite);
+                      activeSpriteRef.current = sprite;
+                      // console.log("Active sprite set to:", sprite);
+                      setTimeout(() => {
+                        // console.log(activeSprite);
+                      }, 0);
+                    }}
+                    key={sprite.id}
+                  >
+                    <CardContent className="flex flex-col items-center gap-2">
+                      {sprite.image_paths.length === 0 ? (
+                        <Skeleton className="w-16 h-16" />
+                      ) : (
+                        <img
+                          src={sprite.image_paths[0].loadablePath}
+                          alt={sprite.name}
+                          style={{
+                            maxWidth: 64,
+                            maxHeight: 64,
+                            width: "auto",
+                            height: "auto",
+                            objectFit: "contain",
+                          }}
+                        />
+                      )}
+                      <p className={`text-sm text-center`}>{sprite.name}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p>Sprites will be displayed here.</p>
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Dialog
+            open={spriteDialogOpen}
+            onOpenChange={setSpriteDialogOpen}
+            onOpenChangeComplete={() => {
+              setSpriteImageDialogValue("");
+              setSpriteNameDialogValue("");
+            }}
+          >
+            <DialogTrigger
+              render={<Button onClick={async () => {}}>Add a sprite</Button>}
+            />
+            <DialogContent>
+              <DialogTitle>Add a new sprite</DialogTitle>
+              <DialogDescription>
+                Enter the name of the new sprite and select an image file.
+              </DialogDescription>
+              <FieldGroup>
+                <Field>
+                  <Label htmlFor="spriteName">Sprite Name</Label>
+                  <Input
+                    id="spriteName"
+                    type="text"
+                    value={spriteNameDialogValue || ""}
+                    onChange={(e) => setSpriteNameDialogValue(e.target.value)}
+                    placeholder="Enter sprite name"
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="spriteImage">Sprite Images</Label>
+                  <Button
+                    onClick={async () => {
+                      const selectedFile = await open({
+                        multiple: true,
+                        filters: [
+                          {
+                            name: "Images",
+                            extensions: ["png", "jpg", "jpeg", "svg"],
+                          },
+                        ],
+                      });
+                      console.log("Selected file:", selectedFile);
+                      if (selectedFile) {
+                        if (typeof selectedFile === "string") {
+                          setSpriteImageDialogValue("[" + selectedFile + "]");
+                        } else if (Array.isArray(selectedFile)) {
+                          setSpriteImageDialogValue(
+                            JSON.stringify(selectedFile),
+                          );
+                        }
+                      }
+                    }}
+                  >
+                    Upload Image
+                  </Button>
+                  {spriteImageDialogValue && (
+                    <p className="text-sm">
+                      Selected image(s):{" "}
+                      {JSON.parse(spriteImageDialogValue).map(
+                        (path: string, index: number) => (
+                          <span key={index}>
+                            <span
+                              className=" text-blue-500 hover:cursor-pointer hover:underline"
+                              onClick={async () => {
+                                await openPath(path);
+                              }}
+                            >
+                              {path.split("/").pop()}
+                            </span>
+                            {index <
+                            JSON.parse(spriteImageDialogValue).length - 1
+                              ? ", "
+                              : ""}
+                          </span>
+                        ),
+                      )}
+                    </p>
+                  )}
+                </Field>
+              </FieldGroup>
+              <DialogFooter>
+                <DialogClose
+                  render={<Button variant="outline">Cancel</Button>}
+                />
+                <Button
+                  disabled={!spriteImageDialogValue || !spriteNameDialogValue}
+                  onClick={async () => {
+                    if (!spriteImageDialogValue || !spriteNameDialogValue) {
+                      return;
+                    }
+                    const files = JSON.parse(spriteImageDialogValue);
+                    let fileNames = [];
+                    for (const file of files) {
+                      const last = file.split("/").pop();
+                      if (!last) {
+                        return;
+                      }
+                      fileNames.push(last);
+                      await copyFile(file, last, {
+                        toPathBaseDir: BaseDirectory.AppLocalData,
+                      });
+                    }
+                    console.log("Copied files:", fileNames);
+                    let formattedFileNames = fileNames.map((name) => ({
+                      costumeName: name.split(".")[0],
+                      loadablePath: convertFileSrc(
+                        `${_appDataDir.current}/${name}`,
+                      ),
+                    }));
+                    new DatabaseManager().addNewSprite(
+                      spriteNameDialogValue,
+                      formattedFileNames,
+                      1,
+                    );
+                    importDatabaseData();
+                    setSpriteDialogOpen(false);
+                  }}
+                  type="submit"
+                >
+                  Add sprite
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardFooter>
+      </Card>
+    );
+  }
+
   async function setupWorkspace() {
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.75);
     Blockly.utils.colour.setHsvValue(0.65);
+    Blockly.Blocks["screen_set_costume"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("set costume to")
+          .appendField(
+            new Blockly.FieldDropdown(this.generateCostumeOptions),
+            "COSTUME",
+          );
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(310);
+        this.setInputsInline(true);
+        this.setTooltip("Set the costume of the sprite to a specified costume");
+      },
+      generateCostumeOptions: function () {
+        const options = [];
+
+        if (
+          activeSpriteRef.current?.image_paths &&
+          activeSpriteRef.current?.image_paths.length > 0
+        ) {
+          activeSpriteRef.current?.image_paths.forEach((costume) => {
+            options.push([costume.costumeName, costume.loadablePath]);
+          });
+        } else {
+          options.push(["none", "NONE"]);
+        }
+
+        return options;
+      },
+    };
     if (!Blockly.getMainWorkspace()) {
-      registerFieldAngle();
       Blockly.common.defineBlocks(blocks);
     }
     const theme = Blockly.Theme.defineTheme("cac", {
@@ -258,8 +444,17 @@ function App() {
       throw new Error(`div with id 'blocklyDiv' not found`);
     }
     registerContinuousToolbox();
+    const filteredToolbox = {
+      ...toolbox,
+      contents: toolbox.contents.filter((item) => {
+        if (item.kind === "category" && item.name === "Functions") {
+          return false;
+        }
+        return true;
+      }),
+    };
     let ws = Blockly.inject(blocklyDiv, {
-      toolbox: toolbox,
+      toolbox: filteredToolbox,
       plugins: {
         flyoutsVerticalToolbox: "CustomContinuousFlyout",
         metricsManager: "ContinuousMetrics",
@@ -278,6 +473,19 @@ function App() {
       renderer: "zelos",
     });
     setWorkspace(ws);
+    ws.registerToolboxCategoryCallback("PROCEDURE_NORETURNS", (workspace) => {
+      return Blockly.Procedures.flyoutCategory(workspace).filter((item) => {
+        //@ts-expect-error
+        let type = item.type;
+
+        return (
+          type !== "procedures_callreturn" &&
+          type !== "procedures_defreturn" &&
+          type !== "procedures_ifreturn"
+        );
+      });
+    });
+    ws.updateToolbox(toolbox);
     Blockly.svgResize(ws);
     ws.addChangeListener(shadowBlockConversionChangeListener);
     Blockly.dialog.setPrompt(
@@ -305,7 +513,6 @@ function App() {
 
   return (
     <main className="p-2 bg-slate-50 dark:bg-slate-800 min-h-dvh h-dvh max-h-dvh text-slate-900">
-      <h1>Blockly</h1>
       <Tabs
         defaultValue="blocks"
         onValueChange={(value) => {
@@ -329,6 +536,7 @@ function App() {
       >
         <TabsList>
           <TabsTrigger value="blocks">Code</TabsTrigger>
+          <TabsTrigger value="costumes">Costumes</TabsTrigger>
           <TabsTrigger value="screen">Screen</TabsTrigger>
         </TabsList>
         <TabsContent value="blocks" className="w-full h-full max-w-dvw">
@@ -337,193 +545,22 @@ function App() {
             className="flex w-full h-full max-w-dvw gap-2"
           >
             <div className="flex-5" id="blocklyDiv"></div>
-            <Card className="flex-2 justify-between">
-              <CardContent className="flex flex-col gap-2">
-                <CardTitle>Sprites</CardTitle>
-                {assetSprites.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {assetSprites.map((sprite: AssetDatabaseSprite) => {
-                      return (
-                        <Card
-                          className="hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                          onClick={() => {
-                            setActiveSprite(sprite);
-                            activeSpriteRef.current = sprite;
-                            // console.log("Active sprite set to:", sprite);
-                            setTimeout(() => {
-                              // console.log(activeSprite);
-                            }, 0);
-                          }}
-                          key={sprite.id}
-                        >
-                          <CardContent className="flex flex-col items-center gap-2">
-                            {sprite.image_paths === "" ||
-                            sprite.image_paths === "[]" ? (
-                              <Skeleton className="w-16 h-16" />
-                            ) : (
-                              <img
-                                src={sprite.loadableImagePaths[0]}
-                                alt={sprite.name}
-                                style={{
-                                  maxWidth: 64,
-                                  maxHeight: 64,
-                                  width: "auto",
-                                  height: "auto",
-                                  objectFit: "contain",
-                                }}
-                              />
-                            )}
-                            <p
-                              className={`text-sm text-center ${activeSprite?.id === sprite.id ? "text-blue-500 font-medium" : ""}`}
-                            >
-                              {sprite.name}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <p>Sprites will be displayed here.</p>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-center">
-                <Dialog
-                  open={spriteDialogOpen}
-                  onOpenChange={setSpriteDialogOpen}
-                  onOpenChangeComplete={() => {
-                    setSpriteImageDialogValue("");
-                    setSpriteNameDialogValue("");
-                  }}
-                >
-                  <DialogTrigger
-                    render={
-                      <Button onClick={async () => {}}>Add a sprite</Button>
-                    }
-                  />
-                  <DialogContent>
-                    <DialogTitle>Add a new sprite</DialogTitle>
-                    <DialogDescription>
-                      Enter the name of the new sprite and select an image file.
-                    </DialogDescription>
-                    <FieldGroup>
-                      <Field>
-                        <Label htmlFor="spriteName">Sprite Name</Label>
-                        <Input
-                          id="spriteName"
-                          type="text"
-                          value={spriteNameDialogValue || ""}
-                          onChange={(e) =>
-                            setSpriteNameDialogValue(e.target.value)
-                          }
-                          placeholder="Enter sprite name"
-                        />
-                      </Field>
-                      <Field>
-                        <Label htmlFor="spriteImage">Sprite Images</Label>
-                        <Button
-                          onClick={async () => {
-                            const selectedFile = await open({
-                              multiple: true,
-                              filters: [
-                                {
-                                  name: "Images",
-                                  extensions: ["png", "jpg", "jpeg", "svg"],
-                                },
-                              ],
-                            });
-                            console.log("Selected file:", selectedFile);
-                            if (selectedFile) {
-                              if (typeof selectedFile === "string") {
-                                setSpriteImageDialogValue(
-                                  "[" + selectedFile + "]",
-                                );
-                              } else if (Array.isArray(selectedFile)) {
-                                setSpriteImageDialogValue(
-                                  JSON.stringify(selectedFile),
-                                );
-                              }
-                            }
-                          }}
-                        >
-                          Upload Image
-                        </Button>
-                        {spriteImageDialogValue && (
-                          <p className="text-sm">
-                            Selected image(s):{" "}
-                            {JSON.parse(spriteImageDialogValue).map(
-                              (path: string, index: number) => (
-                                <span key={index}>
-                                  <span
-                                    className=" text-blue-500 hover:cursor-pointer hover:underline"
-                                    onClick={async () => {
-                                      await openPath(path);
-                                    }}
-                                  >
-                                    {path.split("/").pop()}
-                                  </span>
-                                  {index <
-                                  JSON.parse(spriteImageDialogValue).length - 1
-                                    ? ", "
-                                    : ""}
-                                </span>
-                              ),
-                            )}
-                          </p>
-                        )}
-                      </Field>
-                    </FieldGroup>
-                    <DialogFooter>
-                      <DialogClose
-                        render={<Button variant="outline">Cancel</Button>}
-                      />
-                      <Button
-                        disabled={
-                          !spriteImageDialogValue || !spriteNameDialogValue
-                        }
-                        onClick={async () => {
-                          if (
-                            !spriteImageDialogValue ||
-                            !spriteNameDialogValue
-                          ) {
-                            return;
-                          }
-                          const files = JSON.parse(spriteImageDialogValue);
-                          let fileNames = [];
-                          for (const file of files) {
-                            const last = file.split("/").pop();
-                            if (!last) {
-                              return;
-                            }
-                            fileNames.push(last);
-                            await copyFile(file, last, {
-                              toPathBaseDir: BaseDirectory.AppLocalData,
-                            });
-                          }
-                          console.log("Copied files:", fileNames);
-                          const db = await Database.load("sqlite:cac.db");
-                          await db.execute(
-                            `INSERT INTO sprites (name, image_paths, project_id) VALUES (?, ?, ?)`,
-                            [
-                              spriteNameDialogValue,
-                              JSON.stringify(fileNames),
-                              1,
-                            ],
-                          );
-                          importDatabaseData();
-                          setSpriteDialogOpen(false);
-                        }}
-                        type="submit"
-                      >
-                        Add sprite
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardFooter>
-            </Card>
+            <SpriteSelector />
+          </div>
+        </TabsContent>
+        <TabsContent value="costumes" className="w-full h-full max-w-dvw">
+          <div
+            id="pageContainer"
+            className="flex w-full h-full max-w-dvw gap-2"
+          >
+            <div className="flex-5 gap-1 flex flex-row">
+              <CostumeEditor
+                activeSprite={activeSprite}
+                appDataDir={_appDataDir.current || ""}
+                refreshDataCallback={importDatabaseData}
+              />
+            </div>
+            <SpriteSelector />
           </div>
         </TabsContent>
         <TabsContent value="screen" className="w-full h-full max-w-dvw">
@@ -569,9 +606,6 @@ function App() {
           </div>
         </TabsContent>
       </Tabs>
-      <code className="text-sm font-mono max-w-full overflow-x-auto">
-        {codePreview}
-      </code>
       <BlocklyPromptDialog />
     </main>
   );

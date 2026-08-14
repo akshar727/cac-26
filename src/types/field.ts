@@ -66,6 +66,12 @@ export type Value =
     }
   | {
       type: "screen_rotation";
+    }
+  | {
+      type: "logic_ternary";
+      condition: Condition;
+      trueValue: Value;
+      falseValue: Value;
     };
 
 export const valueTypes = [
@@ -84,6 +90,7 @@ export const valueTypes = [
   "screen_position_x",
   "screen_position_y",
   "screen_rotation",
+  "logic_ternary",
 ] as const;
 
 export type ValueType = (typeof valueTypes)[number];
@@ -123,6 +130,8 @@ export const conditionTypes = [
 ] as const;
 
 export type ConditionType = (typeof conditionTypes)[number];
+
+export type Text = {};
 
 export type ProcedureParameter = {
   name: string;

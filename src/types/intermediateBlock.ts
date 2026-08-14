@@ -63,12 +63,12 @@ export type IntermediateBlock =
       by: Value;
       body: IntermediateBlock[];
     }
-  | {
-      type: "controls_forEach";
-      variable: string;
-      list: Value;
-      body: IntermediateBlock[];
-    }
+  // | {
+  //     type: "controls_forEach";
+  //     variable: string;
+  //     list: Value;
+  //     body: IntermediateBlock[];
+  //   }
   | {
       type: "screen_change_x";
       delta: Value;
@@ -88,4 +88,23 @@ export type IntermediateBlock =
   | {
       type: "screen_set_rotation";
       degrees: Value;
+    }
+  | {
+      type: "screen_next_costume";
+    }
+  | {
+      type: "screen_set_costume";
+      costume: string;
+    }
+  | {
+      type: "screen_show";
+    }
+  | {
+      type: "screen_hide";
+    } | {
+      type: "screen_set_size";
+      size: Value;
+    } | {
+      type: "screen_change_size";
+      delta: Value;
     };

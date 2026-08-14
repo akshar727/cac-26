@@ -57,6 +57,72 @@ intermediateGenerator.forBlock["math_arithmetic"] = function (
   ];
 };
 
+intermediateGenerator.forBlock["logic_ternary"] = function (block, generator) {
+  const condition = generator.valueToCode(block, "IF", Order.NONE) || "false";
+  const thenValue = generator.valueToCode(block, "THEN", Order.NONE) || "0";
+  const elseValue = generator.valueToCode(block, "ELSE", Order.NONE) || "0";
+  return [
+    JSON.stringify({
+      type: "logic_ternary",
+      condition: getFormatted(condition),
+      trueValue: getFormatted(thenValue),
+      falseValue: getFormatted(elseValue),
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_next_costume"] = function (_, __) {
+  return JSON.stringify({
+    type: "screen_next_costume",
+  });
+};
+
+intermediateGenerator.forBlock["screen_set_costume"] = function (
+  block,
+  generator,
+) {
+  let costume = block.getFieldValue("COSTUME");
+  return JSON.stringify({
+    type: "screen_set_costume",
+    costume: costume,
+  });
+};
+
+intermediateGenerator.forBlock["screen_show"] = function (_, __) {
+  return JSON.stringify({
+    type: "screen_show",
+  });
+};
+
+intermediateGenerator.forBlock["screen_hide"] = function (_, __) {
+  return JSON.stringify({
+    type: "screen_hide",
+  });
+};
+
+intermediateGenerator.forBlock["screen_set_size"] = function (
+  block,
+  generator,
+) {
+  const size = generator.valueToCode(block, "SIZE_SET", Order.NONE) || "100";
+  return JSON.stringify({
+    type: "screen_set_size",
+    size: getFormatted(size),
+  });
+};
+
+intermediateGenerator.forBlock["screen_change_size"] = function (
+  block,
+  generator,
+) {
+  const delta = generator.valueToCode(block, "SIZE_CHANGE", Order.NONE) || "0";
+  return JSON.stringify({
+    type: "screen_change_size",
+    delta: getFormatted(delta),
+  });
+};
+
 intermediateGenerator.forBlock["math_single"] = function (block, generator) {
   const operator = block.getFieldValue("OP");
   const operand = generator.valueToCode(block, "NUM", Order.NONE) || "0";

@@ -5,7 +5,7 @@ import {
   IfFrame,
   ProcedureFrameNoReturn,
   RepeatFrame,
-  RepeatWhileFrame,
+  RepeatWhileUntilFrame,
 } from "./stackFrame";
 import { IntermediateBlock } from "../types/intermediateBlock";
 import { EvaluationEngine } from "./evaluationEngine";
@@ -156,7 +156,7 @@ export class VirtualMachine {
                 currentFrame._procedure.name,
               );
               currentFrame.markComplete();
-            } else if (currentFrame instanceof RepeatWhileFrame) {
+            } else if (currentFrame instanceof RepeatWhileUntilFrame) {
               let conditionResult = this._evaluator.evaluate(
                 currentFrame._condition,
                 thread,
@@ -311,14 +311,14 @@ export class VirtualMachine {
         ) as boolean;
         if (blockToExecute.mode === "UNTIL" && !conditionResult) {
           // a repeat until thats already true should not execute the body at all
-          let newFrame = new RepeatWhileFrame(
+          let newFrame = new RepeatWhileUntilFrame(
             blockToExecute.condition,
             blockToExecute.body,
             "UNTIL",
           );
           thread.addFrame(newFrame);
         } else if (blockToExecute.mode === "WHILE" && conditionResult) {
-          let newFrame = new RepeatWhileFrame(
+          let newFrame = new RepeatWhileUntilFrame(
             blockToExecute.condition,
             blockToExecute.body,
             "WHILE",
@@ -539,7 +539,7 @@ export class VirtualMachine {
             for (let i = thread.executionStack.length - 1; i >= 0; i--) {
               if (
                 thread.executionStack[i] instanceof RepeatFrame ||
-                thread.executionStack[i] instanceof RepeatWhileFrame ||
+                thread.executionStack[i] instanceof RepeatWhileUntilFrame ||
                 thread.executionStack[i] instanceof ForFrame
               ) {
                 // Found the nearest RepeatFrame, pop it and break out of the loop
@@ -575,10 +575,12 @@ export class VirtualMachine {
                 frame.markComplete(); // Mark the loop as complete if no more iterations
               }
               break;
-            } else if (thread.executionStack[i] instanceof RepeatWhileFrame) {
+            } else if (
+              thread.executionStack[i] instanceof RepeatWhileUntilFrame
+            ) {
               const repeatWhileFrame = thread.executionStack[
                 i
-              ] as RepeatWhileFrame;
+              ] as RepeatWhileUntilFrame;
               let conditionResult = this._evaluator.evaluate(
                 repeatWhileFrame._condition,
                 thread,
@@ -635,6 +637,53 @@ export class VirtualMachine {
           thread,
         ) as number;
         thread.target.direction = targetRotation;
+        break;
+      }
+      case "screen_next_costume": {
+        thread.target.currentCostumeIndex++;
+        if (
+          thread.target.currentCostumeIndex >= thread.target._costumes.length
+        ) {
+          thread.target.currentCostumeIndex = 0;
+        }
+        break;
+      }
+      case "screen_set_costume": {
+        let costumePath = blockToExecute.costume;
+        let costumeIndex = thread.target._costumes.findIndex(
+          (img) => img.src === costumePath,
+        );
+        if (costumeIndex !== -1) {
+          thread.target.currentCostumeIndex = costumeIndex;
+        } else {
+          console.warn(
+            `Costume with path ${costumePath} not found for target ${thread.target.id}`,
+          );
+        }
+        break;
+      }
+      case "screen_show": {
+        thread.target.visible = true;
+        break;
+      }
+      case "screen_hide": {
+        thread.target.visible = false;
+        break;
+      }
+      case "screen_set_size": {
+        let targetSize = this._evaluator.evaluate(
+          blockToExecute.size,
+          thread,
+        ) as number;
+        thread.target.size = targetSize;
+        break;
+      }
+      case "screen_change_size": {
+        let changeValue = this._evaluator.evaluate(
+          blockToExecute.delta,
+          thread,
+        ) as number;
+        thread.target.size += changeValue;
         break;
       }
       default:

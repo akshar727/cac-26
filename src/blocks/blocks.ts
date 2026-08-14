@@ -138,7 +138,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
   },
   {
     type: "screen_rotate_clockwise",
-    message0: "rotate clockwise %1 degrees",
+    message0: "rotate ↻ %1 degrees",
     tooltip: "Rotate the sprite clockwise by a specified amount",
     args0: [
       {
@@ -154,7 +154,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
   },
   {
     type: "screen_rotate_counterclockwise",
-    message0: "rotate counterclockwise %1 degrees",
+    message0: "rotate ↺ %1 degrees",
     tooltip: "Rotate the sprite counterclockwise by a specified amount",
     args0: [
       {
@@ -191,5 +191,64 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     tooltip: "Returns the rotation of the sprite",
     extensions: ["parent_tooltip_when_inline"],
     colour: 310,
+  },
+  {
+    type: "screen_next_costume",
+    message0: "next costume",
+    tooltip: "Sets the costume of the current sprite to the next costume",
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    inputsInline: true,
+  },
+  {
+    type: "screen_show",
+    message0: "show",
+    tooltip: "Shows the current sprite",
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    inputsInline: true,
+  },
+  {
+    type: "screen_hide",
+    message0: "hide",
+    tooltip: "Hides the current sprite",
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    inputsInline: true,
+  },
+  {
+    type: "screen_change_size",
+    message0: "change size by %1",
+    tooltip: "Change the size of the sprite by a specified amount",
+    args0: [
+      {
+        type: "input_value",
+        name: "SIZE_CHANGE",
+        check: "Number",
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    inputsInline: true,
+  },
+  {
+    type: "screen_set_size",
+    message0: "set size to %1%",
+    tooltip: "Set the size of the sprite to a specified amount",
+    args0: [
+      {
+        type: "input_value",
+        name: "SIZE_SET",
+        check: "Number",
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    inputsInline: true,
   },
 ]);
