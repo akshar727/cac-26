@@ -2,14 +2,15 @@ import {
   Condition,
   ConditionType,
   conditionTypes,
+  TextType,
+  textTypes,
+  Text,
   Value,
   ValueType,
   valueTypes,
 } from "@/types/field";
 import { ForFrame, ProcedureFrameNoReturn } from "./stackFrame";
 import { Thread } from "./thread";
-
-export class SuspendedReturn {}
 
 export class EvaluationEngine {
   // private nextEvaluationId = 1;
@@ -94,6 +95,15 @@ export class EvaluationEngine {
       case "logic_null": {
         return null;
       }
+      case "text_isEmpty": {
+        const value = this.evaluate(condition.value, processingThread);
+        if (value === null || value === undefined) {
+          throw new Error(
+            "Cannot check if null or undefined text value is empty in text_isEmpty",
+          );
+        }
+        return value.toString().length === 0;
+      }
       default:
         throw new Error(`Unknown condition. ${JSON.stringify(condition)}`);
     }
@@ -106,6 +116,9 @@ export class EvaluationEngine {
     if (!field) {
       console.error("Field is undefined or null:", field);
       return 0;
+    }
+    if (!processingThread) {
+      throw new Error("Processing thread is undefined or null.");
     }
     if (field.type === "math_number") {
       return field.value;
@@ -125,11 +138,13 @@ export class EvaluationEngine {
               return left / right;
             case "POWER":
               return Math.pow(left, right);
+            default:
+              throw new Error(
+                //@ts-ignore
+                `Unknown operator: ${field.operator}. ${JSON.stringify(field)}`,
+              );
+              break;
           }
-          throw new Error(
-            //@ts-ignore
-            `Unknown operator: ${field.operator}. ${JSON.stringify(field)}`,
-          );
         case "math_single":
           const input = this.evaluate(
             field.operand,
@@ -292,6 +307,43 @@ export class EvaluationEngine {
             return this.evaluate(field.falseValue, processingThread);
           }
         }
+        case "text_length": {
+          if (!field.value) {
+            console.error("Field value is undefined or null:", field.value);
+            return "0";
+          }
+          let result = this.evaluate(field.value, processingThread);
+          return result ? result.toString().length : 0;
+        }
+        case "text_count": {
+          if (!field.text || !field.subtext) {
+            console.error(
+              "Field text or substring is undefined or null:",
+              field.text,
+              field.subtext,
+            );
+            return 0;
+          }
+          const textValue = this.evaluate(field.text, processingThread);
+          const substringValue = this.evaluate(field.subtext, processingThread);
+          if (textValue === null || substringValue === null) {
+            throw new Error(
+              "Cannot count occurrences of null values in text_count",
+            );
+          }
+          const textStr = textValue.toString();
+          const substringStr = substringValue.toString();
+          if (substringStr.length === 0) {
+            return 0; // avoids inf loop
+          }
+          let count = 0;
+          let pos = 0;
+          while ((pos = textStr.indexOf(substringStr, pos)) !== -1) {
+            count++;
+            pos += substringStr.length;
+          }
+          return count;
+        }
         default:
           throw new Error(
             //@ts-ignore
@@ -302,8 +354,176 @@ export class EvaluationEngine {
     throw new Error("Invalid field value: " + JSON.stringify(field));
   }
 
+  evaluateText(field: Text, processingThread: Thread): string {
+    if (!field) {
+      console.error("Field is undefined or null:", field);
+      return "";
+    }
+    switch (field.type) {
+      case "text": {
+        return field.value;
+      }
+      case "text_join": {
+        return field.items
+          .map((item) => this.evaluate(item, processingThread))
+          .join("");
+      }
+      case "text_charAt": {
+        if (!field.value) {
+          console.error("Field value is undefined or null:", field.value);
+          return "0";
+        }
+        switch (field.indexType) {
+          case "FROM_START": {
+            const textValue = this.evaluate(field.value, processingThread);
+            const atValue = this.evaluate(field.at, processingThread);
+            if (textValue === null || textValue === undefined) {
+              throw new Error(
+                "Cannot get character from null or undefined text value in text_charAt with indexType FROM_START",
+              );
+            }
+            return textValue
+              .toString()
+              .charAt(atValue ? parseInt(atValue.toString()) - 1 : 0);
+          }
+          case "FROM_END": {
+            const textValue = this.evaluate(field.value, processingThread);
+            const atValue = this.evaluate(field.at, processingThread);
+            if (textValue === null || textValue === undefined) {
+              throw new Error(
+                "Cannot get character from null or undefined text value in text_charAt with indexType FROM_END",
+              );
+            }
+            const indexFromEnd = atValue ? parseInt(atValue.toString()) : 0;
+            return textValue
+              .toString()
+              .charAt(textValue.toString().length - indexFromEnd);
+          }
+          case "FIRST": {
+            const str = this.evaluate(field.value, processingThread);
+            if (str === null || str === undefined) {
+              throw new Error(
+                "Cannot get character from null or undefined text value in text_charAt with indexType FIRST",
+              );
+            }
+            return str.toString().charAt(0);
+          }
+          case "LAST": {
+            const str = this.evaluate(field.value, processingThread);
+            if (str === null || str === undefined) {
+              throw new Error(
+                "Cannot get character from null or undefined text value in text_charAt with indexType LAST",
+              );
+            }
+            return str.toString().charAt(str.toString().length - 1);
+          }
+          case "RANDOM": {
+            const str = this.evaluate(field.value, processingThread);
+            if (str === null || str === undefined) {
+              throw new Error(
+                "Cannot get character from null or undefined text value in text_charAt with indexType RANDOM",
+              );
+            }
+            const randomIndex = Math.floor(
+              Math.random() * str.toString().length,
+            );
+            return str.toString().charAt(randomIndex);
+          }
+          default:
+            throw new Error(
+              //@ts-ignore
+              `Unknown indexType: ${field.indexType}. ${JSON.stringify(field)}`,
+            );
+        }
+      }
+      case "text_changeCase": {
+        const textValue = this.evaluate(field.value, processingThread);
+        if (textValue === null || textValue === undefined) {
+          throw new Error(
+            "Cannot change case of null or undefined text value in text_changeCase",
+          );
+        }
+        switch (field.caseType) {
+          case "UPPERCASE":
+            return textValue.toString().toUpperCase();
+          case "LOWERCASE":
+            return textValue.toString().toLowerCase();
+          case "TITLECASE":
+            return textValue.toString().replace(/\w\S*/g, (txt) => {
+              return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+            });
+          default:
+            throw new Error(
+              //@ts-ignore
+              `Unknown caseType: ${field.caseType}. ${JSON.stringify(field)}`,
+            );
+        }
+      }
+      case "text_trim": {
+        const textValue = this.evaluate(field.value, processingThread);
+        if (textValue === null || textValue === undefined) {
+          throw new Error(
+            "Cannot trim null or undefined text value in text_trim",
+          );
+        }
+        switch (field.mode) {
+          case "BOTH":
+            return textValue.toString().trim();
+          case "LEFT":
+            return textValue.toString().replace(/^\s+/, "");
+          case "RIGHT":
+            return textValue.toString().replace(/\s+$/, "");
+          default:
+            throw new Error(
+              //@ts-ignore
+              `Unknown mode: ${field.mode}. ${JSON.stringify(field)}`,
+            );
+        }
+      }
+      case "text_replace": {
+        const textValue = this.evaluate(field.text, processingThread);
+        const fromValue = this.evaluate(field.from, processingThread);
+        const toValue = this.evaluate(field.to, processingThread);
+        if (
+          textValue === null ||
+          textValue === undefined ||
+          fromValue === null ||
+          fromValue === undefined ||
+          toValue === null ||
+          toValue === undefined
+        ) {
+          throw new Error(
+            "Cannot replace in null or undefined text value in text_replace",
+          );
+        }
+        // The regex escaping code below is taken from the implementation of
+        // goog.string.regExpEscape.
+        const filteredFromValue = fromValue
+          .toString()
+          .replace(/([-()\[\]{}+?*.$^|,:#<!\\\\])/g, "\\$1")
+          .replace(/\\x08/g, "\\\\x08");
+        const regex = new RegExp(filteredFromValue, "g");
+        return textValue.toString().replace(regex, toValue.toString());
+      }
+      case "text_reverse": {
+        const textValue = this.evaluate(field.value, processingThread);
+        if (textValue === null || textValue === undefined) {
+          throw new Error(
+            "Cannot reverse null or undefined text value in text_reverse",
+          );
+        }
+        return textValue.toString().split("").reverse().join("");
+      }
+      default:
+        throw new Error(
+          //@ts-ignore
+          `Unknown text type: ${field.type}. ${JSON.stringify(field)}`,
+        );
+    }
+  }
+
   evaluate(
-    field: Value | Condition,
+    field: Value | Condition | Text,
     processingThread: Thread,
   ): number | string | boolean | null {
     if (!field) {
@@ -315,6 +535,8 @@ export class EvaluationEngine {
         return this.evaluateValue(field as Value, processingThread);
       } else if (conditionTypes.includes(field.type as ConditionType)) {
         return this.evaluateCondition(field as Condition, processingThread);
+      } else if (textTypes.includes(field.type as TextType)) {
+        return this.evaluateText(field as Text, processingThread);
       } else {
         throw new Error(
           `Unknown field type: ${field.type}. ${JSON.stringify(field)}`,

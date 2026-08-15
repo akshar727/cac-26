@@ -72,6 +72,15 @@ export type Value =
       condition: Condition;
       trueValue: Value;
       falseValue: Value;
+    }
+  | {
+      type: "text_length";
+      value: Text | Value;
+    }
+  | {
+      type: "text_count";
+      text: Text | Value;
+      subtext: Text | Value;
     };
 
 export const valueTypes = [
@@ -91,6 +100,8 @@ export const valueTypes = [
   "screen_position_y",
   "screen_rotation",
   "logic_ternary",
+  "text_length",
+  "text_count",
 ] as const;
 
 export type ValueType = (typeof valueTypes)[number];
@@ -119,6 +130,10 @@ export type Condition =
   | {
       type: "logic_null";
       value: null;
+    }
+  | {
+      type: "text_isEmpty";
+      value: Text | Value;
     };
 
 export const conditionTypes = [
@@ -127,11 +142,58 @@ export const conditionTypes = [
   "logic_negate",
   "logic_boolean",
   "logic_null",
+  "text_isEmpty",
 ] as const;
 
 export type ConditionType = (typeof conditionTypes)[number];
 
-export type Text = {};
+export type Text =
+  | {
+      type: "text";
+      value: string;
+    }
+  | {
+      type: "text_join";
+      items: (Text | Value)[];
+    }
+  | {
+      type: "text_charAt";
+      value: Text | Value;
+      indexType: "FROM_START" | "FROM_END" | "FIRST" | "LAST" | "RANDOM";
+      at: Value;
+    }
+  | {
+      type: "text_changeCase";
+      value: Text | Value;
+      caseType: "UPPERCASE" | "LOWERCASE" | "TITLECASE";
+    }
+  | {
+      type: "text_trim";
+      value: Text | Value;
+      mode: "BOTH" | "LEFT" | "RIGHT";
+    }
+  | {
+      type: "text_replace";
+      text: Text | Value;
+      from: Text | Value;
+      to: Text | Value;
+    }
+  | {
+      type: "text_reverse";
+      value: Text | Value;
+    };
+
+export const textTypes = [
+  "text",
+  "text_join",
+  "text_charAt",
+  "text_changeCase",
+  "text_trim",
+  "text_replace",
+  "text_reverse",
+] as const;
+
+export type TextType = (typeof textTypes)[number];
 
 export type ProcedureParameter = {
   name: string;

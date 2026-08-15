@@ -53,7 +53,7 @@ export default function CostumeEdtior({
   appDataDir,
 }: {
   activeSprite: DatabaseSprite | null;
-  refreshDataCallback: () => void;
+  refreshDataCallback: () => Promise<void>;
   appDataDir: string;
 }) {
   const [activeCostume, setActiveCostume] = useState<
@@ -69,6 +69,7 @@ export default function CostumeEdtior({
   const [spriteNameDialogValue, setSpriteNameDialogValue] = useState("");
 
   useEffect(() => {
+    console.log("Active sprite changed:", activeSprite);
     if (activeSprite && activeSprite.image_paths.length > 0 && !activeCostume) {
       setActiveCostume(activeSprite.image_paths[0]);
     } else if (activeSprite && activeSprite.image_paths.length === 0) {
@@ -95,7 +96,7 @@ export default function CostumeEdtior({
           {activeSprite && activeSprite.image_paths.length > 0 ? (
             <ScrollArea>
               <div
-                key={JSON.stringify(activeCostume)} // todo: need to refresh the sidebar when a costume is deleted since this for some reason doesnt work
+                key={JSON.stringify(activeSprite)}
                 className="grid grid-cols-1 gap-2 p-1"
               >
                 {activeSprite.image_paths.map((imageInfo, index: number) => {
@@ -314,14 +315,15 @@ export default function CostumeEdtior({
                 ></Input>
               </div>
               <Button
-                onClick={() => {
-                  new DatabaseManager().deleteCostume(
+                onClick={async () => {
+                  await new DatabaseManager().deleteCostume(
                     activeCostume.loadablePath,
                     activeSprite?.image_paths || [],
                     activeSprite?.id || 0,
                   );
-                  refreshDataCallback();
-                  setActiveCostume(null);
+                  await refreshDataCallback().then(() => {
+                    setActiveCostume(null);
+                  });
                 }}
                 variant="destructive"
               >

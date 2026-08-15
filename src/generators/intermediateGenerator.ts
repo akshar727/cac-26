@@ -347,6 +347,197 @@ intermediateGenerator.forBlock["controls_for"] = function (block, generator) {
   });
 };
 
+intermediateGenerator.forBlock["text"] = function (block, _) {
+  const value = block.getFieldValue("TEXT");
+  return [
+    JSON.stringify({
+      type: "text",
+      value: value,
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_join"] = function (block, generator) {
+  const items = [];
+  //@ts-ignore
+  for (let i = 0; i < block.itemCount_; i++) {
+    const itemCode =
+      generator.valueToCode(block, "ADD" + i, Order.NONE) || '""';
+    console.log(`text_join item ${i} code:`, itemCode);
+    items.push(getFormatted(itemCode));
+  }
+  return [
+    JSON.stringify({
+      type: "text_join",
+      items: items,
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_append"] = function (block, generator) {
+  const text = generator.valueToCode(block, "TEXT", Order.NONE) || '""';
+  const varName = block.getFieldValue("VAR");
+  return JSON.stringify({
+    type: "text_append",
+    text: getFormatted(text),
+    variableName: varName,
+  });
+};
+
+intermediateGenerator.forBlock["text_length"] = function (block, generator) {
+  const text = generator.valueToCode(block, "VALUE", Order.NONE) || '""';
+  return [
+    JSON.stringify({
+      type: "text_length",
+      value: getFormatted(text),
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_charAt"] = function (block, generator) {
+  const text = generator.valueToCode(block, "VALUE", Order.NONE) || '""';
+  const where = block.getFieldValue("WHERE");
+  let at = null;
+  try {
+    at = generator.valueToCode(block, "AT", Order.NONE) || "1";
+  } catch (error) {
+    at = "";
+  }
+  switch (where) {
+    case "FROM_START":
+      return [
+        JSON.stringify({
+          type: "text_charAt",
+          value: getFormatted(text),
+          indexType: "FROM_START",
+          at: getFormatted(at),
+        }),
+        Order.NONE,
+      ];
+    case "FROM_END":
+      return [
+        JSON.stringify({
+          type: "text_charAt",
+          value: getFormatted(text),
+          indexType: "FROM_END",
+          at: getFormatted(at),
+        }),
+        Order.NONE,
+      ];
+    case "FIRST":
+      return [
+        JSON.stringify({
+          type: "text_charAt",
+          value: getFormatted(text),
+          indexType: "FIRST",
+        }),
+        Order.NONE,
+      ];
+    case "LAST":
+      return [
+        JSON.stringify({
+          type: "text_charAt",
+          value: getFormatted(text),
+          indexType: "LAST",
+        }),
+        Order.NONE,
+      ];
+    case "RANDOM":
+      return [
+        JSON.stringify({
+          type: "text_charAt",
+          value: getFormatted(text),
+          indexType: "RANDOM",
+        }),
+        Order.NONE,
+      ];
+    default:
+      throw new Error(`Unknown WHERE value for text_charAt block: ${where}`);
+  }
+};
+
+intermediateGenerator.forBlock["text_isEmpty"] = function (block, generator) {
+  const text = generator.valueToCode(block, "VALUE", Order.NONE) || '""';
+  return [
+    JSON.stringify({
+      type: "text_isEmpty",
+      value: getFormatted(text),
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_changeCase"] = function (
+  block,
+  generator,
+) {
+  const text = generator.valueToCode(block, "TEXT", Order.NONE) || '""';
+  const caseType = block.getFieldValue("CASE");
+  return [
+    JSON.stringify({
+      type: "text_changeCase",
+      value: getFormatted(text),
+      caseType: caseType,
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_trim"] = function (block, generator) {
+  const text = generator.valueToCode(block, "TEXT", Order.NONE) || '""';
+  const mode = block.getFieldValue("MODE");
+  return [
+    JSON.stringify({
+      type: "text_trim",
+      value: getFormatted(text),
+      mode: mode,
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_count"] = function (block, generator) {
+  const text = generator.valueToCode(block, "TEXT", Order.NONE) || '""';
+  const subtext = generator.valueToCode(block, "SUB", Order.NONE) || '""';
+  return [
+    JSON.stringify({
+      type: "text_count",
+      text: getFormatted(text),
+      subtext: getFormatted(subtext),
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_replace"] = function (block, generator) {
+  const text = generator.valueToCode(block, "TEXT", Order.NONE) || '""';
+  const from = generator.valueToCode(block, "FROM", Order.NONE) || '""';
+  const to = generator.valueToCode(block, "TO", Order.NONE) || '""';
+  return [
+    JSON.stringify({
+      type: "text_replace",
+      text: getFormatted(text),
+      from: getFormatted(from),
+      to: getFormatted(to),
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["text_reverse"] = function (block, generator) {
+  const text = generator.valueToCode(block, "TEXT", Order.NONE) || '""';
+  return [
+    JSON.stringify({
+      type: "text_reverse",
+      value: getFormatted(text),
+    }),
+    Order.NONE,
+  ];
+};
+
 intermediateGenerator.forBlock["controls_forEach"] = function (
   block,
   generator,
@@ -544,7 +735,7 @@ intermediateGenerator.forBlock["procedures_defnoreturn"] = function (
 };
 intermediateGenerator.forBlock["procedures_defreturn"] =
   intermediateGenerator.forBlock["procedures_defnoreturn"];
-//@ts-ignore
+
 intermediateGenerator.forBlock["procedures_callnoreturn"] = function (
   block,
   generator,
@@ -558,31 +749,15 @@ intermediateGenerator.forBlock["procedures_callnoreturn"] = function (
       ),
     });
   });
-  if (block.type === "procedures_callreturn") {
-    throw new Error("procedures_callreturn evaluation is not implemented yet.");
-    // return [
-    //   JSON.stringify({
-    //     type: block.type,
-    //     name: name,
-    //     //@ts-ignore
-    //     arguments: args.map((arg) => getFormatted(arg)),
-    //   }),
-    //   Order.NONE,
-    // ];
-  } else {
-    return JSON.stringify({
-      type: block.type,
-      name: name,
-      //@ts-ignore
-      arguments: args.map((arg) => getFormatted(arg)),
-    });
-  }
+  return JSON.stringify({
+    type: block.type,
+    name: name,
+    //@ts-ignore
+    arguments: args.map((arg) => getFormatted(arg)),
+  });
 };
 
-intermediateGenerator.forBlock["procedures_callreturn"] =
-  intermediateGenerator.forBlock["procedures_callnoreturn"];
-
-function getFormatted(value: string): number | object {
+function getFormatted(value: string): number | string | object {
   let number = true;
   let json = true;
   if (isNaN(parseFloat(value))) {
@@ -595,9 +770,10 @@ function getFormatted(value: string): number | object {
   }
   if (!number && !json) {
     console.warn(
-      "Warning: The value for a block is neither a number nor valid JSON:",
+      "Warning: The value for a block is neither a number nor valid JSON, using it as a string instead. Value: ",
       value,
     );
+    return value;
   }
   let formatted = 0;
   if (number) {

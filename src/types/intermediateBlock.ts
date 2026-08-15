@@ -1,4 +1,4 @@
-import { Value, Condition } from "@/types/field";
+import { Value, Condition, Text } from "@/types/field";
 
 export type IntermediateBlock =
   | {
@@ -101,10 +101,17 @@ export type IntermediateBlock =
     }
   | {
       type: "screen_hide";
-    } | {
+    }
+  | {
       type: "screen_set_size";
       size: Value;
-    } | {
+    }
+  | {
       type: "screen_change_size";
       delta: Value;
+    }
+  | {
+      type: "text_append";
+      text: Text | Value;
+      variableName: string;
     };

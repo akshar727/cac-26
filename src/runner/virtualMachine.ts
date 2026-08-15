@@ -389,10 +389,10 @@ export class VirtualMachine {
           }
         }
         let currentValue = thread.target.variables.get(variableName);
-        console.log(
-          `Current value of variable ${variableName} for target ${thread.target.id}:`,
-          currentValue,
-        );
+        // console.log(
+        //   `Current value of variable ${variableName} for target ${thread.target.id}:`,
+        //   currentValue,
+        // );
         thread.target.variables.set(
           variableName,
           this._evaluator.evaluate(blockToExecute.value, thread) as number,
@@ -452,10 +452,6 @@ export class VirtualMachine {
           }
         }
         let currentValue = thread.target.variables.get(variableName);
-        console.log(
-          `Current value of variable ${variableName} for target ${thread.target.id}:`,
-          currentValue,
-        );
         if (typeof currentValue === "number") {
           thread.target.variables.set(
             variableName,
@@ -684,6 +680,29 @@ export class VirtualMachine {
           thread,
         ) as number;
         thread.target.size += changeValue;
+        break;
+      }
+      case "text_append": {
+        const variableName = blockToExecute.variableName;
+        const textToAppend = blockToExecute.text;
+        const currentValue = thread.target.variables.get(variableName);
+        if (typeof currentValue === "string") {
+          thread.target.variables.set(
+            variableName,
+            (currentValue +
+              this._evaluator.evaluate(textToAppend, thread)) as string,
+          );
+        } else if (currentValue === undefined) {
+          // If the variable doesn't exist, initialize it with the text to append
+          thread.target.variables.set(
+            variableName,
+            this._evaluator.evaluate(textToAppend, thread) as string,
+          );
+        } else {
+          console.error(
+            `Variable ${variableName} is not a string and cannot be appended to. Value: ${currentValue}`,
+          );
+        }
         break;
       }
       default:

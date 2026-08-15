@@ -50,7 +50,6 @@ function App() {
     string | null
   >(null);
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
-  const [newCostumeDialogOpen, setNewCostumeDialogOpen] = React.useState(false);
   const _appDataDir = React.useRef<string | null>(null);
   const [codeStopped, setCodeStopped] = React.useState(false);
 
@@ -178,7 +177,7 @@ function App() {
         name: v.getName(),
         type: v.getType() || "",
       }));
-      new DatabaseManager().updateSpriteBlocksAndVariables(
+      await new DatabaseManager().updateSpriteBlocksAndVariables(
         currentActiveSprite.id,
         fullJson,
         savedVariables,
@@ -358,7 +357,7 @@ function App() {
                         `${_appDataDir.current}/${name}`,
                       ),
                     }));
-                    new DatabaseManager().addNewSprite(
+                    await new DatabaseManager().addNewSprite(
                       spriteNameDialogValue,
                       formattedFileNames,
                       1,
@@ -517,14 +516,12 @@ function App() {
         defaultValue="blocks"
         onValueChange={(value) => {
           async function change() {
-            // console.log("Tab changed to:", value);
             if (value === "blocks") {
               await importDatabaseData();
               await setupWorkspace();
               setTimeout(() => {
                 const workspace = Blockly.getMainWorkspace();
                 Blockly.svgResize(workspace as Blockly.WorkspaceSvg);
-                // console.log("Resized workspace after switching to blocks tab.");
               }, 100);
             } else {
               saveCurrentWorkspaceToDatabase();
