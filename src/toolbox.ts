@@ -117,10 +117,6 @@ export const toolbox = {
             },
           },
         },
-        // {
-        //   kind: "block",
-        //   type: "controls_forEach",
-        // },
         {
           kind: "block",
           type: "controls_flow_statements",

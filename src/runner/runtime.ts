@@ -26,10 +26,28 @@ export class Runtime {
       let sprite = new Sprite(
         sprites.find((s) => s.id === databaseSprite.id)?.image_paths || [],
       );
+      sprite.id = databaseSprite.id;
       for (const thing of databaseSprite.variables_map) {
         sprite.variables.set(thing.id, 0);
+        console.log(
+          `Sprite ${sprite.id} has variable ${thing.name} with id ${thing.id}`,
+        );
       }
-      sprite.id = databaseSprite.id;
+      for (const otherSprite of sprites) {
+        if (otherSprite.id !== databaseSprite.id) {
+          for (const variable of otherSprite.variables_map) {
+            console.log(
+              `Checking if sprite ${sprite.id} should borrow variable ${variable.name} from sprite ${otherSprite.id}`,
+            );
+            if (variable.isGlobal) {
+              sprite.borrowedVariables.set(variable.id, 0);
+              console.log(
+                `Sprite ${sprite.id} borrowed variable ${variable.name} from sprite ${otherSprite.id}`,
+              );
+            }
+          }
+        }
+      }
       this._targets.push(sprite);
       let topBlocks = spriteWorkspace.getTopBlocks(false);
       for (const block of topBlocks) {

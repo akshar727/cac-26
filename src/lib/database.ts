@@ -122,6 +122,71 @@ export class DatabaseManager {
       }
     });
   }
+
+  deleteVariableFromSprite(
+    spriteId: number,
+    variableId: string,
+  ): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        const sprite = await db.select<DatabaseSprite[]>(
+          `SELECT * from sprites WHERE id = ?`,
+          [spriteId],
+        );
+        //@ts-ignore
+        let variablesMap = JSON.parse(sprite[0].variables_map);
+        variablesMap = variablesMap.filter(
+          (variable: { id: string }) => variable.id !== variableId,
+        );
+        await db.execute(`UPDATE sprites SET variables_map = ? WHERE id = ?`, [
+          JSON.stringify(variablesMap),
+          spriteId,
+        ]);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  addVariableToSprite(
+    spriteId: number,
+    variableId: string,
+    variableName: string,
+    isGlobal: boolean,
+  ): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        const sprite = await db.select<DatabaseSprite[]>(
+          `SELECT * from sprites WHERE id = ?`,
+          [spriteId],
+        );
+        //@ts-ignore
+        console.log("sprite", sprite, typeof sprite);
+        if (sprite.length === 0) {
+          reject(new Error("Sprite not found"));
+          return;
+        }
+        //@ts-ignore
+        let variablesMap = JSON.parse(sprite[0].variables_map);
+        variablesMap.push({
+          id: variableId,
+          name: variableName,
+          isGlobal: isGlobal,
+        });
+        await db.execute(`UPDATE sprites SET variables_map = ? WHERE id = ?`, [
+          JSON.stringify(variablesMap),
+          spriteId,
+        ]);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   updateCostumeName(
     spriteId: number,
     currentCostumes: { costumeName: string; loadablePath: string }[],

@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toolbox } from "./toolbox";
 import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
-import { BlocklyPromptDialog } from "./components/BlocklyPromptDialog";
+import { BlocklyVariablePromptDialog } from "./components/BlocklyVariablePromptDialog";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "./components/ui/button";
 import { copyFile, BaseDirectory } from "@tauri-apps/plugin-fs";
@@ -52,6 +52,9 @@ function App() {
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
   const _appDataDir = React.useRef<string | null>(null);
   const [codeStopped, setCodeStopped] = React.useState(false);
+  const [borrowedVariables, setBorrowedVariables] = React.useState<
+    { name: string; id: string }[]
+  >([]);
 
   // change ref
   React.useEffect(() => {
@@ -66,16 +69,29 @@ function App() {
       try {
         Blockly.getMainWorkspace().clear();
         if (!activeSprite || !activeSprite?.blocks_json) return;
+        Blockly.getMainWorkspace().getVariableMap().clear();
         for (const variable of activeSprite.variables_map) {
-          Blockly.getMainWorkspace().getVariableMap().clear();
           Blockly.getMainWorkspace()
             .getVariableMap()
-            .createVariable(
-              variable.name,
-              variable.type || undefined,
-              variable.id,
-            );
+            .createVariable(variable.name, undefined, variable.id);
         }
+        let newBorrowedVariables: { name: string; id: string }[] = [];
+        setBorrowedVariables(newBorrowedVariables);
+        for (const otherSprite of sprites) {
+          if (otherSprite.id === activeSprite.id) continue;
+          for (const variable of otherSprite.variables_map) {
+            if (variable.isGlobal) {
+              Blockly.getMainWorkspace()
+                .getVariableMap()
+                .createVariable(variable.name, undefined, variable.id);
+              newBorrowedVariables.push({
+                name: variable.name,
+                id: variable.id,
+              });
+            }
+          }
+        }
+        setBorrowedVariables(newBorrowedVariables);
         for (const block of activeSprite.blocks_json) {
           Blockly.serialization.blocks.append(
             block,
@@ -169,9 +185,12 @@ function App() {
       fullJson.push(blockJson);
     }
     (async () => {
-      const variableState = Blockly.getMainWorkspace()
+      let variableState = Blockly.getMainWorkspace()
         .getVariableMap()
         .getAllVariables();
+      variableState = variableState.filter(
+        (v) => !borrowedVariables.some((bv) => bv.id === v.getId()),
+      );
       const savedVariables = variableState.map((v) => ({
         id: v.getId(),
         name: v.getName(),
@@ -182,6 +201,7 @@ function App() {
         fullJson,
         savedVariables,
       );
+      //@ts-ignore
       setSprites((prevSprites) =>
         prevSprites.map((sprite) =>
           sprite.id === currentActiveSprite.id
@@ -472,6 +492,30 @@ function App() {
       renderer: "zelos",
     });
     setWorkspace(ws);
+    ws.addChangeListener((e: Blockly.Events.Abstract) => {
+      // UI events are things like scrolling, zooming, etc.
+      // No need to save after one of these.
+      if (e.type === Blockly.Events.VAR_DELETE) {
+        const variableId = (e as Blockly.Events.VarDelete).varId;
+        if (!variableId) return;
+        console.log("Deleting variable:", variableId);
+
+        void (async () => {
+          try {
+            await new DatabaseManager().deleteVariableFromSprite(
+              activeSpriteRef.current!.id,
+              variableId,
+            );
+
+            await importDatabaseData();
+          } catch (error) {
+            console.error("Error deleting variable:", error);
+          }
+        })();
+      }
+      if (e.isUiEvent) return;
+      saveCurrentWorkspaceToDatabase();
+    });
     ws.registerToolboxCategoryCallback("PROCEDURE_NORETURNS", (workspace) => {
       return Blockly.Procedures.flyoutCategory(workspace).filter((item) => {
         //@ts-expect-error
@@ -491,25 +535,64 @@ function App() {
       (
         message: string,
         defaultValue: string,
-        callback: (value: string | null) => void,
+        originalCallback: (value: string | null) => void,
       ) => {
-        const promptEvent = new CustomEvent("blockly-prompt", {
-          detail: { message, defaultValue, callback },
-        });
-        window.dispatchEvent(promptEvent);
+        function createNewVariable(name: string | null, isGlobal: boolean) {
+          if (!name) {
+            return;
+          }
+          if (!Blockly.getMainWorkspace()) {
+            return;
+          }
+          Blockly.Events.disable();
+          {
+            (async () => {
+              try {
+                const variable = Blockly.getMainWorkspace()
+                  .getVariableMap()
+                  .createVariable(name, undefined);
+                (
+                  Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
+                ).refreshToolboxSelection();
+                await new DatabaseManager().addVariableToSprite(
+                  activeSpriteRef.current!.id,
+                  variable.getId(),
+                  variable.getName(),
+                  isGlobal,
+                );
+                await importDatabaseData();
+              } finally {
+                Blockly.Events.enable();
+              }
+            })();
+          }
+        }
+
+        if (message === "New variable name:") {
+          const promptEvent = new CustomEvent("blockly-prompt", {
+            detail: {
+              message: message,
+              defaultValue: defaultValue,
+              callback: createNewVariable,
+            },
+          });
+          window.dispatchEvent(promptEvent);
+        } else if (message.startsWith("Rename all")) {
+          const promptEvent = new CustomEvent("blockly-prompt", {
+            detail: {
+              message: message,
+              defaultValue: defaultValue,
+              callback: originalCallback,
+            },
+          });
+          window.dispatchEvent(promptEvent);
+        } else {
+          console.log("Prompt message:", message);
+          return undefined;
+        }
       },
     );
-    ws.addChangeListener((e: Blockly.Events.Abstract) => {
-      // UI events are things like scrolling, zooming, etc.
-      // No need to save after one of these.
-      if (e.isUiEvent) return;
-      // console.log(e);
-      setTimeout(() => {
-        saveCurrentWorkspaceToDatabase();
-      }, 0);
-    });
   }
-
   return (
     <main className="p-2 bg-slate-50 dark:bg-slate-800 min-h-dvh h-dvh max-h-dvh text-slate-900">
       <Tabs
@@ -603,7 +686,7 @@ function App() {
           </div>
         </TabsContent>
       </Tabs>
-      <BlocklyPromptDialog />
+      <BlocklyVariablePromptDialog />
     </main>
   );
 }

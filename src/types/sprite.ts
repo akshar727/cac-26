@@ -9,7 +9,7 @@ export type DatabaseSprite = {
   variables_map: {
     id: string;
     name: string;
-    type: string;
+    isGlobal: boolean;
   }[];
   project_id: number;
 };

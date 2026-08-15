@@ -78,10 +78,7 @@ intermediateGenerator.forBlock["screen_next_costume"] = function (_, __) {
   });
 };
 
-intermediateGenerator.forBlock["screen_set_costume"] = function (
-  block,
-  generator,
-) {
+intermediateGenerator.forBlock["screen_set_costume"] = function (block, _) {
   let costume = block.getFieldValue("COSTUME");
   return JSON.stringify({
     type: "screen_set_costume",
@@ -671,7 +668,7 @@ intermediateGenerator.forBlock["logic_boolean"] = function (block, _) {
   ];
 };
 
-intermediateGenerator.forBlock["logic_null"] = function (block, _) {
+intermediateGenerator.forBlock["logic_null"] = function (__, _) {
   return [
     JSON.stringify({
       type: "logic_null",
