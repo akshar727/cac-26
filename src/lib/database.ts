@@ -1,4 +1,4 @@
-import { DatabaseSprite } from "@/types/sprite";
+import { DatabaseSprite } from "@/types/databaseSprite";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 

@@ -3,7 +3,7 @@ import * as Blockly from "blockly";
 import { intermediateGenerator } from "@/generators/intermediateGenerator";
 import { Thread } from "./thread";
 import { Sprite } from "@/runner/sprite";
-import { DatabaseSprite } from "@/types/sprite";
+import { DatabaseSprite } from "@/types/databaseSprite";
 import { VirtualMachine } from "./virtualMachine";
 import { Renderer } from "./renderer";
 import { Procedure } from "@/types/field";
@@ -16,7 +16,7 @@ export class Runtime {
   _renderer: Renderer;
 
   constructor(sprites: DatabaseSprite[]) {
-    this._vm = new VirtualMachine();
+    this._vm = new VirtualMachine(this);
     this._renderer = new Renderer();
     for (const databaseSprite of sprites) {
       const spriteWorkspace = new Blockly.Workspace();
@@ -36,11 +36,8 @@ export class Runtime {
       for (const otherSprite of sprites) {
         if (otherSprite.id !== databaseSprite.id) {
           for (const variable of otherSprite.variables_map) {
-            console.log(
-              `Checking if sprite ${sprite.id} should borrow variable ${variable.name} from sprite ${otherSprite.id}`,
-            );
             if (variable.isGlobal) {
-              sprite.borrowedVariables.set(variable.id, 0);
+              sprite.borrowedVariables.set(variable.id, otherSprite.id);
               console.log(
                 `Sprite ${sprite.id} borrowed variable ${variable.name} from sprite ${otherSprite.id}`,
               );
@@ -77,7 +74,7 @@ export class Runtime {
           }
         }
       }
-      console.log(JSON.parse(JSON.stringify(sprite)));
+      console.log(sprite);
       spriteWorkspace.dispose();
     }
   }
@@ -118,7 +115,7 @@ export class Runtime {
 
   tick(deltaTime: number, currentTime: number) {
     for (const thread of this._threads) {
-      this._vm.step(thread, this, currentTime);
+      this._vm.step(thread, currentTime);
     }
     this._threads = this._threads.filter((thread) => thread.status !== "done");
     this._renderer.blit(this._targets);

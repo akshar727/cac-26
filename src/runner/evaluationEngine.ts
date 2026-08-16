@@ -11,9 +11,15 @@ import {
 } from "@/types/field";
 import { ForFrame, ProcedureFrameNoReturn } from "./stackFrame";
 import { Thread } from "./thread";
+import { Runtime } from "./runtime";
 
 export class EvaluationEngine {
   // private nextEvaluationId = 1;
+  _runtime: Runtime;
+
+  constructor(runtime: Runtime) {
+    this._runtime = runtime;
+  }
   private evaluateCondition(
     condition: Condition,
     processingThread: Thread,
@@ -279,6 +285,22 @@ export class EvaluationEngine {
             );
             if (arg) {
               return arg.value as number | string | boolean;
+            }
+          }
+          for (const borrowedVariableId of processingThread.target.borrowedVariables.keys()) {
+            if (borrowedVariableId === variableName) {
+              const borrowedVariableValue = this._runtime._targets
+                .find(
+                  (sprite) =>
+                    sprite.id ===
+                    processingThread.target.borrowedVariables.get(
+                      borrowedVariableId,
+                    ),
+                )
+                ?.variables.get(variableName);
+              if (borrowedVariableValue !== undefined) {
+                return borrowedVariableValue;
+              }
             }
           }
           if (variableValue === undefined) {

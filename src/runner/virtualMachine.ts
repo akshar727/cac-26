@@ -13,10 +13,12 @@ import { Procedure } from "@/types/field";
 
 export class VirtualMachine {
   _evaluator: EvaluationEngine;
-  constructor() {
-    this._evaluator = new EvaluationEngine();
+  _runtime: Runtime;
+  constructor(r: Runtime) {
+    this._evaluator = new EvaluationEngine(r);
+    this._runtime = r;
   }
-  step(thread: Thread, _: Runtime, currentTime: number) {
+  step(thread: Thread, currentTime: number) {
     if (thread.status === "waiting") {
       if (currentTime < thread.waitUntil) {
         return;
@@ -388,11 +390,34 @@ export class VirtualMachine {
             break;
           }
         }
-        let currentValue = thread.target.variables.get(variableName);
-        // console.log(
-        //   `Current value of variable ${variableName} for target ${thread.target.id}:`,
-        //   currentValue,
-        // );
+        for (const borrowedVariableId of thread.target.borrowedVariables.keys()) {
+          if (borrowedVariableId === variableName) {
+            const borrowedVariableValue = this._runtime._targets
+              .find(
+                (sprite) =>
+                  sprite.id ===
+                  thread.target.borrowedVariables.get(borrowedVariableId),
+              )
+              ?.variables.get(variableName);
+            if (borrowedVariableValue !== undefined) {
+              this._runtime._targets
+                .find(
+                  (sprite) =>
+                    sprite.id ===
+                    thread.target.borrowedVariables.get(borrowedVariableId),
+                )
+                ?.variables.set(
+                  variableName,
+                  this._evaluator.evaluate(
+                    blockToExecute.value,
+                    thread,
+                  ) as number,
+                );
+              break;
+            }
+          }
+        }
+
         thread.target.variables.set(
           variableName,
           this._evaluator.evaluate(blockToExecute.value, thread) as number,
@@ -452,6 +477,41 @@ export class VirtualMachine {
           }
         }
         let currentValue = thread.target.variables.get(variableName);
+        if (currentValue === undefined) {
+          for (const borrowedVariableId of thread.target.borrowedVariables.keys()) {
+            if (borrowedVariableId === variableName) {
+              const borrowedVariableValue = this._runtime._targets
+                .find(
+                  (sprite) =>
+                    sprite.id ===
+                    thread.target.borrowedVariables.get(borrowedVariableId),
+                )
+                ?.variables.get(variableName);
+              if (borrowedVariableValue !== undefined) {
+                if (
+                  typeof borrowedVariableValue !== "number" ||
+                  typeof changeValue !== "number"
+                ) {
+                  console.error(
+                    `Borrowed variable ${variableName} is not a number and cannot be changed. Value: ${borrowedVariableValue}`,
+                  );
+                  break;
+                }
+                this._runtime._targets
+                  .find(
+                    (sprite) =>
+                      sprite.id ===
+                      thread.target.borrowedVariables.get(borrowedVariableId),
+                  )
+                  ?.variables.set(
+                    variableName,
+                    borrowedVariableValue + (changeValue as number),
+                  );
+                break;
+              }
+            }
+          }
+        }
         if (typeof currentValue === "number") {
           thread.target.variables.set(
             variableName,

@@ -28,7 +28,7 @@ import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "./components/ui/skeleton";
 import { appDataDir } from "@tauri-apps/api/path";
-import { DatabaseSprite } from "@/types/sprite";
+import { DatabaseSprite } from "@/types/databaseSprite";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
@@ -91,6 +91,7 @@ function App() {
             }
           }
         }
+        console.log("Borrowed variables:", newBorrowedVariables);
         setBorrowedVariables(newBorrowedVariables);
         for (const block of activeSprite.blocks_json) {
           Blockly.serialization.blocks.append(
@@ -185,17 +186,7 @@ function App() {
       fullJson.push(blockJson);
     }
     (async () => {
-      let variableState = Blockly.getMainWorkspace()
-        .getVariableMap()
-        .getAllVariables();
-      variableState = variableState.filter(
-        (v) => !borrowedVariables.some((bv) => bv.id === v.getId()),
-      );
-      const savedVariables = variableState.map((v) => ({
-        id: v.getId(),
-        name: v.getName(),
-        type: v.getType() || "",
-      }));
+      const savedVariables = activeSpriteRef.current?.variables_map;
       await new DatabaseManager().updateSpriteBlocksAndVariables(
         currentActiveSprite.id,
         fullJson,

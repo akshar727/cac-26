@@ -8,7 +8,7 @@ export class Sprite {
   size = 100;
   visible = true;
   variables = new Map<string, number | string | boolean>();
-  borrowedVariables = new Map<string, number | string | boolean>();
+  borrowedVariables = new Map<string, number>();
   procedures = new Map<string, Procedure>();
   _costumes: HTMLImageElement[] = [];
   currentCostumeIndex = 0;
