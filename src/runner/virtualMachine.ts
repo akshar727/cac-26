@@ -507,7 +507,7 @@ export class VirtualMachine {
                     variableName,
                     borrowedVariableValue + (changeValue as number),
                   );
-                break;
+                return;
               }
             }
           }
