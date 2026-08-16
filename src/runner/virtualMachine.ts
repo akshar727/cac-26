@@ -10,6 +10,7 @@ import {
 import { IntermediateBlock } from "../types/intermediateBlock";
 import { EvaluationEngine } from "./evaluationEngine";
 import { Procedure } from "@/types/field";
+import { ImproperVariableError } from "@/types/errors";
 
 export class VirtualMachine {
   _evaluator: EvaluationEngine;
@@ -470,7 +471,7 @@ export class VirtualMachine {
               arg.value += changeValue;
               break;
             } else {
-              console.error(
+              throw new ImproperVariableError(
                 `Argument ${variableName} is not a number and cannot be changed. Value: ${arg.value}`,
               );
             }
@@ -492,7 +493,7 @@ export class VirtualMachine {
                   typeof borrowedVariableValue !== "number" ||
                   typeof changeValue !== "number"
                 ) {
-                  console.error(
+                  throw new ImproperVariableError(
                     `Borrowed variable ${variableName} is not a number and cannot be changed. Value: ${borrowedVariableValue}`,
                   );
                   break;
@@ -518,7 +519,7 @@ export class VirtualMachine {
             currentValue + (changeValue as number),
           );
         } else {
-          console.error(
+          throw new ImproperVariableError(
             `Variable ${variableName} is not a number and cannot be changed. Value: ${currentValue}`,
           );
         }
@@ -759,7 +760,7 @@ export class VirtualMachine {
             this._evaluator.evaluate(textToAppend, thread) as string,
           );
         } else {
-          console.error(
+          throw new ImproperVariableError(
             `Variable ${variableName} is not a string and cannot be appended to. Value: ${currentValue}`,
           );
         }

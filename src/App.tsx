@@ -155,7 +155,12 @@ function App() {
         const now = performance.now();
         const deltaTime = (now - prev) / 1000; // Convert to seconds
         prev = now;
-        runtime.tick(deltaTime, now);
+        try {
+          runtime.tick(deltaTime, now);
+        } catch (error) {
+          setCodeStopped(true);
+          console.error("Error during runtime tick:", error);
+        }
         if (!codeStopped) {
           requestAnimationFrame(step);
         }
