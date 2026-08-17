@@ -66,7 +66,8 @@ export class Runtime {
         } else if (
           block.type === "events_when_started" ||
           block.type === "events_when_key_pressed" ||
-          block.type === "events_when_broadcast_received"
+          block.type === "events_when_broadcast_received" ||
+          block.type === "events_when_sprite_clicked"
         ) {
           let outputScript = this.compileScript(sprite.id, block);
           if (outputScript) {
@@ -88,6 +89,8 @@ export class Runtime {
     } else if (block.type === "events_when_broadcast_received") {
       script.trigger.type = "broadcast";
       script.trigger.value = block.getFieldValue("BROADCAST_OPTION");
+    } else if (block.type === "events_when_sprite_clicked") {
+      script.trigger.type = "sprite_clicked";
     } else {
       return null;
     }
@@ -102,7 +105,6 @@ export class Runtime {
   }
 
   keyPressed(key: string) {
-    console.log("Key pressed:", key.toUpperCase());
     for (const script of this._scripts) {
       if (
         script.trigger.type === "key_pressed" &&
@@ -110,6 +112,47 @@ export class Runtime {
       ) {
         // console.log("Starting script for key press:", script);
         this.startScript(script);
+      }
+    }
+  }
+
+  screenClick(x: number, y: number) {
+    console.log("Screen clicked at:", x, y);
+    for (const script of this._scripts) {
+      if (script.trigger.type === "sprite_clicked") {
+        const canvas = document.getElementById(
+          "foregroundCanvas",
+        ) as HTMLCanvasElement;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          console.error("Could not get 2D context from canvas");
+          return;
+        }
+        const pixelData = ctx.getImageData(x, y, 1, 1).data;
+        if (pixelData[3] === 0) {
+          // Clicked on transparent pixel, ignore
+          continue;
+        }
+        let xMin =
+          this._targets.find((t) => t.id.toString() === script.targetId)?.x ||
+          0;
+        let yMin =
+          this._targets.find((t) => t.id.toString() === script.targetId)?.y ||
+          0;
+        let currentCostumeIndex =
+          this._targets.find((t) => t.id.toString() === script.targetId)
+            ?.currentCostumeIndex || 0;
+        let xMax =
+          xMin +
+          (this._targets.find((t) => t.id.toString() === script.targetId)
+            ?._costumes[currentCostumeIndex].width || 0);
+        let yMax =
+          yMin +
+          (this._targets.find((t) => t.id.toString() === script.targetId)
+            ?._costumes[currentCostumeIndex].height || 0);
+        if (x >= xMin && x <= xMax && y >= yMin && y <= yMax) {
+          this.startScript(script);
+        }
       }
     }
   }

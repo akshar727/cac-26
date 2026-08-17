@@ -5,7 +5,7 @@ export interface ScriptInterface {
   targetId: string;
 
   trigger: {
-    type: "start" | "key_pressed" | "broadcast";
+    type: "start" | "key_pressed" | "broadcast" | "sprite_clicked";
     value?: string;
   };
 
@@ -16,7 +16,7 @@ export class Script implements ScriptInterface {
   id: string;
   targetId: string;
   trigger: {
-    type: "start" | "key_pressed" | "broadcast";
+    type: "start" | "key_pressed" | "broadcast" | "sprite_clicked";
     value?: string;
   };
   blocks: IntermediateBlock[];

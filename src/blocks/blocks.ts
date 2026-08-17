@@ -308,4 +308,57 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     colour: 60,
     inputsInline: true,
   },
+  {
+    type: "screen_set_costume",
+    tooltip: "Set the costume of the current sprite to a specified costume",
+    helpUrl: "",
+    message0: "set costume to %1",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "COSTUME",
+        options: [["none", "NONE"]],
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    inputsInline: true,
+    extensions: ["costume_dropdown_extension"],
+  },
+  {
+    type: "events_when_broadcast_received",
+    tooltip: "Run code when a broadcast message is received",
+    helpUrl: "",
+    message0: "When I receive %1",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "BROADCAST",
+        options: [["none", "NONE"]],
+      },
+    ],
+    nextStatement: null,
+    colour: 60,
+    inputsInline: true,
+    extensions: ["broadcast_dropdown_extension"],
+  },
+  {
+    type: "events_broadcast",
+    tooltip: "Broadcast a message to all sprites",
+    helpUrl: "",
+    message0: "broadcast %1",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "BROADCAST",
+        options: [["none", "NONE"]],
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 60,
+    inputsInline: true,
+    extensions: ["broadcast_dropdown_extension"],
+  },
 ]);

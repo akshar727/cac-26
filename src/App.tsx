@@ -33,6 +33,7 @@ import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import { cn } from "./lib/utils";
+import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 
 function App() {
   const activeSpriteRef = useRef<DatabaseSprite | null>(null);
@@ -53,9 +54,7 @@ function App() {
   const _appDataDir = React.useRef<string | null>(null);
   const codeRunning = React.useRef(false);
   const [codeRunningState, setCodeRunningState] = React.useState(false);
-  const [borrowedVariables, setBorrowedVariables] = React.useState<
-    { name: string; id: string }[]
-  >([]);
+  const broadcastMessagesRef = useRef<[string, string][]>([]);
 
   React.useEffect(() => {
     codeRunning.current = codeRunningState;
@@ -80,8 +79,6 @@ function App() {
             .getVariableMap()
             .createVariable(variable.name, undefined, variable.id);
         }
-        let newBorrowedVariables: { name: string; id: string }[] = [];
-        setBorrowedVariables(newBorrowedVariables);
         for (const otherSprite of sprites) {
           if (otherSprite.id === activeSprite.id) continue;
           for (const variable of otherSprite.variables_map) {
@@ -89,15 +86,9 @@ function App() {
               Blockly.getMainWorkspace()
                 .getVariableMap()
                 .createVariable(variable.name, undefined, variable.id);
-              newBorrowedVariables.push({
-                name: variable.name,
-                id: variable.id,
-              });
             }
           }
         }
-        console.log("Borrowed variables:", newBorrowedVariables);
-        setBorrowedVariables(newBorrowedVariables);
         for (const block of activeSprite.blocks_json) {
           Blockly.serialization.blocks.append(
             block,
@@ -150,10 +141,22 @@ function App() {
     try {
       const runtime = new Runtime(sprites);
       runtime.start();
+      const canvas = document.getElementById("foregroundCanvas");
+      if (canvas === null) {
+        console.error("what");
+        return;
+      }
       setCodeRunningState(true);
       const keyDownEvent = (event: KeyboardEvent) => {
         runtime.keyPressed(event.key);
       };
+      const canvasClickEvent = function (event: MouseEvent) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        runtime.screenClick(x, y);
+      };
+      canvas.addEventListener("click", canvasClickEvent);
       window.addEventListener("keydown", keyDownEvent);
       let prev = performance.now();
       function step() {
@@ -168,6 +171,8 @@ function App() {
           setCodeRunningState(false);
           error = true;
           window.removeEventListener("keydown", keyDownEvent);
+          //@ts-expect-error
+          canvas.removeEventListener("click", canvasClickEvent);
           if (!(error instanceof TypeError)) {
             console.error("Error during runtime tick:", error);
           }
@@ -178,6 +183,8 @@ function App() {
           setCodeRunningState(false);
           console.warn("Code stopped, removing keydown event listener");
           window.removeEventListener("keydown", keyDownEvent);
+          //@ts-expect-error
+          canvas.removeEventListener("click", canvasClickEvent);
         }
       }
       requestAnimationFrame(step);
@@ -412,39 +419,156 @@ function App() {
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.75);
     Blockly.utils.colour.setHsvValue(0.65);
-    Blockly.Blocks["screen_set_costume"] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("set costume to")
-          .appendField(
-            new Blockly.FieldDropdown(this.generateCostumeOptions),
-            "COSTUME",
-          );
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour(310);
-        this.setInputsInline(true);
-        this.setTooltip("Set the costume of the sprite to a specified costume");
-      },
-      generateCostumeOptions: function () {
-        const options = [];
-
-        if (
-          activeSpriteRef.current?.image_paths &&
-          activeSpriteRef.current?.image_paths.length > 0
-        ) {
-          activeSpriteRef.current?.image_paths.forEach((costume) => {
-            options.push([costume.costumeName, costume.loadablePath]);
-          });
-        } else {
-          options.push(["none", "NONE"]);
-        }
-
-        return options;
-      },
-    };
     if (!Blockly.getMainWorkspace()) {
       Blockly.common.defineBlocks(blocks);
+      Blockly.Extensions.register("costume_dropdown_extension", function () {
+        //@ts-ignore
+        this.getField("COSTUME").setOptions(function () {
+          const options = [];
+
+          if (
+            activeSpriteRef.current?.image_paths &&
+            activeSpriteRef.current?.image_paths.length > 0
+          ) {
+            activeSpriteRef.current?.image_paths.forEach((costume) => {
+              options.push([costume.costumeName, costume.loadablePath]);
+            });
+          } else {
+            options.push(["none", "NONE"]);
+          }
+
+          return options;
+        });
+      });
+      Blockly.Extensions.register("broadcast_dropdown_extension", function () {
+        const field = this.getField("BROADCAST");
+
+        if (!field) {
+          return;
+        }
+        function optionsFn(toSet: [string, string][]) {
+          console.log(`Setting broadcast options with:`, toSet);
+          const options = [];
+          for (const broadcastOption in toSet) {
+            options.push(toSet[broadcastOption]);
+          }
+          if (options.length === 0) {
+            console.warn("adding default message");
+            options.push(["message 1", "message 1"]);
+          }
+          if (broadcastMessagesRef.current !== options) {
+            broadcastMessagesRef.current = options.filter(
+              (option) =>
+                option[0] !== "New Message..." &&
+                option[0] !== "Rename message...",
+            ) as [string, string][];
+          }
+          // console.log(options as [string, string][]);
+          options.push(["Rename message...", "RENAME_MESSAGE"]);
+          options.push(["New Message...", "NEW_MESSAGE"]);
+          return options;
+        }
+        function refreshBroadcastFields(messages: [string, string][]) {
+          const workspace = Blockly.getMainWorkspace();
+
+          if (!workspace) {
+            return;
+          }
+
+          const options = optionsFn(messages);
+
+          for (const block of workspace.getAllBlocks(false)) {
+            const field = block.getField("BROADCAST");
+
+            if (field) {
+              //@ts-ignore
+              field.setOptions(options);
+            }
+          }
+          //@ts-ignore
+          workspace.refreshToolboxSelection();
+        }
+        //@ts-ignore
+        field.setOptions(optionsFn(broadcastMessagesRef.current));
+        field.setValidator((newValue) => {
+          if (newValue === "NEW_MESSAGE") {
+            let i = 1;
+            let defaultName = "message 1";
+            do {
+              defaultName = `message ${i}`;
+              i++;
+              //@ts-ignore
+            } while (
+              field
+                //@ts-ignore
+                .getOptions()
+                .some(
+                  //@ts-ignoer
+                  ([text, value]: [string, string]) =>
+                    text === defaultName && value === defaultName,
+                )
+            );
+            console.log(defaultName);
+            const promptEvent = new CustomEvent("broadcast-prompt", {
+              detail: {
+                message: "Create new broadcast",
+                defaultValue: defaultName,
+                callback: (name: string | null) => {
+                  if (!name) {
+                    return;
+                  }
+                  let newBroadcastMessages: [string, string][] = [
+                    ...broadcastMessagesRef.current,
+                    [name, name],
+                  ];
+                  console.warn("New broadcast messages:", newBroadcastMessages);
+                  console.warn(
+                    "Old broadcast messages:",
+                    broadcastMessagesRef.current,
+                  );
+                  broadcastMessagesRef.current = newBroadcastMessages;
+                  //@ts-ignore
+                  field.setOptions(optionsFn(broadcastMessagesRef.current));
+                  field.setValue(name);
+                  console.log("refreshing toolbox...");
+                  refreshBroadcastFields(broadcastMessagesRef.current);
+                },
+              },
+            });
+            window.dispatchEvent(promptEvent);
+            return null;
+          } else if (newValue === "RENAME_MESSAGE") {
+            const promptEvent = new CustomEvent("broadcast-prompt", {
+              detail: {
+                message: "Rename broadcast",
+                defaultValue: field.getValue(),
+                callback: (name: string | null) => {
+                  if (!name) {
+                    return;
+                  }
+                  let newBroadcastMessages: [string, string][] =
+                    broadcastMessagesRef.current.map((option) =>
+                      option[0] === field.getValue() ? [name, name] : option,
+                    );
+                  console.warn("New broadcast messages:", newBroadcastMessages);
+                  console.warn(
+                    "Old broadcast messages:",
+                    broadcastMessagesRef.current,
+                  );
+                  broadcastMessagesRef.current = newBroadcastMessages;
+                  //@ts-ignore
+                  field.setOptions(optionsFn(broadcastMessagesRef.current));
+                  console.log("refreshing toolbox...");
+                  refreshBroadcastFields(broadcastMessagesRef.current);
+                },
+              },
+            });
+            window.dispatchEvent(promptEvent);
+            return null;
+          }
+          return newValue;
+        });
+      });
     }
     const theme = Blockly.Theme.defineTheme("cac", {
       name: "cac",
@@ -700,6 +824,7 @@ function App() {
         </TabsContent>
       </Tabs>
       <BlocklyVariablePromptDialog />
+      <BroadcastPromptDialog />
     </main>
   );
 }

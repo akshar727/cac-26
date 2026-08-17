@@ -19,6 +19,7 @@ export class Sprite {
     for (const path of imagePaths) {
       const img = new Image();
       img.src = path.loadablePath;
+      img.crossOrigin = "anonymous";
       this._costumes.push(img);
     }
     this.currentCostumeIndex = 0;

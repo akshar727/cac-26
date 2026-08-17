@@ -55,8 +55,10 @@ export function BlocklyVariablePromptDialog() {
         <DialogHeader>
           <DialogTitle>{config?.message}</DialogTitle>
         </DialogHeader>
+        <Label htmlFor="variableName">Variable Name</Label>
         <Input
           value={userInput}
+          id="variableName"
           onChange={(e) => setUserInput(e.target.value)}
         ></Input>
         {config?.message?.startsWith("New variable name") && (

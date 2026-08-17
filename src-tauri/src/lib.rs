@@ -18,6 +18,7 @@ pub fn run() {
                 );
             ",
         },
+        //broadcasts_json TEXT,
         Migration {
             version: 2,
             description: "create sprites table",
@@ -34,6 +35,7 @@ pub fn run() {
                 );
             ",
         },
+        //variables_map TEXT,
     ];
 
     tauri::Builder::default()

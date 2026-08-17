@@ -623,6 +623,14 @@ export const toolbox = {
           kind: "block",
           type: "events_when_sprite_clicked",
         },
+        {
+          kind: "block",
+          type: "events_when_broadcast_received",
+        },
+        {
+          kind: "block",
+          type: "events_broadcast",
+        },
       ],
     },
     {
