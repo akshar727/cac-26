@@ -619,6 +619,10 @@ export const toolbox = {
           kind: "block",
           type: "events_when_key_pressed",
         },
+        {
+          kind: "block",
+          type: "events_when_sprite_clicked",
+        },
       ],
     },
     {

@@ -51,10 +51,15 @@ function App() {
   >(null);
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
   const _appDataDir = React.useRef<string | null>(null);
-  const [codeStopped, setCodeStopped] = React.useState(false);
+  const codeRunning = React.useRef(false);
+  const [codeRunningState, setCodeRunningState] = React.useState(false);
   const [borrowedVariables, setBorrowedVariables] = React.useState<
     { name: string; id: string }[]
   >([]);
+
+  React.useEffect(() => {
+    codeRunning.current = codeRunningState;
+  }, [codeRunningState]);
 
   // change ref
   React.useEffect(() => {
@@ -108,7 +113,6 @@ function App() {
       }
     })();
   }, [activeSprite, workspace]);
-
   // runs only on mount
   React.useEffect(() => {
     // Register the blocks and generator with Blockly
@@ -146,31 +150,33 @@ function App() {
     try {
       const runtime = new Runtime(sprites);
       runtime.start();
+      setCodeRunningState(true);
       const keyDownEvent = (event: KeyboardEvent) => {
         runtime.keyPressed(event.key);
       };
       window.addEventListener("keydown", keyDownEvent);
-      setCodeStopped(false);
       let prev = performance.now();
       function step() {
         const now = performance.now();
         const deltaTime = (now - prev) / 1000; // Convert to seconds
         prev = now;
-        let codeStoppedLocal = false;
+        let error = false;
         try {
           runtime.tick(deltaTime, now);
         } catch (error) {
-          setCodeStopped(true);
-          codeStoppedLocal = true;
+          console.warn("Error during runtime tick:", error);
+          setCodeRunningState(false);
+          error = true;
           window.removeEventListener("keydown", keyDownEvent);
           if (!(error instanceof TypeError)) {
             console.error("Error during runtime tick:", error);
           }
         }
-        if (!codeStoppedLocal && !codeStopped) {
+        if (!error && codeRunning.current) {
           requestAnimationFrame(step);
         } else {
-          setCodeStopped(false);
+          setCodeRunningState(false);
+          console.warn("Code stopped, removing keydown event listener");
           window.removeEventListener("keydown", keyDownEvent);
         }
       }
@@ -181,7 +187,7 @@ function App() {
   };
 
   const stopCode = () => {
-    setCodeStopped(true);
+    codeRunning.current = false;
   };
 
   function saveCurrentWorkspaceToDatabase() {
@@ -676,6 +682,7 @@ function App() {
                   onClick={() => {
                     runCode();
                   }}
+                  disabled={codeRunningState === true}
                 >
                   Run Code
                 </Button>
@@ -683,6 +690,7 @@ function App() {
                   onClick={() => {
                     stopCode();
                   }}
+                  disabled={codeRunningState === false}
                 >
                   Stop Code
                 </Button>

@@ -108,7 +108,7 @@ export class Runtime {
         script.trigger.type === "key_pressed" &&
         script.trigger.value === key.toUpperCase()
       ) {
-        console.log("Starting script for key press:", script);
+        // console.log("Starting script for key press:", script);
         this.startScript(script);
       }
     }
@@ -140,7 +140,6 @@ export class Runtime {
     if (target) {
       const thread = new Thread(target, script);
       this._threads.push(thread);
-      console.log(this._threads);
     } else {
       console.error("Target not found for script:", script);
     }
