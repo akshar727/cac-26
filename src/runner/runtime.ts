@@ -64,9 +64,9 @@ export class Runtime {
             returnValue: generated.returnValue || null,
           } as Procedure);
         } else if (
-          block.type === "when_started" ||
-          block.type === "when_key_pressed" ||
-          block.type === "when_broadcast_received"
+          block.type === "events_when_started" ||
+          block.type === "events_when_key_pressed" ||
+          block.type === "events_when_broadcast_received"
         ) {
           let outputScript = this.compileScript(sprite.id, block);
           if (outputScript) {
@@ -80,13 +80,12 @@ export class Runtime {
   }
   compileScript(spriteId: number, block: Blockly.Block): Script | null {
     const script = new Script();
-
-    if (block.type === "when_started") {
+    if (block.type === "events_when_started") {
       script.trigger.type = "start";
-    } else if (block.type === "when_key_pressed") {
+    } else if (block.type === "events_when_key_pressed") {
       script.trigger.type = "key_pressed";
       script.trigger.value = block.getFieldValue("KEY");
-    } else if (block.type === "when_broadcast_received") {
+    } else if (block.type === "events_when_broadcast_received") {
       script.trigger.type = "broadcast";
       script.trigger.value = block.getFieldValue("BROADCAST_OPTION");
     } else {
@@ -103,11 +102,13 @@ export class Runtime {
   }
 
   keyPressed(key: string) {
+    console.log("Key pressed:", key.toUpperCase());
     for (const script of this._scripts) {
       if (
         script.trigger.type === "key_pressed" &&
-        script.trigger.value === key
+        script.trigger.value === key.toUpperCase()
       ) {
+        console.log("Starting script for key press:", script);
         this.startScript(script);
       }
     }
@@ -139,6 +140,7 @@ export class Runtime {
     if (target) {
       const thread = new Thread(target, script);
       this._threads.push(thread);
+      console.log(this._threads);
     } else {
       console.error("Target not found for script:", script);
     }

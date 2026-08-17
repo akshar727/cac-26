@@ -220,7 +220,7 @@ export class VirtualMachine {
       ) {
         blockToExecute = thread.script.blocks[thread.count];
       }
-
+      console.log("Block to execute:", blockToExecute);
       if (!blockToExecute) {
         thread.status = "done";
         console.warn(

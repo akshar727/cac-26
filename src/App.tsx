@@ -146,23 +146,32 @@ function App() {
     try {
       const runtime = new Runtime(sprites);
       runtime.start();
-      window.addEventListener("keydown", (event) => {
+      const keyDownEvent = (event: KeyboardEvent) => {
         runtime.keyPressed(event.key);
-      });
+      };
+      window.addEventListener("keydown", keyDownEvent);
       setCodeStopped(false);
       let prev = performance.now();
       function step() {
         const now = performance.now();
         const deltaTime = (now - prev) / 1000; // Convert to seconds
         prev = now;
+        let codeStoppedLocal = false;
         try {
           runtime.tick(deltaTime, now);
         } catch (error) {
           setCodeStopped(true);
-          console.error("Error during runtime tick:", error);
+          codeStoppedLocal = true;
+          window.removeEventListener("keydown", keyDownEvent);
+          if (!(error instanceof TypeError)) {
+            console.error("Error during runtime tick:", error);
+          }
         }
-        if (!codeStopped) {
+        if (!codeStoppedLocal && !codeStopped) {
           requestAnimationFrame(step);
+        } else {
+          setCodeStopped(false);
+          window.removeEventListener("keydown", keyDownEvent);
         }
       }
       requestAnimationFrame(step);

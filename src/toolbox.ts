@@ -613,7 +613,11 @@ export const toolbox = {
       contents: [
         {
           kind: "block",
-          type: "when_started",
+          type: "events_when_started",
+        },
+        {
+          kind: "block",
+          type: "events_when_key_pressed",
         },
       ],
     },

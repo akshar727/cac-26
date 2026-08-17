@@ -811,6 +811,13 @@ intermediateGenerator.forBlock["screen_position_y"] = function (_, __) {
   ];
 };
 
-intermediateGenerator.forBlock["when_started"] = function (_, __) {
+intermediateGenerator.forBlock["events_when_started"] = function (_, __) {
+  return "";
+};
+
+intermediateGenerator.forBlock["events_when_key_pressed"] = function (
+  block,
+  _,
+) {
   return "";
 };
