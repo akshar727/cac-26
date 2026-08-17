@@ -765,6 +765,11 @@ export class VirtualMachine {
         }
         break;
       }
+      case "events_broadcast": {
+        const broadcastMessage = blockToExecute.message;
+        this._runtime.broadcastReceived(broadcastMessage);
+        break;
+      }
       default:
         //@ts-ignore
         console.warn("Unknown block type:", blockToExecute.type);

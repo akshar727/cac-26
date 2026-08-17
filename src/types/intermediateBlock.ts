@@ -114,4 +114,8 @@ export type IntermediateBlock =
       type: "text_append";
       text: Text | Value;
       variableName: string;
+    }
+  | {
+      type: "events_broadcast";
+      message: string;
     };

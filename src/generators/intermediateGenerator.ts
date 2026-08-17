@@ -820,6 +820,19 @@ intermediateGenerator.forBlock["events_when_sprite_clicked"] = function (
 ) {
   return "";
 };
+intermediateGenerator.forBlock["events_broadcast"] = function (block, _) {
+  const broadcastMessage = block.getFieldValue("BROADCAST");
+  return JSON.stringify({
+    type: "events_broadcast",
+    message: broadcastMessage,
+  });
+};
 intermediateGenerator.forBlock["events_when_key_pressed"] = function (__, _) {
+  return "";
+};
+intermediateGenerator.forBlock["events_when_broadcast_received"] = function (
+  _,
+  __,
+) {
   return "";
 };

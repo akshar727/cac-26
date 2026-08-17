@@ -150,6 +150,45 @@ export class DatabaseManager {
     });
   }
 
+  updateProjectBroadcastMessages(
+    projectId: number,
+    messages: string[][],
+  ): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        await db.execute(
+          `UPDATE projects SET broadcasts_json = ? WHERE id = ?`,
+          [JSON.stringify(messages), projectId],
+        );
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  getProjectBroadcastMessages(projectId: number): Promise<string[][]> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        const result = await db.select<{ broadcasts_json: string }[]>(
+          `SELECT broadcasts_json from projects WHERE id = ?`,
+          [projectId],
+        );
+        if (result.length === 0) {
+          resolve([]);
+          return;
+        }
+        //@ts-ignore
+        const messages = JSON.parse(result[0].broadcasts_json);
+        resolve(messages);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   addVariableToSprite(
     spriteId: number,
     variableId: string,

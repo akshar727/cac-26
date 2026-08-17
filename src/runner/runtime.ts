@@ -88,7 +88,7 @@ export class Runtime {
       script.trigger.value = block.getFieldValue("KEY");
     } else if (block.type === "events_when_broadcast_received") {
       script.trigger.type = "broadcast";
-      script.trigger.value = block.getFieldValue("BROADCAST_OPTION");
+      script.trigger.value = block.getFieldValue("BROADCAST");
     } else if (block.type === "events_when_sprite_clicked") {
       script.trigger.type = "sprite_clicked";
     } else {
@@ -111,6 +111,18 @@ export class Runtime {
         script.trigger.value === key.toUpperCase()
       ) {
         // console.log("Starting script for key press:", script);
+        this.startScript(script);
+      }
+    }
+  }
+
+  broadcast(broadcast: string) {
+    for (const script of this._scripts) {
+      if (
+        script.trigger.type === "broadcast" &&
+        script.trigger.value === broadcast
+      ) {
+        // console.log("Starting script for broadcast:", script);
         this.startScript(script);
       }
     }

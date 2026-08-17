@@ -133,6 +133,9 @@ function App() {
         return null;
       });
     }
+    let broadcastMessages =
+      await new DatabaseManager().getProjectBroadcastMessages(1);
+    broadcastMessagesRef.current = broadcastMessages as [string, string][];
   }
 
   const runCode = () => {
@@ -231,7 +234,77 @@ function App() {
             : sprite,
         ),
       );
+      await new DatabaseManager().updateProjectBroadcastMessages(
+        1,
+        broadcastMessagesRef.current,
+      );
     })();
+  }
+  function refreshAllBroadcastFields() {
+    const workspace = Blockly.getMainWorkspace();
+
+    if (!workspace) {
+      return;
+    }
+
+    const options: [string, string][] = [...broadcastMessagesRef.current];
+
+    if (options.length === 0) {
+      options.push(["message 1", "message 1"]);
+    }
+
+    options.push(["Rename message...", "RENAME_MESSAGE"]);
+    options.push(["New Message...", "NEW_MESSAGE"]);
+
+    for (const block of workspace.getAllBlocks(false)) {
+      const field = block.getField("BROADCAST");
+
+      if (!field) {
+        continue;
+      }
+
+      const currentValue = field.getValue();
+
+      // @ts-ignore
+      field.setOptions(options);
+
+      if (
+        broadcastMessagesRef.current.some(([, value]) => value === currentValue)
+      ) {
+        field.setValue(currentValue);
+      }
+    }
+    //@ts-ignore
+    const flyout = workspace.getFlyout();
+
+    if (flyout) {
+      for (const item of flyout.getContents()) {
+        if (item.type !== "block") {
+          continue;
+        }
+
+        const block = item.element as Blockly.Block;
+        const field = block.getField("BROADCAST");
+        if (!field) {
+          continue;
+        }
+
+        const currentValue = field.getValue();
+
+        // @ts-ignore
+        field.setOptions(options);
+
+        if (
+          broadcastMessagesRef.current.some(
+            ([, value]) => value === currentValue,
+          )
+        ) {
+          field.setValue(currentValue);
+        }
+      }
+    }
+
+    flyout?.reflow();
   }
 
   function SpriteSelector() {
@@ -517,21 +590,14 @@ function App() {
                   if (!name) {
                     return;
                   }
-                  let newBroadcastMessages: [string, string][] = [
+                  broadcastMessagesRef.current = [
                     ...broadcastMessagesRef.current,
                     [name, name],
                   ];
-                  console.warn("New broadcast messages:", newBroadcastMessages);
-                  console.warn(
-                    "Old broadcast messages:",
-                    broadcastMessagesRef.current,
-                  );
-                  broadcastMessagesRef.current = newBroadcastMessages;
-                  //@ts-ignore
-                  field.setOptions(optionsFn(broadcastMessagesRef.current));
+
+                  refreshAllBroadcastFields();
+
                   field.setValue(name);
-                  console.log("refreshing toolbox...");
-                  refreshBroadcastFields(broadcastMessagesRef.current);
                 },
               },
             });
@@ -546,20 +612,16 @@ function App() {
                   if (!name) {
                     return;
                   }
-                  let newBroadcastMessages: [string, string][] =
-                    broadcastMessagesRef.current.map((option) =>
-                      option[0] === field.getValue() ? [name, name] : option,
+                  const oldName = field.getValue();
+
+                  broadcastMessagesRef.current =
+                    broadcastMessagesRef.current.map(([text, value]) =>
+                      value === oldName ? [name, name] : [text, value],
                     );
-                  console.warn("New broadcast messages:", newBroadcastMessages);
-                  console.warn(
-                    "Old broadcast messages:",
-                    broadcastMessagesRef.current,
-                  );
-                  broadcastMessagesRef.current = newBroadcastMessages;
-                  //@ts-ignore
-                  field.setOptions(optionsFn(broadcastMessagesRef.current));
-                  console.log("refreshing toolbox...");
-                  refreshBroadcastFields(broadcastMessagesRef.current);
+
+                  refreshAllBroadcastFields();
+
+                  field.setValue(name);
                 },
               },
             });
