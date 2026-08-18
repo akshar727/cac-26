@@ -103,29 +103,8 @@ export class ProcedureFrameNoReturn extends StackFrame {
   }
 }
 
-// export class ProcedureFrameReturn extends ProcedureFrameNoReturn {
-//   _returnValue: number | string | boolean | null;
-//   _returnDestination: number | null;
-//   _arguments: { name: string; value: Value }[];
-//   _evaluationId: number;
-
-//   constructor(
-//     procedure: Procedure,
-//     args: { name: string; value: Value }[],
-//     evaluationId: number,
-//   ) {
-//     super(procedure, []);
-//     this._arguments = args;
-//     this._returnValue = null;
-//     this._returnDestination = null;
-//     this._evaluationId = evaluationId;
-//   }
-// }
-
-// export type EvaluationFrame = {
-//   id: number;
-//   expression: Value;
-//   result: number | string | boolean | null | undefined;
-//   state: "evaluating" | "evaluated" | "error";
-//   waitingForProcedure: ProcedureFrameReturn | null;
-// };
+export class ForeverFrame extends StackFrame {
+  constructor(body: IntermediateBlock[]) {
+    super(body);
+  }
+}

@@ -7,7 +7,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     helpUrl: "",
     message0: "When Started",
     nextStatement: null,
-    colour: 60,
+    colour: 44,
     inputsInline: true,
   },
   {
@@ -296,7 +296,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
       },
     ],
     nextStatement: null,
-    colour: 60,
+    colour: 44,
     inputsInline: true,
   },
   {
@@ -305,7 +305,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     helpUrl: "",
     message0: "When this sprite clicked",
     nextStatement: null,
-    colour: 60,
+    colour: 44,
     inputsInline: true,
   },
   {
@@ -339,7 +339,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
       },
     ],
     nextStatement: null,
-    colour: 60,
+    colour: 44,
     inputsInline: true,
     extensions: ["broadcast_dropdown_extension"],
   },
@@ -357,8 +357,24 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 60,
+    colour: 44,
     inputsInline: true,
     extensions: ["broadcast_dropdown_extension"],
+  },
+  {
+    type: "controls_forever",
+    tooltip: "Run code forever",
+    helpUrl: "",
+    message0: "forever\n do %1",
+    args0: [
+      {
+        type: "input_statement",
+        name: "DO",
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 113,
+    inputsInline: true,
   },
 ]);

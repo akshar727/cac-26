@@ -322,7 +322,7 @@ export class EvaluationEngine {
           return processingThread.target.y;
         }
         case "screen_rotation": {
-          return processingThread.target.direction;
+          return processingThread.target.direction % 360;
         }
         case "logic_ternary": {
           const conditionResult = this.evaluate(

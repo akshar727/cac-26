@@ -490,8 +490,8 @@ function App() {
 
   async function setupWorkspace() {
     console.log("Setting up workspace...");
-    Blockly.utils.colour.setHsvSaturation(0.75);
-    Blockly.utils.colour.setHsvValue(0.65);
+    Blockly.utils.colour.setHsvSaturation(0.89);
+    Blockly.utils.colour.setHsvValue(0.85);
     if (!Blockly.getMainWorkspace()) {
       Blockly.common.defineBlocks(blocks);
       Blockly.Extensions.register("costume_dropdown_extension", function () {
@@ -644,7 +644,10 @@ function App() {
           colour: "310",
         },
         event_category: {
-          colour: "60",
+          colour: "44",
+        },
+        loop_category: {
+          colour: "113",
         },
       },
       startHats: true,

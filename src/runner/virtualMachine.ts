@@ -1,6 +1,7 @@
 import { Runtime } from "./runtime";
 import { Thread } from "./thread";
 import {
+  ForeverFrame,
   ForFrame,
   IfFrame,
   ProcedureFrameNoReturn,
@@ -209,6 +210,8 @@ export class VirtualMachine {
               }
             } else if (currentFrame instanceof ForFrame) {
               thread.currentFrame()?.markComplete();
+            } else if (currentFrame instanceof ForeverFrame) {
+              thread.currentFrame()!._position = 0; // reset position to the start of the body
             }
           }
         }
@@ -586,6 +589,11 @@ export class VirtualMachine {
         thread.addFrame(newFrame);
         break;
       }
+      case "controls_forever": {
+        const newFrame = new ForeverFrame(blockToExecute.body);
+        thread.addFrame(newFrame);
+        break;
+      }
       case "controls_flow_statements": {
         if (blockToExecute.flow === "BREAK") {
           while (thread.executionStack.length > 0) {
@@ -596,7 +604,8 @@ export class VirtualMachine {
               if (
                 thread.executionStack[i] instanceof RepeatFrame ||
                 thread.executionStack[i] instanceof RepeatWhileUntilFrame ||
-                thread.executionStack[i] instanceof ForFrame
+                thread.executionStack[i] instanceof ForFrame ||
+                thread.executionStack[i] instanceof ForeverFrame
               ) {
                 // Found the nearest RepeatFrame, pop it and break out of the loop
                 thread.executionStack.splice(i, 1);
@@ -649,6 +658,10 @@ export class VirtualMachine {
               } else {
                 repeatWhileFrame.markComplete(); // Mark the loop as complete if condition is not met
               }
+              break;
+            } else if (thread.executionStack[i] instanceof ForeverFrame) {
+              const foreverFrame = thread.executionStack[i] as ForeverFrame;
+              foreverFrame._position = 0; // Reset position to the start of the loop body
               break;
             }
           }

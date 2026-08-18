@@ -121,6 +121,10 @@ export const toolbox = {
           kind: "block",
           type: "controls_flow_statements",
         },
+        {
+          kind: "block",
+          type: "controls_forever",
+        },
       ],
     },
     {

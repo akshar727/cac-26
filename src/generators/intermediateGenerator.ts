@@ -836,3 +836,13 @@ intermediateGenerator.forBlock["events_when_broadcast_received"] = function (
 ) {
   return "";
 };
+intermediateGenerator.forBlock["controls_forever"] = function (
+  block,
+  _,
+) {
+  const body = intermediateGenerator.statementToCode(block, "DO");
+  return JSON.stringify({
+    type: "controls_forever",
+    body: JSON.parse("[" + body + "]"),
+  });
+};

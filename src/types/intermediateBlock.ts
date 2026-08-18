@@ -118,4 +118,8 @@ export type IntermediateBlock =
   | {
       type: "events_broadcast";
       message: string;
+    }
+  | {
+      type: "controls_forever";
+      body: IntermediateBlock[];
     };
