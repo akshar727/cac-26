@@ -811,6 +811,18 @@ intermediateGenerator.forBlock["screen_position_y"] = function (_, __) {
   ];
 };
 
+intermediateGenerator.forBlock["screen_glide"] = function (block, generator) {
+  const duration = generator.valueToCode(block, "DURATION", Order.NONE) || "0";
+  const x_value = generator.valueToCode(block, "X", Order.NONE) || "0";
+  const y_value = generator.valueToCode(block, "Y", Order.NONE) || "0";
+  return JSON.stringify({
+    type: "screen_glide",
+    duration: getFormatted(duration),
+    x: getFormatted(x_value),
+    y: getFormatted(y_value),
+  });
+}
+
 intermediateGenerator.forBlock["events_when_started"] = function (_, __) {
   return "";
 };

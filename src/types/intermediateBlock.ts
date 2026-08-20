@@ -122,4 +122,10 @@ export type IntermediateBlock =
   | {
       type: "controls_forever";
       body: IntermediateBlock[];
+    }
+  | {
+      type: "screen_glide";
+      duration: Value;
+      x: Value;
+      y: Value;
     };

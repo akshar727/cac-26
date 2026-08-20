@@ -17,6 +17,7 @@ import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toolbox } from "./toolbox";
+import { loops } from "blockly/blocks";
 import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { BlocklyVariablePromptDialog } from "./components/BlocklyVariablePromptDialog";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -494,6 +495,7 @@ function App() {
     Blockly.utils.colour.setHsvValue(0.85);
     if (!Blockly.getMainWorkspace()) {
       Blockly.common.defineBlocks(blocks);
+      loops.loopTypes.add("controls_forever"); //register it as a loop block so break/continue doesnt look grayed out
       Blockly.Extensions.register("costume_dropdown_extension", function () {
         //@ts-ignore
         this.getField("COSTUME").setOptions(function () {
@@ -520,7 +522,7 @@ function App() {
           return;
         }
         function optionsFn(toSet: [string, string][]) {
-          console.log(`Setting broadcast options with:`, toSet);
+          // console.log(`Setting broadcast options with:`, toSet);
           const options = [];
           for (const broadcastOption in toSet) {
             options.push(toSet[broadcastOption]);

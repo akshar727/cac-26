@@ -171,7 +171,7 @@ export class Runtime {
 
   tick(deltaTime: number, currentTime: number) {
     for (const thread of this._threads) {
-      this._vm.step(thread, currentTime);
+      this._vm.step(thread, currentTime,deltaTime);
     }
     this._threads = this._threads.filter((thread) => thread.status !== "done");
     this._renderer.blit(this._targets);

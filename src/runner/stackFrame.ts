@@ -108,3 +108,55 @@ export class ForeverFrame extends StackFrame {
     super(body);
   }
 }
+
+export class GlideFrame extends StackFrame {
+  _targetX: number;
+  _targetY: number;
+  _endTime: number;
+  _currentTime: number;
+
+  constructor(
+    targetX: number,
+    targetY: number,
+    currentTime: number,
+    endTime: number,
+  ) {
+    super([]);
+    this._targetX = targetX;
+    this._targetY = targetY;
+    this._endTime = endTime;
+    this._currentTime = currentTime;
+  }
+
+  updateElapsedTime(newTime: number) {
+    this._currentTime = newTime;
+  }
+
+  getDxDy(
+    currentX: number,
+    currentY: number,
+    deltaTime: number,
+  ): { dx: number; dy: number } {
+    const remainingTime = this._endTime - this._currentTime;
+
+    if (remainingTime <= 0) {
+      return { dx: 0, dy: 0 };
+    }
+    const dt = Math.min(deltaTime, remainingTime);
+    let dx = ((this._targetX - currentX) / (remainingTime / 1000)) * dt;
+    let dy = ((this._targetY - currentY) / (remainingTime / 1000)) * dt;
+    const nextX = currentX + dx;
+    const nextY = currentY + dy;
+    const reachedX = (this._targetX - currentX) * (this._targetX - nextX) <= 0;
+    const reachedY = (this._targetY - currentY) * (this._targetY - nextY) <= 0;
+
+    return {
+      dx: reachedX ? this._targetX - currentX : dx,
+      dy: reachedY ? this._targetY - currentY : dy,
+    };
+  }
+
+  isComplete(): boolean {
+    return this._currentTime >= this._endTime;
+  }
+}

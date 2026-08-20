@@ -3,6 +3,7 @@ import { Thread } from "./thread";
 import {
   ForeverFrame,
   ForFrame,
+  GlideFrame,
   IfFrame,
   ProcedureFrameNoReturn,
   RepeatFrame,
@@ -20,7 +21,7 @@ export class VirtualMachine {
     this._evaluator = new EvaluationEngine(r);
     this._runtime = r;
   }
-  step(thread: Thread, currentTime: number) {
+  step(thread: Thread, currentTime: number, deltaTime: number) {
     if (thread.status === "waiting") {
       if (currentTime < thread.waitUntil) {
         return;
@@ -51,12 +52,6 @@ export class VirtualMachine {
       let blockToExecute = null;
 
       if (thread.executionStack.length > 0) {
-        // console.log(
-        //   "Current stack for target",
-        //   thread.target.id,
-        //   ":",
-        //   JSON.parse(JSON.stringify(thread.executionStack)),
-        // );
         const currentFrame = thread.currentFrame();
         if (currentFrame) {
           if (currentFrame.isComplete()) {
@@ -132,6 +127,27 @@ export class VirtualMachine {
           //   "Current frame",
           //   JSON.parse(JSON.stringify(currentFrame)),
           // );
+          if (currentFrame instanceof GlideFrame) {
+            if (
+              thread.target.x === currentFrame._targetX &&
+              thread.target.y === currentFrame._targetY
+            ) {
+              thread.popFrame();
+              if (thread.executionStack.length === 0) {
+                thread.count++;
+              }
+              continue;
+            }
+            currentFrame.updateElapsedTime(currentTime);
+            const { dx, dy } = currentFrame.getDxDy(
+              thread.target.x,
+              thread.target.y,
+              deltaTime
+            );
+            thread.target.x += dx;
+            thread.target.y += dy;
+            return;
+          }
           blockToExecute = currentFrame._body[currentFrame._position];
           console.log("Block to execute in current frame:", blockToExecute);
           currentFrame._position++;
@@ -210,6 +226,10 @@ export class VirtualMachine {
               }
             } else if (currentFrame instanceof ForFrame) {
               thread.currentFrame()?.markComplete();
+              console.warn(
+                "Marking For frame complete after reaching end of body for target:",
+                thread.target.id,
+              );
             } else if (currentFrame instanceof ForeverFrame) {
               thread.currentFrame()!._position = 0; // reset position to the start of the body
             }
@@ -781,6 +801,30 @@ export class VirtualMachine {
       case "events_broadcast": {
         const broadcastMessage = blockToExecute.message;
         this._runtime.broadcastReceived(broadcastMessage);
+        break;
+      }
+      case "screen_glide": {
+        const duration = this._evaluator.evaluate(
+          blockToExecute.duration,
+          thread,
+        ) as number;
+        const targetX = this._evaluator.evaluate(
+          blockToExecute.x,
+          thread,
+        ) as number;
+        const targetY = this._evaluator.evaluate(
+          blockToExecute.y,
+          thread,
+        ) as number;
+
+        const startTime = performance.now();
+        const endTime = startTime + duration * 1000;
+        console.log(
+          `Glide from (${thread.target.x}, ${thread.target.y}) to (${targetX}, ${targetY}) over ${duration} seconds.`,
+        );
+        console.log(`Start time: ${startTime}, End time: ${endTime}`);
+        let newFrame = new GlideFrame(targetX, targetY, startTime, endTime);
+        thread.addFrame(newFrame);
         break;
       }
       default:

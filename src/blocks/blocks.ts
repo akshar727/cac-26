@@ -377,4 +377,35 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     colour: 113,
     inputsInline: true,
   },
+  {
+    type: "screen_glide",
+    tooltip:
+      "Glide the sprite to a specified position over a specified duration",
+    helpUrl: "",
+    message0: "glide %1 seconds to x %2 y %3",
+    args0: [
+      {
+        type: "input_value",
+        name: "DURATION",
+        check: "Number",
+        value: 1,
+      },
+      {
+        type: "input_value",
+        name: "X",
+        check: "Number",
+        value: 0,
+      },
+      {
+        type: "input_value",
+        name: "Y",
+        check: "Number",
+        value: 0,
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    inputsInline: true,
+  },
 ]);
