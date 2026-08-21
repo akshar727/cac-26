@@ -65,16 +65,6 @@ export const toolbox = {
         {
           kind: "block",
           type: "logic_touching",
-          // inputs: {
-          //   TOUCHING: {
-          //     shadow: {
-          //       type: "dropdown",
-          //       fields: {
-          //         VALUE: "mouse-pointer",
-          //       },
-          //     },
-          //   },
-          // },
         },
       ],
     },
@@ -133,11 +123,11 @@ export const toolbox = {
         },
         {
           kind: "block",
-          type: "controls_flow_statements",
+          type: "controls_forever",
         },
         {
           kind: "block",
-          type: "controls_forever",
+          type: "controls_flow_statements",
         },
       ],
     },
@@ -845,6 +835,20 @@ export const toolbox = {
                 type: "math_number",
                 fields: {
                   NUM: 0,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_glide_preset",
+          inputs: {
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 1,
                 },
               },
             },

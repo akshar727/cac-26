@@ -823,6 +823,19 @@ intermediateGenerator.forBlock["screen_glide"] = function (block, generator) {
   });
 };
 
+intermediateGenerator.forBlock["screen_glide_preset"] = function (
+  block,
+  generator,
+) {
+  const duration = generator.valueToCode(block, "DURATION", Order.NONE) || "0";
+  const dropdownValue = block.getFieldValue("GLIDE_PRESET");
+  return JSON.stringify({
+    type: "screen_glide_preset",
+    duration: getFormatted(duration),
+    preset: dropdownValue,
+  });
+};
+
 intermediateGenerator.forBlock["logic_touching"] = function (block, _) {
   const target = block.getFieldValue("TOUCHING");
   return [

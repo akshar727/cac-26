@@ -423,5 +423,31 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     output: "Boolean",
     colour: 210,
     extensions: ["parent_tooltip_when_inline", "touching_dropdown_extension"],
-  }
+  },
+  {
+    type: "screen_glide_preset",
+    tooltip: "glide to a location",
+    helpUrl: "",
+    message0: "glide to %1 in %2 seconds",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "GLIDE_PRESET",
+        options: [["none", "NONE"]],
+      },
+      {
+        type: "input_value",
+        name: "DURATION",
+        check: "Number",
+        value: 1,
+      },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+    extensions: [
+      "parent_tooltip_when_inline",
+      "glide_preset_dropdown_extension",
+    ],
+  },
 ]);

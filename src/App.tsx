@@ -148,6 +148,8 @@ function App() {
     if (!Blockly.getMainWorkspace()) return;
     Blockly.Events.disable();
     try {
+      setCodeRunningState(true);
+      codeRunning.current = true;
       const runtime = new Runtime(sprites);
       runtime.start();
       const canvas = document.getElementById("foregroundCanvas");
@@ -155,7 +157,6 @@ function App() {
         console.error("what");
         return;
       }
-      setCodeRunningState(true);
       const keyDownEvent = (event: KeyboardEvent) => {
         runtime.keyPressed(event.key);
       };
@@ -638,7 +639,12 @@ function App() {
             ["edge", "EDGE"],
           ];
           for (const sprite of spritesRef.current) {
-            if (sprite.id === activeSpriteRef.current?.id) {
+            if (
+              sprite.id === activeSpriteRef.current?.id &&
+              !codeRunning.current
+            ) {
+              // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
+              // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
               continue;
             }
             options.push([sprite.name, sprite.id.toString()]);
@@ -646,6 +652,30 @@ function App() {
           return options;
         });
       });
+      Blockly.Extensions.register(
+        "glide_preset_dropdown_extension",
+        function () {
+          //@ts-ignore
+          this.getField("GLIDE_PRESET").setOptions(function () {
+            const options = [
+              ["mouse-pointer", "MOUSE_POINTER"],
+              ["random position", "RANDOM_POSITION"],
+            ];
+            for (const sprite of spritesRef.current) {
+              if (
+                sprite.id === activeSpriteRef.current?.id &&
+                !codeRunning.current
+              ) {
+                // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
+                // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
+                continue;
+              }
+              options.push([sprite.name, sprite.id.toString()]);
+            }
+            return options;
+          });
+        },
+      );
     }
     const theme = Blockly.Theme.defineTheme("cac", {
       name: "cac",

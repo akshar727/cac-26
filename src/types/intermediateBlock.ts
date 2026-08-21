@@ -128,4 +128,9 @@ export type IntermediateBlock =
       duration: Value;
       x: Value;
       y: Value;
+    }
+  | {
+      type: "screen_glide_preset";
+      duration: Value;
+      preset: string | "MOUSE_POINTER" | "RANDOM_POSITION";
     };

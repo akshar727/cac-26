@@ -832,6 +832,64 @@ export class VirtualMachine {
         thread.addFrame(newFrame);
         break;
       }
+      case "screen_glide_preset": {
+        const duration = this._evaluator.evaluate(
+          blockToExecute.duration,
+          thread,
+        ) as number;
+        let targetX,
+          targetY = 0;
+        if (blockToExecute.preset === "MOUSE_POINTER") {
+          const mousePosition = this._runtime.getMousePosition();
+          targetX =
+            mousePosition.x -
+            ((thread.target._costumes[thread.target.currentCostumeIndex].width /
+              2) *
+              thread.target.size) /
+              100;
+          targetY =
+            mousePosition.y -
+            ((thread.target._costumes[thread.target.currentCostumeIndex]
+              .height /
+              2) *
+              thread.target.size) /
+              100;
+        } else if (blockToExecute.preset === "RANDOM_POSITION") {
+          // lets not hardcode these later on
+          targetX = Math.random() * 800;
+          targetY = Math.random() * 400;
+        } else {
+          let targetSprite = this._runtime._targets.find(
+            (sprite) => sprite.id === parseInt(blockToExecute.preset),
+          );
+          if (!targetSprite) {
+            console.warn(
+              `Target sprite with name ${blockToExecute.preset} not found.`,
+            );
+            return;
+          }
+          targetX =
+            targetSprite.x -
+            ((targetSprite._costumes[targetSprite.currentCostumeIndex].width /
+              2) *
+              targetSprite.size) /
+              100 /
+              2;
+          targetY =
+            targetSprite.y -
+            ((targetSprite._costumes[targetSprite.currentCostumeIndex].height /
+              2) *
+              targetSprite.size) /
+              100 /
+              2;
+        }
+
+        const startTime = performance.now();
+        const endTime = startTime + duration * 1000;
+        let newFrame = new GlideFrame(targetX, targetY, startTime, endTime);
+        thread.addFrame(newFrame);
+        break;
+      }
       default:
         //@ts-ignore
         console.warn("Unknown block type:", blockToExecute.type);
