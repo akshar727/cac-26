@@ -48,6 +48,7 @@ export class VirtualMachine {
         );
         return;
       }
+      let foreverRuntimeYield = false;
 
       let blockToExecute = null;
 
@@ -142,14 +143,14 @@ export class VirtualMachine {
             const { dx, dy } = currentFrame.getDxDy(
               thread.target.x,
               thread.target.y,
-              deltaTime
+              deltaTime,
             );
             thread.target.x += dx;
             thread.target.y += dy;
             return;
           }
           blockToExecute = currentFrame._body[currentFrame._position];
-          console.log("Block to execute in current frame:", blockToExecute);
+          // console.log("Block to execute in current frame:", blockToExecute);
           currentFrame._position++;
           if (currentFrame._position === currentFrame._body.length) {
             if (currentFrame instanceof RepeatFrame) {
@@ -231,6 +232,7 @@ export class VirtualMachine {
                 thread.target.id,
               );
             } else if (currentFrame instanceof ForeverFrame) {
+              foreverRuntimeYield = true;
               thread.currentFrame()!._position = 0; // reset position to the start of the body
             }
           }
@@ -262,12 +264,12 @@ export class VirtualMachine {
         return;
       }
       if (thread.target.id === 6) {
-        console.log(
-          "Executing block of type",
-          blockToExecute.type,
-          "for target",
-          thread.target,
-        );
+        // console.log(
+        //   "Executing block of type",
+        //   blockToExecute.type,
+        //   "for target",
+        //   thread.target,
+        // );
       }
       this.executeBlock(blockToExecute, thread, currentTime);
 
@@ -277,6 +279,9 @@ export class VirtualMachine {
           console.log("Thread count incremented to:", thread.count);
           //   console.log(thread.target);
         }
+      }
+      if (foreverRuntimeYield) {
+        return; // yield to other tasks
       }
     }
   }

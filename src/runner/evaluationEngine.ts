@@ -113,6 +113,55 @@ export class EvaluationEngine {
         }
         return value.toString().length === 0;
       }
+      case "logic_touching": {
+        if (condition.target === "MOUSE_POINTER") {
+          console.log(
+            this._runtime._renderer.mouseTouchingSprite(
+              processingThread.target,
+              this._runtime._mouseX,
+              this._runtime._mouseY,
+            ),
+          );
+          return this._runtime._renderer.mouseTouchingSprite(
+            processingThread.target,
+            this._runtime._mouseX,
+            this._runtime._mouseY,
+          );
+        } else if (condition.target === "EDGE") {
+          const sprite = processingThread.target;
+          let canvas = document.getElementById(
+            "foregroundCanvas",
+          ) as HTMLCanvasElement;
+          if (!canvas) {
+            throw new Error(
+              "Canvas element not found for logic_touching EDGE check",
+            );
+          }
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            throw new Error(
+              "Could not get 2D context from canvas for logic_touching EDGE check",
+            );
+          }
+          return this._runtime._renderer.spriteTouchingEdge(
+            sprite,
+            canvas.width,
+            canvas.height,
+          );
+        }
+        const targetSprite = this._runtime._targets.find(
+          (sprite) => sprite.id.toString() === condition.target,
+        );
+        if (!targetSprite) {
+          throw new Error(
+            `Target sprite not found for logic_touching: ${condition.target}`,
+          );
+        }
+        return this._runtime._renderer.spritesTouching(
+          processingThread.target,
+          targetSprite,
+        );
+      }
       default:
         throw new Error(`Unknown condition. ${JSON.stringify(condition)}`);
     }
@@ -388,7 +437,7 @@ export class EvaluationEngine {
     );
   }
 
-  evaluateText(field: Text, processingThread: Thread): string {
+  private evaluateText(field: Text, processingThread: Thread): string {
     if (!field) {
       throw new InvalidFieldError(
         `Field is undefined or null: ${JSON.stringify(field)}`,

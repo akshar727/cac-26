@@ -134,6 +134,10 @@ export type Condition =
   | {
       type: "text_isEmpty";
       value: Text | Value;
+    }
+  | {
+      type: "logic_touching";
+      target: string | "MOUSE_POINTER" | "EDGE";
     };
 
 export const conditionTypes = [
@@ -143,6 +147,7 @@ export const conditionTypes = [
   "logic_boolean",
   "logic_null",
   "text_isEmpty",
+  "logic_touching",
 ] as const;
 
 export type ConditionType = (typeof conditionTypes)[number];

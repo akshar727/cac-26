@@ -821,7 +821,18 @@ intermediateGenerator.forBlock["screen_glide"] = function (block, generator) {
     x: getFormatted(x_value),
     y: getFormatted(y_value),
   });
-}
+};
+
+intermediateGenerator.forBlock["logic_touching"] = function (block, _) {
+  const target = block.getFieldValue("TOUCHING");
+  return [
+    JSON.stringify({
+      type: "logic_touching",
+      target: target,
+    }),
+    Order.NONE,
+  ];
+};
 
 intermediateGenerator.forBlock["events_when_started"] = function (_, __) {
   return "";
@@ -848,10 +859,7 @@ intermediateGenerator.forBlock["events_when_broadcast_received"] = function (
 ) {
   return "";
 };
-intermediateGenerator.forBlock["controls_forever"] = function (
-  block,
-  _,
-) {
+intermediateGenerator.forBlock["controls_forever"] = function (block, _) {
   const body = intermediateGenerator.statementToCode(block, "DO");
   return JSON.stringify({
     type: "controls_forever",

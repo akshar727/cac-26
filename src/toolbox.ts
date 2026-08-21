@@ -62,6 +62,20 @@ export const toolbox = {
             },
           },
         },
+        {
+          kind: "block",
+          type: "logic_touching",
+          // inputs: {
+          //   TOUCHING: {
+          //     shadow: {
+          //       type: "dropdown",
+          //       fields: {
+          //         VALUE: "mouse-pointer",
+          //       },
+          //     },
+          //   },
+          // },
+        },
       ],
     },
     {

@@ -13,8 +13,9 @@ export class Runtime {
   _threads: Thread[] = [];
   _scripts: Script[] = [];
   _vm: VirtualMachine;
+  _mouseX: number = 0;
+  _mouseY: number = 0;
   _renderer: Renderer;
-
   constructor(sprites: DatabaseSprite[]) {
     this._vm = new VirtualMachine(this);
     this._renderer = new Renderer();
@@ -171,7 +172,7 @@ export class Runtime {
 
   tick(deltaTime: number, currentTime: number) {
     for (const thread of this._threads) {
-      this._vm.step(thread, currentTime,deltaTime);
+      this._vm.step(thread, currentTime, deltaTime);
     }
     this._threads = this._threads.filter((thread) => thread.status !== "done");
     this._renderer.blit(this._targets);
@@ -209,5 +210,13 @@ export class Runtime {
 
   stopAll() {
     this._threads = [];
+  }
+
+  setMousePosition(x: number, y: number) {
+    this._mouseX = x;
+    this._mouseY = y;
+  }
+  getMousePosition(): { x: number; y: number } {
+    return { x: this._mouseX, y: this._mouseY };
   }
 }

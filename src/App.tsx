@@ -56,6 +56,7 @@ function App() {
   const codeRunning = React.useRef(false);
   const [codeRunningState, setCodeRunningState] = React.useState(false);
   const broadcastMessagesRef = useRef<[string, string][]>([]);
+  const spritesRef = useRef(sprites);
 
   React.useEffect(() => {
     codeRunning.current = codeRunningState;
@@ -65,6 +66,10 @@ function App() {
   React.useEffect(() => {
     activeSpriteRef.current = activeSprite;
   }, [activeSprite]);
+
+  React.useEffect(() => {
+    spritesRef.current = sprites;
+  }, [sprites]);
 
   // this effect should only add stuff into the workspace, not fetch data.
   React.useEffect(() => {
@@ -160,8 +165,20 @@ function App() {
         const y = event.clientY - rect.top;
         runtime.screenClick(x, y);
       };
+      const canvasMouseMoveEvent = (event: MouseEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        runtime.setMousePosition(
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+        );
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+        };
+      };
       canvas.addEventListener("click", canvasClickEvent);
       window.addEventListener("keydown", keyDownEvent);
+      canvas.addEventListener("mousemove", canvasMouseMoveEvent);
       let prev = performance.now();
       function step() {
         const now = performance.now();
@@ -543,26 +560,6 @@ function App() {
           options.push(["New Message...", "NEW_MESSAGE"]);
           return options;
         }
-        function refreshBroadcastFields(messages: [string, string][]) {
-          const workspace = Blockly.getMainWorkspace();
-
-          if (!workspace) {
-            return;
-          }
-
-          const options = optionsFn(messages);
-
-          for (const block of workspace.getAllBlocks(false)) {
-            const field = block.getField("BROADCAST");
-
-            if (field) {
-              //@ts-ignore
-              field.setOptions(options);
-            }
-          }
-          //@ts-ignore
-          workspace.refreshToolboxSelection();
-        }
         //@ts-ignore
         field.setOptions(optionsFn(broadcastMessagesRef.current));
         field.setValidator((newValue) => {
@@ -631,6 +628,22 @@ function App() {
             return null;
           }
           return newValue;
+        });
+      });
+      Blockly.Extensions.register("touching_dropdown_extension", function () {
+        //@ts-ignore
+        this.getField("TOUCHING").setOptions(function () {
+          const options = [
+            ["mouse-pointer", "MOUSE_POINTER"],
+            ["edge", "EDGE"],
+          ];
+          for (const sprite of spritesRef.current) {
+            if (sprite.id === activeSpriteRef.current?.id) {
+              continue;
+            }
+            options.push([sprite.name, sprite.id.toString()]);
+          }
+          return options;
         });
       });
     }

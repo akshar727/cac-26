@@ -408,4 +408,20 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     colour: 310,
     inputsInline: true,
   },
+  {
+    type: "logic_touching",
+    tooltip: "touching %1?",
+    helpUrl: "",
+    message0: "touching %1?",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "TOUCHING",
+        options: [["none", "none"]],
+      },
+    ],
+    output: "Boolean",
+    colour: 210,
+    extensions: ["parent_tooltip_when_inline", "touching_dropdown_extension"],
+  }
 ]);
