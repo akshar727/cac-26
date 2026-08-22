@@ -868,20 +868,8 @@ export class VirtualMachine {
             );
             return;
           }
-          targetX =
-            targetSprite.x -
-            ((targetSprite._costumes[targetSprite.currentCostumeIndex].width /
-              2) *
-              targetSprite.size) /
-              100 /
-              2;
-          targetY =
-            targetSprite.y -
-            ((targetSprite._costumes[targetSprite.currentCostumeIndex].height /
-              2) *
-              targetSprite.size) /
-              100 /
-              2;
+          targetX = targetSprite.x;
+          targetY = targetSprite.y;
         }
 
         const startTime = performance.now();

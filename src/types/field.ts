@@ -81,6 +81,25 @@ export type Value =
       type: "text_count";
       text: Text | Value;
       subtext: Text | Value;
+    }
+  | {
+      type: "screen_height";
+    }
+  | {
+      type: "screen_width";
+    }
+  | {
+      type: "screen_sprite_size";
+    }
+  | {
+      type: "screen_mouse_x";
+    }
+  | {
+      type: "screen_mouse_y";
+    }
+  | {
+      type: "screen_distance_to";
+      target: string | "MOUSE_POINTER";
     };
 
 export const valueTypes = [
@@ -102,6 +121,12 @@ export const valueTypes = [
   "logic_ternary",
   "text_length",
   "text_count",
+  "screen_height",
+  "screen_width",
+  "screen_sprite_size",
+  "screen_mouse_x",
+  "screen_mouse_y",
+  "screen_distance_to",
 ] as const;
 
 export type ValueType = (typeof valueTypes)[number];
@@ -138,6 +163,13 @@ export type Condition =
   | {
       type: "logic_touching";
       target: string | "MOUSE_POINTER" | "EDGE";
+    }
+  | {
+      type: "logic_key_down";
+      key: string;
+    }
+  | {
+      type: "logic_mouse_down";
     };
 
 export const conditionTypes = [
@@ -148,6 +180,8 @@ export const conditionTypes = [
   "logic_null",
   "text_isEmpty",
   "logic_touching",
+  "logic_key_down",
+  "logic_mouse_down",
 ] as const;
 
 export type ConditionType = (typeof conditionTypes)[number];

@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer } from "react";
 import { Card, CardContent, CardFooter, CardTitle } from "./ui/card";
-import { DatabaseSprite } from "@/types/databaseSprite";
+import { DatabaseSprite } from "@/types/database";
 import { DatabaseManager } from "@/lib/database";
 import {
   Dialog,

@@ -3,7 +3,7 @@ import * as Blockly from "blockly";
 import { intermediateGenerator } from "@/generators/intermediateGenerator";
 import { Thread } from "./thread";
 import { Sprite } from "@/runner/sprite";
-import { DatabaseSprite } from "@/types/databaseSprite";
+import { DatabaseSprite } from "@/types/database";
 import { VirtualMachine } from "./virtualMachine";
 import { Renderer } from "./renderer";
 import { Procedure } from "@/types/field";
@@ -12,9 +12,11 @@ export class Runtime {
   _targets: Sprite[] = [];
   _threads: Thread[] = [];
   _scripts: Script[] = [];
+  _keyboardKeys: Map<string, boolean> = new Map();
+  _mouseDown: boolean = false;
   _vm: VirtualMachine;
-  _mouseX: number = 0;
-  _mouseY: number = 0;
+  _mouseX: number = 1000; // so that sprites at 0,0 dont get triggered by mouse down
+  _mouseY: number = 1000;
   _renderer: Renderer;
   constructor(sprites: DatabaseSprite[]) {
     this._vm = new VirtualMachine(this);
@@ -106,15 +108,22 @@ export class Runtime {
   }
 
   keyPressed(key: string) {
+    key = key.replace(" ", "SPACE").toUpperCase();
+    this._keyboardKeys.set(key, true);
     for (const script of this._scripts) {
       if (
         script.trigger.type === "key_pressed" &&
-        script.trigger.value === key.toUpperCase()
+        script.trigger.value === key
       ) {
         // console.log("Starting script for key press:", script);
         this.startScript(script);
       }
     }
+  }
+
+  keyReleased(key: string) {
+    key = key.replace(" ", "SPACE").toUpperCase();
+    this._keyboardKeys.set(key, false);
   }
 
   broadcast(broadcast: string) {
@@ -130,7 +139,6 @@ export class Runtime {
   }
 
   screenClick(x: number, y: number) {
-    console.log("Screen clicked at:", x, y);
     for (const script of this._scripts) {
       if (script.trigger.type === "sprite_clicked") {
         const canvas = document.getElementById(

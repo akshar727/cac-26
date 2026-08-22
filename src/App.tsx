@@ -18,7 +18,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toolbox } from "./toolbox";
 import { loops } from "blockly/blocks";
-import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { BlocklyVariablePromptDialog } from "./components/BlocklyVariablePromptDialog";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "./components/ui/button";
@@ -29,7 +35,7 @@ import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "./components/ui/skeleton";
 import { appDataDir } from "@tauri-apps/api/path";
-import { DatabaseSprite } from "@/types/databaseSprite";
+import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
@@ -44,7 +50,9 @@ function App() {
   const [activeSprite, setActiveSprite] = React.useState<DatabaseSprite | null>(
     null,
   );
-  const [sprites, setSprites] = React.useState<DatabaseSprite[]>([]);
+  const [sprites, setSprites] = React.useState<
+    (DatabaseSprite | DatabaseBackdrop)[]
+  >([]);
   const [spriteImageDialogValue, setSpriteImageDialogValue] = React.useState<
     string | null
   >(null);
@@ -160,6 +168,15 @@ function App() {
       const keyDownEvent = (event: KeyboardEvent) => {
         runtime.keyPressed(event.key);
       };
+      const keyUpEvent = (event: KeyboardEvent) => {
+        runtime.keyReleased(event.key);
+      };
+      const mouseDownEvent = (event: MouseEvent) => {
+        runtime._mouseDown = true;
+      };
+      const mouseUpEvent = (event: MouseEvent) => {
+        runtime._mouseDown = false;
+      };
       const canvasClickEvent = function (event: MouseEvent) {
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
@@ -179,19 +196,21 @@ function App() {
       };
       canvas.addEventListener("click", canvasClickEvent);
       window.addEventListener("keydown", keyDownEvent);
+      window.addEventListener("keyup", keyUpEvent);
       canvas.addEventListener("mousemove", canvasMouseMoveEvent);
+      window.addEventListener("mousedown", mouseDownEvent);
+      window.addEventListener("mouseup", mouseUpEvent);
       let prev = performance.now();
       function step() {
         const now = performance.now();
         const deltaTime = (now - prev) / 1000; // Convert to seconds
         prev = now;
-        let error = false;
+        let errorCheck = false;
         try {
           runtime.tick(deltaTime, now);
         } catch (error) {
-          console.warn("Error during runtime tick:", error);
           setCodeRunningState(false);
-          error = true;
+          errorCheck = true;
           window.removeEventListener("keydown", keyDownEvent);
           //@ts-expect-error
           canvas.removeEventListener("click", canvasClickEvent);
@@ -199,12 +218,16 @@ function App() {
             console.error("Error during runtime tick:", error);
           }
         }
-        if (!error && codeRunning.current) {
+        if (!errorCheck && codeRunning.current) {
           requestAnimationFrame(step);
         } else {
           setCodeRunningState(false);
-          console.warn("Code stopped, removing keydown event listener");
+          console.warn("Code stopped, removing event listeners");
           window.removeEventListener("keydown", keyDownEvent);
+          window.removeEventListener("keyup", keyUpEvent);
+          window.removeEventListener("mousedown", mouseDownEvent);
+          window.removeEventListener("mouseup", mouseUpEvent);
+          window.removeEventListener("mousemove", canvasMouseMoveEvent);
           //@ts-expect-error
           canvas.removeEventListener("click", canvasClickEvent);
         }
@@ -328,182 +351,193 @@ function App() {
 
   function SpriteSelector() {
     return (
-      <Card className="flex-2 justify-between">
-        <CardContent className="flex flex-col gap-2">
-          <CardTitle>Sprites</CardTitle>
-          {sprites.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {sprites.map((sprite: DatabaseSprite) => {
-                return (
-                  <Card
-                    className={cn(
-                      "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200",
-                      activeSprite?.id === sprite.id ? "bg-slate-100" : "",
-                    )}
-                    onClick={() => {
-                      setActiveSprite(sprite);
-                      activeSpriteRef.current = sprite;
-                      // console.log("Active sprite set to:", sprite);
-                      setTimeout(() => {
-                        // console.log(activeSprite);
-                      }, 0);
-                    }}
-                    key={sprite.id}
-                  >
-                    <CardContent className="flex flex-col items-center gap-2">
-                      {sprite.image_paths.length === 0 ? (
-                        <Skeleton className="w-16 h-16" />
-                      ) : (
-                        <img
-                          src={sprite.image_paths[0].loadablePath}
-                          alt={sprite.name}
-                          style={{
-                            maxWidth: 64,
-                            maxHeight: 64,
-                            width: "auto",
-                            height: "auto",
-                            objectFit: "contain",
-                          }}
-                        />
+      <>
+        <Card className="flex-2 justify-between">
+          <CardContent className="flex flex-col gap-2">
+            <CardTitle>Sprites</CardTitle>
+            {sprites.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {sprites.map((sprite: DatabaseSprite) => {
+                  return (
+                    <Card
+                      className={cn(
+                        "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200",
+                        activeSprite?.id === sprite.id ? "bg-slate-100" : "",
                       )}
-                      <p className={`text-sm text-center`}>{sprite.name}</p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p>Sprites will be displayed here.</p>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <Dialog
-            open={spriteDialogOpen}
-            onOpenChange={setSpriteDialogOpen}
-            onOpenChangeComplete={() => {
-              setSpriteImageDialogValue("");
-              setSpriteNameDialogValue("");
-            }}
-          >
-            <DialogTrigger
-              render={<Button onClick={async () => {}}>Add a sprite</Button>}
-            />
-            <DialogContent>
-              <DialogTitle>Add a new sprite</DialogTitle>
-              <DialogDescription>
-                Enter the name of the new sprite and select an image file.
-              </DialogDescription>
-              <FieldGroup>
-                <Field>
-                  <Label htmlFor="spriteName">Sprite Name</Label>
-                  <Input
-                    id="spriteName"
-                    type="text"
-                    value={spriteNameDialogValue || ""}
-                    onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                    placeholder="Enter sprite name"
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="spriteImage">Sprite Images</Label>
-                  <Button
-                    onClick={async () => {
-                      const selectedFile = await open({
-                        multiple: true,
-                        filters: [
-                          {
-                            name: "Images",
-                            extensions: ["png", "jpg", "jpeg", "svg"],
-                          },
-                        ],
-                      });
-                      console.log("Selected file:", selectedFile);
-                      if (selectedFile) {
-                        if (typeof selectedFile === "string") {
-                          setSpriteImageDialogValue("[" + selectedFile + "]");
-                        } else if (Array.isArray(selectedFile)) {
-                          setSpriteImageDialogValue(
-                            JSON.stringify(selectedFile),
-                          );
+                      onClick={() => {
+                        setActiveSprite(sprite);
+                        activeSpriteRef.current = sprite;
+                        // console.log("Active sprite set to:", sprite);
+                        setTimeout(() => {
+                          // console.log(activeSprite);
+                        }, 0);
+                      }}
+                      key={sprite.id}
+                    >
+                      <CardContent className="flex flex-col items-center gap-2">
+                        {sprite.image_paths.length === 0 ? (
+                          <Skeleton className="w-16 h-16" />
+                        ) : (
+                          <img
+                            src={sprite.image_paths[0].loadablePath}
+                            alt={sprite.name}
+                            style={{
+                              maxWidth: 64,
+                              maxHeight: 64,
+                              width: "auto",
+                              height: "auto",
+                              objectFit: "contain",
+                            }}
+                          />
+                        )}
+                        <p className={`text-sm text-center`}>{sprite.name}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p>Sprites will be displayed here.</p>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <Dialog
+              open={spriteDialogOpen}
+              onOpenChange={setSpriteDialogOpen}
+              onOpenChangeComplete={() => {
+                setSpriteImageDialogValue("");
+                setSpriteNameDialogValue("");
+              }}
+            >
+              <DialogTrigger
+                render={<Button onClick={async () => {}}>Add a sprite</Button>}
+              />
+              <DialogContent>
+                <DialogTitle>Add a new sprite</DialogTitle>
+                <DialogDescription>
+                  Enter the name of the new sprite and select an image file.
+                </DialogDescription>
+                <FieldGroup>
+                  <Field>
+                    <Label htmlFor="spriteName">Sprite Name</Label>
+                    <Input
+                      id="spriteName"
+                      type="text"
+                      value={spriteNameDialogValue || ""}
+                      onChange={(e) => setSpriteNameDialogValue(e.target.value)}
+                      placeholder="Enter sprite name"
+                    />
+                  </Field>
+                  <Field>
+                    <Label htmlFor="spriteImage">Sprite Images</Label>
+                    <Button
+                      onClick={async () => {
+                        const selectedFile = await open({
+                          multiple: true,
+                          filters: [
+                            {
+                              name: "Images",
+                              extensions: ["png", "jpg", "jpeg", "svg"],
+                            },
+                          ],
+                        });
+                        console.log("Selected file:", selectedFile);
+                        if (selectedFile) {
+                          if (typeof selectedFile === "string") {
+                            setSpriteImageDialogValue("[" + selectedFile + "]");
+                          } else if (Array.isArray(selectedFile)) {
+                            setSpriteImageDialogValue(
+                              JSON.stringify(selectedFile),
+                            );
+                          }
                         }
-                      }
-                    }}
-                  >
-                    Upload Image
-                  </Button>
-                  {spriteImageDialogValue && (
-                    <p className="text-sm">
-                      Selected image(s):{" "}
-                      {JSON.parse(spriteImageDialogValue).map(
-                        (path: string, index: number) => (
-                          <span key={index}>
-                            <span
-                              className=" text-blue-500 hover:cursor-pointer hover:underline"
-                              onClick={async () => {
-                                await openPath(path);
-                              }}
-                            >
-                              {path.split("/").pop()}
+                      }}
+                    >
+                      Upload Image
+                    </Button>
+                    {spriteImageDialogValue && (
+                      <p className="text-sm">
+                        Selected image(s):{" "}
+                        {JSON.parse(spriteImageDialogValue).map(
+                          (path: string, index: number) => (
+                            <span key={index}>
+                              <span
+                                className=" text-blue-500 hover:cursor-pointer hover:underline"
+                                onClick={async () => {
+                                  await openPath(path);
+                                }}
+                              >
+                                {path.split("/").pop()}
+                              </span>
+                              {index <
+                              JSON.parse(spriteImageDialogValue).length - 1
+                                ? ", "
+                                : ""}
                             </span>
-                            {index <
-                            JSON.parse(spriteImageDialogValue).length - 1
-                              ? ", "
-                              : ""}
-                          </span>
-                        ),
-                      )}
-                    </p>
-                  )}
-                </Field>
-              </FieldGroup>
-              <DialogFooter>
-                <DialogClose
-                  render={<Button variant="outline">Cancel</Button>}
-                />
-                <Button
-                  disabled={!spriteImageDialogValue || !spriteNameDialogValue}
-                  onClick={async () => {
-                    if (!spriteImageDialogValue || !spriteNameDialogValue) {
-                      return;
-                    }
-                    const files = JSON.parse(spriteImageDialogValue);
-                    let fileNames = [];
-                    for (const file of files) {
-                      const last = file.split("/").pop();
-                      if (!last) {
+                          ),
+                        )}
+                      </p>
+                    )}
+                  </Field>
+                </FieldGroup>
+                <DialogFooter>
+                  <DialogClose
+                    render={<Button variant="outline">Cancel</Button>}
+                  />
+                  <Button
+                    disabled={!spriteImageDialogValue || !spriteNameDialogValue}
+                    onClick={async () => {
+                      if (!spriteImageDialogValue || !spriteNameDialogValue) {
                         return;
                       }
-                      fileNames.push(last);
-                      await copyFile(file, last, {
-                        toPathBaseDir: BaseDirectory.AppLocalData,
-                      });
-                    }
-                    console.log("Copied files:", fileNames);
-                    let formattedFileNames = fileNames.map((name) => ({
-                      costumeName: name.split(".")[0],
-                      loadablePath: convertFileSrc(
-                        `${_appDataDir.current}/${name}`,
-                      ),
-                    }));
-                    await new DatabaseManager().addNewSprite(
-                      spriteNameDialogValue,
-                      formattedFileNames,
-                      1,
-                    );
-                    importDatabaseData();
-                    setSpriteDialogOpen(false);
-                  }}
-                  type="submit"
-                >
-                  Add sprite
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardFooter>
-      </Card>
+                      const files = JSON.parse(spriteImageDialogValue);
+                      let fileNames = [];
+                      for (const file of files) {
+                        const last = file.split("/").pop();
+                        if (!last) {
+                          return;
+                        }
+                        fileNames.push(last);
+                        await copyFile(file, last, {
+                          toPathBaseDir: BaseDirectory.AppLocalData,
+                        });
+                      }
+                      console.log("Copied files:", fileNames);
+                      let formattedFileNames = fileNames.map((name) => ({
+                        costumeName: name.split(".")[0],
+                        loadablePath: convertFileSrc(
+                          `${_appDataDir.current}/${name}`,
+                        ),
+                      }));
+                      await new DatabaseManager().addNewSprite(
+                        spriteNameDialogValue,
+                        formattedFileNames,
+                        1,
+                      );
+                      importDatabaseData();
+                      setSpriteDialogOpen(false);
+                    }}
+                    type="submit"
+                  >
+                    Add sprite
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardFooter>
+        </Card>
+        {/* another card thats horizontal and much smaller but for backdrops and has a scrollable area */}
+        <Card className="flex-1 justify-between">
+          <CardHeader>
+            <CardTitle>Backdrops</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-y-auto">
+            {/* Add your backdrop content here */}
+          </CardContent>
+        </Card>
+      </>
     );
   }
 
@@ -643,7 +677,7 @@ function App() {
               sprite.id === activeSpriteRef.current?.id &&
               !codeRunning.current
             ) {
-              // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
+              // we check coderunning because any touching block under any sprite may need the last activated sprite on the screen as a target
               // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
               continue;
             }
@@ -667,6 +701,27 @@ function App() {
                 !codeRunning.current
               ) {
                 // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
+                // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
+                continue;
+              }
+              options.push([sprite.name, sprite.id.toString()]);
+            }
+            return options;
+          });
+        },
+      );
+      Blockly.Extensions.register(
+        "distance_to_dropdown_extension",
+        function () {
+          //@ts-ignore
+          this.getField("DISTANCE_TO").setOptions(function () {
+            const options = [["mouse-pointer", "MOUSE_POINTER"]];
+            for (const sprite of spritesRef.current) {
+              if (
+                sprite.id === activeSpriteRef.current?.id &&
+                !codeRunning.current
+              ) {
+                // we check coderunning because any distance block under any sprite may need the last activated sprite on the screen as a target
                 // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
                 continue;
               }

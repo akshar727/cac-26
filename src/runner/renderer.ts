@@ -27,10 +27,7 @@ export class Renderer {
 
         foregroundContext?.save();
 
-        foregroundContext?.translate(
-          target.x + (costume.width * scale) / 2,
-          target.y + (costume.height * scale) / 2,
-        );
+        foregroundContext?.translate(target.x, target.y);
 
         foregroundContext?.rotate(((target.direction - 90) * Math.PI) / 180);
 
@@ -188,8 +185,8 @@ export class Renderer {
       return null;
     }
 
-    const centerX = sprite.x + (costume.width * scale) / 2;
-    const centerY = sprite.y + (costume.height * scale) / 2;
+    const centerX = sprite.x;
+    const centerY = sprite.y;
 
     const relativeX = worldX - centerX;
     const relativeY = worldY - centerY;

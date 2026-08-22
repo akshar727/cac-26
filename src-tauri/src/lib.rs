@@ -19,6 +19,7 @@ pub fn run() {
             ",
         },
         //broadcasts_json TEXT,
+        //backdrops_json TEXT,
         Migration {
             version: 2,
             description: "create sprites table",

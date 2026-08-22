@@ -823,6 +823,85 @@ intermediateGenerator.forBlock["screen_glide"] = function (block, generator) {
   });
 };
 
+intermediateGenerator.forBlock["screen_height"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_height",
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_width"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_width",
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["logic_mouse_down"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "logic_mouse_down",
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_mouse_x"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_mouse_x",
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_distance_to"] = function (
+  block,
+  generator,
+) {
+  const target = block.getFieldValue("DISTANCE_TO");
+  return [
+    JSON.stringify({
+      type: "screen_distance_to",
+      target: target,
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_mouse_y"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_mouse_y",
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["logic_key_down"] = function (block, __) {
+  const key = block.getFieldValue("KEY");
+  return [
+    JSON.stringify({
+      type: "logic_key_down",
+      key: key,
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_sprite_size"] = function (_, __) {
+  return [
+    JSON.stringify({
+      type: "screen_sprite_size",
+    }),
+    Order.NONE,
+  ];
+};
+
 intermediateGenerator.forBlock["screen_glide_preset"] = function (
   block,
   generator,

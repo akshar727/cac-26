@@ -162,6 +162,14 @@ export class EvaluationEngine {
           targetSprite,
         );
       }
+      case "logic_key_down": {
+        const key = condition.key;
+        return this._runtime._keyboardKeys.get(key) || false;
+      }
+      case "logic_mouse_down": {
+
+        return this._runtime._mouseDown;
+      }
       default:
         throw new Error(`Unknown condition. ${JSON.stringify(condition)}`);
     }
@@ -423,6 +431,41 @@ export class EvaluationEngine {
             pos += substringStr.length;
           }
           return count;
+        }
+        // Screen dimensions
+        case "screen_height": {
+          return 400;
+        }
+        case "screen_width": {
+          return 800;
+        }
+        case "screen_sprite_size": {
+          return processingThread.target.size;
+        }
+        case "screen_mouse_x": {
+          return this._runtime._mouseX;
+        }
+        case "screen_mouse_y": {
+          return this._runtime._mouseY;
+        }
+        case "screen_distance_to": {
+          if (field.target === "MOUSE_POINTER") {
+            const dx = processingThread.target.x - this._runtime._mouseX;
+            const dy = processingThread.target.y - this._runtime._mouseY;
+            return Math.sqrt(dx * dx + dy * dy);
+          } else {
+            const targetSprite = this._runtime._targets.find(
+              (sprite) => sprite.id.toString() === field.target,
+            );
+            if (!targetSprite) {
+              throw new Error(
+                `Target sprite not found for screen_distance_to: ${field.target}`,
+              );
+            }
+            const dx = processingThread.target.x - targetSprite.x;
+            const dy = processingThread.target.y - targetSprite.y;
+            return Math.sqrt(dx * dx + dy * dy);
+          }
         }
         default:
           throw new InvalidFieldError(

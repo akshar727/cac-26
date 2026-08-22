@@ -66,6 +66,14 @@ export const toolbox = {
           kind: "block",
           type: "logic_touching",
         },
+        {
+          kind: "block",
+          type: "logic_key_down",
+        },
+        {
+          kind: "block",
+          type: "logic_mouse_down",
+        },
       ],
     },
     {
@@ -856,6 +864,10 @@ export const toolbox = {
         },
         {
           kind: "block",
+          type: "screen_distance_to",
+        },
+        {
+          kind: "block",
           type: "screen_position_x",
         },
         {
@@ -865,6 +877,26 @@ export const toolbox = {
         {
           kind: "block",
           type: "screen_rotation",
+        },
+        {
+          kind: "block",
+          type: "screen_height",
+        },
+        {
+          kind: "block",
+          type: "screen_width",
+        },
+        {
+          kind: "block",
+          type: "screen_sprite_size",
+        },
+        {
+          kind: "block",
+          type: "screen_mouse_x",
+        },
+        {
+          kind: "block",
+          type: "screen_mouse_y",
         },
       ],
     },
