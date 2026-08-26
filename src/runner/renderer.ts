@@ -9,29 +9,55 @@ export class Renderer {
     size: number;
     mask: boolean[][];
   }[] = [];
+
   blit(targets: Sprite[]) {
     const foregroundCanvas = document.getElementById(
       "foregroundCanvas",
     ) as HTMLCanvasElement;
+
     const foregroundContext = foregroundCanvas.getContext("2d");
+
     foregroundContext?.clearRect(
       0,
       0,
       foregroundCanvas.width,
       foregroundCanvas.height,
     );
+
+    const background = document.getElementById(
+      "backgroundCanvas",
+    ) as HTMLCanvasElement;
+
+    const backgroundContext = background.getContext("2d");
+
+    backgroundContext?.clearRect(0, 0, background.width, background.height);
+
     for (const target of targets) {
+      let contextToUse: CanvasRenderingContext2D | null = null;
+
+      if (target.isBackdrop) {
+        contextToUse = backgroundContext;
+      } else {
+        contextToUse = foregroundContext;
+      }
+
+      if (!contextToUse) {
+        console.error("Could not get 2D context from canvas");
+        return;
+      }
+
       if (target.visible) {
         const costume = target._costumes[target.currentCostumeIndex];
+
         const scale = target.size / 100;
 
-        foregroundContext?.save();
+        contextToUse.save();
 
-        foregroundContext?.translate(target.x, target.y);
+        contextToUse.translate(target.x, 400 - target.y);
 
-        foregroundContext?.rotate(((target.direction - 90) * Math.PI) / 180);
+        contextToUse.rotate(((target.direction - 90) * Math.PI) / 180);
 
-        foregroundContext?.drawImage(
+        contextToUse.drawImage(
           costume,
           (-costume.width * scale) / 2,
           (-costume.height * scale) / 2,
@@ -39,7 +65,7 @@ export class Renderer {
           costume.height * scale,
         );
 
-        foregroundContext?.restore();
+        contextToUse.restore();
       }
     }
   }
@@ -50,6 +76,7 @@ export class Renderer {
     stageHeight: number,
   ): boolean {
     const costume = sprite._costumes[sprite.currentCostumeIndex];
+
     const mask = sprite._costumeAlphaMasks.get(sprite.currentCostumeIndex);
 
     if (!mask) {
@@ -67,9 +94,6 @@ export class Renderer {
     const cosine = Math.cos(angle);
     const sine = Math.sin(angle);
 
-    const centerX = sprite.x + (costume.width * scale) / 2;
-    const centerY = sprite.y + (costume.height * scale) / 2;
-
     for (let y = 0; y < mask.length; y++) {
       for (let x = 0; x < mask[y].length; x++) {
         if (!mask[y][x]) {
@@ -80,9 +104,9 @@ export class Renderer {
 
         const localY = (y - costume.height / 2) * scale;
 
-        const worldX = localX * cosine - localY * sine + centerX;
+        const worldX = localX * cosine - localY * sine + sprite.x;
 
-        const worldY = localX * sine + localY * cosine + centerY;
+        const worldY = localX * sine + localY * cosine + sprite.y;
 
         if (
           worldX <= 0 ||
@@ -125,6 +149,7 @@ export class Renderer {
 
   spritesTouching(a: Sprite, b: Sprite): boolean {
     const aMask = a._costumeAlphaMasks.get(a.currentCostumeIndex);
+
     const bMask = b._costumeAlphaMasks.get(b.currentCostumeIndex);
 
     if (!aMask || !bMask) {
@@ -135,17 +160,21 @@ export class Renderer {
     const bBounds = this.getSpriteBounds(b);
 
     const left = Math.ceil(Math.max(aBounds.left, bBounds.left));
-    const right = Math.floor(Math.min(aBounds.right, bBounds.right));
-    const top = Math.ceil(Math.max(aBounds.top, bBounds.top));
-    const bottom = Math.floor(Math.min(aBounds.bottom, bBounds.bottom));
 
-    if (left > right || top > bottom) {
+    const right = Math.floor(Math.min(aBounds.right, bBounds.right));
+
+    const bottom = Math.ceil(Math.max(aBounds.bottom, bBounds.bottom));
+
+    const top = Math.floor(Math.min(aBounds.top, bBounds.top));
+
+    if (left > right || bottom > top) {
       return false;
     }
 
-    for (let worldY = top; worldY <= bottom; worldY++) {
+    for (let worldY = bottom; worldY <= top; worldY++) {
       for (let worldX = left; worldX <= right; worldX++) {
         const aPixel = this.worldToMask(a, worldX, worldY);
+
         const bPixel = this.worldToMask(b, worldX, worldY);
 
         if (!aPixel || !bPixel) {
@@ -185,24 +214,22 @@ export class Renderer {
       return null;
     }
 
-    const centerX = sprite.x;
-    const centerY = sprite.y;
+    const relativeX = worldX - sprite.x;
 
-    const relativeX = worldX - centerX;
-    const relativeY = worldY - centerY;
+    const relativeY = worldY - sprite.y;
 
     const angle = ((sprite.direction - 90) * Math.PI) / 180;
 
     const cosine = Math.cos(angle);
     const sine = Math.sin(angle);
 
-    const rotatedX = relativeX * cosine + relativeY * sine;
+    const localX = relativeX * cosine + relativeY * sine;
 
-    const rotatedY = -relativeX * sine + relativeY * cosine;
+    const localY = -relativeX * sine + relativeY * cosine;
 
     return {
-      x: Math.floor(rotatedX / scale + costume.width / 2),
-      y: Math.floor(rotatedY / scale + costume.height / 2),
+      x: Math.floor(localX / scale + costume.width / 2),
+      y: Math.floor(localY / scale + costume.height / 2),
     };
   }
 
@@ -217,14 +244,13 @@ export class Renderer {
     const scale = sprite.size / 100;
 
     const width = costume.width * scale;
-    const height = costume.height * scale;
 
-    const centerX = sprite.x + width / 2;
-    const centerY = sprite.y + height / 2;
+    const height = costume.height * scale;
 
     const angle = ((sprite.direction - 90) * Math.PI) / 180;
 
     const cosine = Math.abs(Math.cos(angle));
+
     const sine = Math.abs(Math.sin(angle));
 
     const boundsWidth = width * cosine + height * sine;
@@ -232,10 +258,13 @@ export class Renderer {
     const boundsHeight = width * sine + height * cosine;
 
     return {
-      left: centerX - boundsWidth / 2,
-      right: centerX + boundsWidth / 2,
-      top: centerY - boundsHeight / 2,
-      bottom: centerY + boundsHeight / 2,
+      left: sprite.x - boundsWidth / 2,
+
+      right: sprite.x + boundsWidth / 2,
+
+      bottom: sprite.y - boundsHeight / 2,
+
+      top: sprite.y + boundsHeight / 2,
     };
   }
 }

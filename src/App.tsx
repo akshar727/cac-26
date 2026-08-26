@@ -2,20 +2,6 @@ import "./App.css";
 import * as React from "react";
 import * as Blockly from "blockly";
 import { blocks } from "./blocks/blocks";
-import { openPath } from "@tauri-apps/plugin-opener";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Field, FieldGroup } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toolbox } from "./toolbox";
 import { loops } from "blockly/blocks";
 import {
@@ -26,30 +12,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BlocklyVariablePromptDialog } from "./components/BlocklyVariablePromptDialog";
-import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "./components/ui/button";
-import { copyFile, BaseDirectory } from "@tauri-apps/plugin-fs";
 import { useRef } from "react";
 import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-converter";
 import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "./components/ui/skeleton";
 import { appDataDir } from "@tauri-apps/api/path";
 import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
-import { cn } from "./lib/utils";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
+import SpriteSelector from "./components/spriteSelector";
 
 function App() {
-  const activeSpriteRef = useRef<DatabaseSprite | null>(null);
+  const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
+    null,
+  );
   const [workspace, setWorkspace] = React.useState<Blockly.WorkspaceSvg | null>(
     null,
   );
-  const [activeSprite, setActiveSprite] = React.useState<DatabaseSprite | null>(
-    null,
-  );
+  const [activeSprite, setActiveSprite] = React.useState<
+    (DatabaseSprite | DatabaseBackdrop) | null
+  >(null);
   const [sprites, setSprites] = React.useState<
     (DatabaseSprite | DatabaseBackdrop)[]
   >([]);
@@ -60,6 +45,12 @@ function App() {
     string | null
   >(null);
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
+  const [backdropDialogOpen, setbackdropDialogOpen] = React.useState(false);
+  const [backdropImageDialogValue, setbackdropImageDialogValue] =
+    React.useState<string | null>(null);
+  const [backdropNameDialogValue, setbackdropNameDialogValue] = React.useState<
+    string | null
+  >(null);
   const _appDataDir = React.useRef<string | null>(null);
   const codeRunning = React.useRef(false);
   const [codeRunningState, setCodeRunningState] = React.useState(false);
@@ -130,19 +121,30 @@ function App() {
   }, []);
 
   async function importDatabaseData() {
-    let result = await new DatabaseManager().getSpritesForProject(1);
-    setSprites(result);
-    if (!activeSprite && result.length > 0) {
-      setActiveSprite(result[0]);
-      console.log("Active sprite set to:", result[0]);
-      console.log("All sprites:", result);
+    let spritesResult = await new DatabaseManager().getSpritesForProject(1);
+    let backdropsResult = await new DatabaseManager().getBackdropsForProject(1);
+    console.log(backdropsResult);
+    let combined: (DatabaseSprite | DatabaseBackdrop)[] = [
+      ...spritesResult,
+      ...backdropsResult,
+    ];
+    setSprites(combined);
+    if (!activeSprite && spritesResult.length > 0) {
+      setActiveSprite(spritesResult[0]);
+      console.log("Active sprite set to:", spritesResult[0]);
+      console.log("All sprites:", spritesResult);
     } else {
       setActiveSprite((prevActiveSprite) => {
-        if (prevActiveSprite) {
-          const updatedSprite = result.find(
+        if (prevActiveSprite && !("isBackdrop" in prevActiveSprite)) {
+          const updatedSprite = spritesResult.find(
             (sprite) => sprite.id === prevActiveSprite.id,
           );
           return updatedSprite || null;
+        } else if (prevActiveSprite && "isBackdrop" in prevActiveSprite) {
+          const updatedBackdrop = backdropsResult.find(
+            (backdrop) => backdrop.id === prevActiveSprite.id,
+          );
+          return updatedBackdrop || null;
         }
         return null;
       });
@@ -246,6 +248,11 @@ function App() {
     if (!Blockly.getMainWorkspace()) {
       return;
     }
+    let realId =
+      activeSpriteRef.current && "isBackdrop" in activeSpriteRef.current
+        ? -activeSpriteRef.current.id
+        : activeSpriteRef.current?.id; // we do this to get back to the actual id of the backdrop in the database (negative numbers just work well here)
+    console.warn("Saving workspace for sprite with id:", realId);
     const currentActiveSprite = activeSpriteRef.current;
     if (!currentActiveSprite) {
       return;
@@ -260,22 +267,39 @@ function App() {
     (async () => {
       const savedVariables = activeSpriteRef.current?.variables_map;
       await new DatabaseManager().updateSpriteBlocksAndVariables(
-        currentActiveSprite.id,
+        realId as number,
         fullJson,
         savedVariables,
+        "isBackdrop" in currentActiveSprite &&
+          (currentActiveSprite.isBackdrop as boolean),
       );
-      //@ts-ignore
-      setSprites((prevSprites) =>
-        prevSprites.map((sprite) =>
-          sprite.id === currentActiveSprite.id
-            ? {
-                ...sprite,
-                blocks_json: fullJson,
-                variables_map: savedVariables,
-              }
-            : sprite,
-        ),
-      );
+      if (!("isBackdrop" in currentActiveSprite)) {
+        //@ts-ignore
+        setSprites((prevSprites) =>
+          prevSprites.map((sprite: DatabaseSprite) =>
+            sprite.id === currentActiveSprite.id
+              ? {
+                  ...sprite,
+                  blocks_json: fullJson,
+                  variables_map: savedVariables,
+                }
+              : sprite,
+          ),
+        );
+      } else {
+        //@ts-ignore
+        setSprites((prevSprites: (DatabaseSprite | DatabaseBackdrop)[]) =>
+          prevSprites.map((sprite: DatabaseSprite | DatabaseBackdrop) =>
+            sprite.id === currentActiveSprite.id && "isBackdrop" in sprite
+              ? {
+                  ...sprite,
+                  blocks_json: fullJson,
+                  variables_map: savedVariables,
+                }
+              : sprite,
+          ),
+        );
+      }
       await new DatabaseManager().updateProjectBroadcastMessages(
         1,
         broadcastMessagesRef.current,
@@ -349,198 +373,6 @@ function App() {
     flyout?.reflow();
   }
 
-  function SpriteSelector() {
-    return (
-      <>
-        <Card className="flex-2 justify-between">
-          <CardContent className="flex flex-col gap-2">
-            <CardTitle>Sprites</CardTitle>
-            {sprites.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {sprites.map((sprite: DatabaseSprite) => {
-                  return (
-                    <Card
-                      className={cn(
-                        "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200",
-                        activeSprite?.id === sprite.id ? "bg-slate-100" : "",
-                      )}
-                      onClick={() => {
-                        setActiveSprite(sprite);
-                        activeSpriteRef.current = sprite;
-                        // console.log("Active sprite set to:", sprite);
-                        setTimeout(() => {
-                          // console.log(activeSprite);
-                        }, 0);
-                      }}
-                      key={sprite.id}
-                    >
-                      <CardContent className="flex flex-col items-center gap-2">
-                        {sprite.image_paths.length === 0 ? (
-                          <Skeleton className="w-16 h-16" />
-                        ) : (
-                          <img
-                            src={sprite.image_paths[0].loadablePath}
-                            alt={sprite.name}
-                            style={{
-                              maxWidth: 64,
-                              maxHeight: 64,
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain",
-                            }}
-                          />
-                        )}
-                        <p className={`text-sm text-center`}>{sprite.name}</p>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <p>Sprites will be displayed here.</p>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="flex justify-center">
-            <Dialog
-              open={spriteDialogOpen}
-              onOpenChange={setSpriteDialogOpen}
-              onOpenChangeComplete={() => {
-                setSpriteImageDialogValue("");
-                setSpriteNameDialogValue("");
-              }}
-            >
-              <DialogTrigger
-                render={<Button onClick={async () => {}}>Add a sprite</Button>}
-              />
-              <DialogContent>
-                <DialogTitle>Add a new sprite</DialogTitle>
-                <DialogDescription>
-                  Enter the name of the new sprite and select an image file.
-                </DialogDescription>
-                <FieldGroup>
-                  <Field>
-                    <Label htmlFor="spriteName">Sprite Name</Label>
-                    <Input
-                      id="spriteName"
-                      type="text"
-                      value={spriteNameDialogValue || ""}
-                      onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                      placeholder="Enter sprite name"
-                    />
-                  </Field>
-                  <Field>
-                    <Label htmlFor="spriteImage">Sprite Images</Label>
-                    <Button
-                      onClick={async () => {
-                        const selectedFile = await open({
-                          multiple: true,
-                          filters: [
-                            {
-                              name: "Images",
-                              extensions: ["png", "jpg", "jpeg", "svg"],
-                            },
-                          ],
-                        });
-                        console.log("Selected file:", selectedFile);
-                        if (selectedFile) {
-                          if (typeof selectedFile === "string") {
-                            setSpriteImageDialogValue("[" + selectedFile + "]");
-                          } else if (Array.isArray(selectedFile)) {
-                            setSpriteImageDialogValue(
-                              JSON.stringify(selectedFile),
-                            );
-                          }
-                        }
-                      }}
-                    >
-                      Upload Image
-                    </Button>
-                    {spriteImageDialogValue && (
-                      <p className="text-sm">
-                        Selected image(s):{" "}
-                        {JSON.parse(spriteImageDialogValue).map(
-                          (path: string, index: number) => (
-                            <span key={index}>
-                              <span
-                                className=" text-blue-500 hover:cursor-pointer hover:underline"
-                                onClick={async () => {
-                                  await openPath(path);
-                                }}
-                              >
-                                {path.split("/").pop()}
-                              </span>
-                              {index <
-                              JSON.parse(spriteImageDialogValue).length - 1
-                                ? ", "
-                                : ""}
-                            </span>
-                          ),
-                        )}
-                      </p>
-                    )}
-                  </Field>
-                </FieldGroup>
-                <DialogFooter>
-                  <DialogClose
-                    render={<Button variant="outline">Cancel</Button>}
-                  />
-                  <Button
-                    disabled={!spriteImageDialogValue || !spriteNameDialogValue}
-                    onClick={async () => {
-                      if (!spriteImageDialogValue || !spriteNameDialogValue) {
-                        return;
-                      }
-                      const files = JSON.parse(spriteImageDialogValue);
-                      let fileNames = [];
-                      for (const file of files) {
-                        const last = file.split("/").pop();
-                        if (!last) {
-                          return;
-                        }
-                        fileNames.push(last);
-                        await copyFile(file, last, {
-                          toPathBaseDir: BaseDirectory.AppLocalData,
-                        });
-                      }
-                      console.log("Copied files:", fileNames);
-                      let formattedFileNames = fileNames.map((name) => ({
-                        costumeName: name.split(".")[0],
-                        loadablePath: convertFileSrc(
-                          `${_appDataDir.current}/${name}`,
-                        ),
-                      }));
-                      await new DatabaseManager().addNewSprite(
-                        spriteNameDialogValue,
-                        formattedFileNames,
-                        1,
-                      );
-                      importDatabaseData();
-                      setSpriteDialogOpen(false);
-                    }}
-                    type="submit"
-                  >
-                    Add sprite
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardFooter>
-        </Card>
-        {/* another card thats horizontal and much smaller but for backdrops and has a scrollable area */}
-        <Card className="flex-1 justify-between">
-          <CardHeader>
-            <CardTitle>Backdrops</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-y-auto">
-            {/* Add your backdrop content here */}
-          </CardContent>
-        </Card>
-      </>
-    );
-  }
-
   async function setupWorkspace() {
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.89);
@@ -554,12 +386,23 @@ function App() {
           const options = [];
 
           if (
+            activeSpriteRef.current &&
             activeSpriteRef.current?.image_paths &&
-            activeSpriteRef.current?.image_paths.length > 0
+            activeSpriteRef.current?.image_paths.length > 0 &&
+            codeRunning.current === false
           ) {
             activeSpriteRef.current?.image_paths.forEach((costume) => {
               options.push([costume.costumeName, costume.loadablePath]);
             });
+          } else if (codeRunning.current === true) {
+            // all costumes are shown
+            for (const sprite of spritesRef.current) {
+              if (sprite.image_paths && sprite.image_paths.length > 0) {
+                sprite.image_paths.forEach((costume) => {
+                  options.push([costume.costumeName, costume.loadablePath]);
+                });
+              }
+            }
           } else {
             options.push(["none", "NONE"]);
           }
@@ -673,6 +516,9 @@ function App() {
             ["edge", "EDGE"],
           ];
           for (const sprite of spritesRef.current) {
+            if ("isBackdrop" in sprite && sprite.isBackdrop) {
+              continue;
+            }
             if (
               sprite.id === activeSpriteRef.current?.id &&
               !codeRunning.current
@@ -805,6 +651,8 @@ function App() {
             await new DatabaseManager().deleteVariableFromSprite(
               activeSpriteRef.current!.id,
               variableId,
+              "isBackdrop" in activeSpriteRef.current! &&
+                (activeSpriteRef.current!.isBackdrop as boolean),
             );
 
             await importDatabaseData();
@@ -859,6 +707,8 @@ function App() {
                   variable.getId(),
                   variable.getName(),
                   isGlobal,
+                  "isBackdrop" in activeSpriteRef.current! &&
+                    (activeSpriteRef.current!.isBackdrop as boolean),
                 );
                 await importDatabaseData();
               } finally {
@@ -925,7 +775,26 @@ function App() {
             className="flex w-full h-full max-w-dvw gap-2"
           >
             <div className="flex-5" id="blocklyDiv"></div>
-            <SpriteSelector />
+            <SpriteSelector
+              sprites={sprites}
+              activeSprite={activeSprite}
+              setActiveSprite={setActiveSprite}
+              activeSpriteRef={activeSpriteRef}
+              spriteDialogOpen={spriteDialogOpen}
+              setSpriteDialogOpen={setSpriteDialogOpen}
+              spriteNameDialogValue={spriteNameDialogValue}
+              setSpriteNameDialogValue={setSpriteNameDialogValue}
+              spriteImageDialogValue={spriteImageDialogValue}
+              setSpriteImageDialogValue={setSpriteImageDialogValue}
+              backdropDialogOpen={backdropDialogOpen}
+              setbackdropDialogOpen={setbackdropDialogOpen}
+              backdropNameDialogValue={backdropNameDialogValue}
+              setbackdropNameDialogValue={setbackdropNameDialogValue}
+              backdropImageDialogValue={backdropImageDialogValue}
+              setbackdropImageDialogValue={setbackdropImageDialogValue}
+              appDataDirRef={_appDataDir}
+              importDatabaseData={importDatabaseData}
+            />
           </div>
         </TabsContent>
         <TabsContent value="costumes" className="w-full h-full max-w-dvw">
@@ -940,7 +809,26 @@ function App() {
                 refreshDataCallback={importDatabaseData}
               />
             </div>
-            <SpriteSelector />
+            <SpriteSelector
+              sprites={sprites}
+              activeSprite={activeSprite}
+              setActiveSprite={setActiveSprite}
+              activeSpriteRef={activeSpriteRef}
+              spriteDialogOpen={spriteDialogOpen}
+              setSpriteDialogOpen={setSpriteDialogOpen}
+              spriteNameDialogValue={spriteNameDialogValue}
+              setSpriteNameDialogValue={setSpriteNameDialogValue}
+              spriteImageDialogValue={spriteImageDialogValue}
+              setSpriteImageDialogValue={setSpriteImageDialogValue}
+              backdropDialogOpen={backdropDialogOpen}
+              setbackdropDialogOpen={setbackdropDialogOpen}
+              backdropNameDialogValue={backdropNameDialogValue}
+              setbackdropNameDialogValue={setbackdropNameDialogValue}
+              backdropImageDialogValue={backdropImageDialogValue}
+              setbackdropImageDialogValue={setbackdropImageDialogValue}
+              appDataDirRef={_appDataDir}
+              importDatabaseData={importDatabaseData}
+            />
           </div>
         </TabsContent>
         <TabsContent value="screen" className="w-full h-full max-w-dvw">

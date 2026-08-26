@@ -106,16 +106,16 @@ export class VirtualMachine {
                   console.log("Next block to execute:", blockToExecute);
                 }
                 if (thread.target.id === 6) {
-                  console.log(
-                    "Marking For frame complete after reaching end of body for target 6",
-                  );
+                  // console.log(
+                  //   "Marking For frame complete after reaching end of body for target 6",
+                  // );
                 }
               }
             } else {
-              console.log(
-                "Current frame is complete, popping frame from stack for target:",
-                thread.target.id,
-              );
+              // console.log(
+              //   "Current frame is complete, popping frame from stack for target:",
+              //   thread.target.id,
+              // );
               thread.popFrame();
               if (thread.executionStack.length === 0) {
                 thread.count++;
@@ -160,22 +160,22 @@ export class VirtualMachine {
               } else {
                 currentFrame.markComplete();
                 if (thread.target.id === 6) {
-                  console.log(
-                    "Marking Repeat frame complete after reaching end of body for target 6",
-                  );
+                  // console.log(
+                  //   "Marking Repeat frame complete after reaching end of body for target 6",
+                  // );
                 }
               }
             } else if (currentFrame instanceof IfFrame) {
               currentFrame.markComplete();
-              console.log(
-                "Marking If frame complete after reaching end of body for target:",
-                thread.target.id,
-              );
+              // console.log(
+              //   "Marking If frame complete after reaching end of body for target:",
+              //   thread.target.id,
+              // );
             } else if (currentFrame instanceof ProcedureFrameNoReturn) {
-              console.log(
-                "Marking Procedure frame complete after reaching end of body for procedure:",
-                currentFrame._procedure.name,
-              );
+              // console.log(
+              //   "Marking Procedure frame complete after reaching end of body for procedure:",
+              //   currentFrame._procedure.name,
+              // );
               currentFrame.markComplete();
             } else if (currentFrame instanceof RepeatWhileUntilFrame) {
               let conditionResult = this._evaluator.evaluate(
@@ -751,7 +751,7 @@ export class VirtualMachine {
           thread.target.currentCostumeIndex = costumeIndex;
         } else {
           console.warn(
-            `Costume with path ${costumePath} not found for target ${thread.target.id}`,
+            `Costume with path ${costumePath} not found for target ${thread.target.id}. Available costumes: ${thread.target._costumes.map((c) => c.src).join(", ")}`,
           );
         }
         break;

@@ -3,10 +3,11 @@ import * as Blockly from "blockly";
 import { intermediateGenerator } from "@/generators/intermediateGenerator";
 import { Thread } from "./thread";
 import { Sprite } from "@/runner/sprite";
-import { DatabaseSprite } from "@/types/database";
+import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { VirtualMachine } from "./virtualMachine";
 import { Renderer } from "./renderer";
 import { Procedure } from "@/types/field";
+import { MultipleBackdropError } from "@/types/errors";
 
 export class Runtime {
   _targets: Sprite[] = [];
@@ -18,17 +19,36 @@ export class Runtime {
   _mouseX: number = 1000; // so that sprites at 0,0 dont get triggered by mouse down
   _mouseY: number = 1000;
   _renderer: Renderer;
-  constructor(sprites: DatabaseSprite[]) {
+  constructor(sprites: (DatabaseSprite | DatabaseBackdrop)[]) {
+    console.warn("Runtime initialized with sprites:", sprites);
     this._vm = new VirtualMachine(this);
     this._renderer = new Renderer();
     for (const databaseSprite of sprites) {
       const spriteWorkspace = new Blockly.Workspace();
+      // if ("isBackdrop" in databaseSprite && databaseSprite.isBackdrop) {
+      //   continue;
+      // }
+      console.log(databaseSprite);
       for (const block of databaseSprite.blocks_json) {
         Blockly.serialization.blocks.append(block, spriteWorkspace);
       }
-      let sprite = new Sprite(
-        sprites.find((s) => s.id === databaseSprite.id)?.image_paths || [],
+      let sprite = null;
+      sprite = new Sprite(
+        //@ts-ignore
+        databaseSprite.image_paths || [],
       );
+      if ("isBackdrop" in databaseSprite && databaseSprite.isBackdrop) {
+        if (this._targets.find((s) => s.id < 0)) {
+          throw new MultipleBackdropError(
+            "Multiple backdrops found in project",
+          );
+        }
+        sprite.isBackdrop = true;
+        sprite.x = 400;
+        sprite.y = 200;
+      } else {
+        sprite.isBackdrop = false;
+      }
       sprite.id = databaseSprite.id;
       for (const thing of databaseSprite.variables_map) {
         sprite.variables.set(thing.id, 0);
@@ -72,6 +92,12 @@ export class Runtime {
           block.type === "events_when_broadcast_received" ||
           block.type === "events_when_sprite_clicked"
         ) {
+          console.warn(
+            "Found top-level event block for sprite",
+            sprite.id,
+            "of type",
+            block.type,
+          );
           let outputScript = this.compileScript(sprite.id, block);
           if (outputScript) {
             this._scripts.push(outputScript);

@@ -167,7 +167,6 @@ export class EvaluationEngine {
         return this._runtime._keyboardKeys.get(key) || false;
       }
       case "logic_mouse_down": {
-
         return this._runtime._mouseDown;
       }
       default:
@@ -368,7 +367,9 @@ export class EvaluationEngine {
           }
           if (variableValue === undefined) {
             throw new ReferenceError(
-              `Variable "${variableName}" is not defined in the current context.`,
+              `Variable "${variableName}" is not defined in the current context. ${JSON.stringify(processingThread.target)}. Available variables: ${Array.from(
+                processingThread.target.variables.keys(),
+              ).join(", ")}`,
             );
           }
           return variableValue;

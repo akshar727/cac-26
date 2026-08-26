@@ -22,6 +22,48 @@ export class DatabaseManager {
     return result as DatabaseSprite[];
   }
 
+  async getBackdropsForProject(projectId: number): Promise<DatabaseBackdrop[]> {
+    const db = await Database.load(`sqlite:${this.fileName}`);
+    const result = await db.select<DatabaseBackdrop[]>(
+      `SELECT * from backdrops WHERE project_id = ?`,
+      [projectId],
+    );
+    for (const backdrop of result) {
+      backdrop.blocks_json = backdrop.blocks_json
+        ? //@ts-ignore
+          JSON.parse(backdrop.blocks_json)
+        : [];
+      //@ts-ignore
+      backdrop.image_paths = JSON.parse(backdrop.image_paths);
+      backdrop.variables_map = backdrop.variables_map
+        ? //@ts-ignore
+          JSON.parse(backdrop.variables_map)
+        : [];
+      backdrop.isBackdrop = true;
+      backdrop.id = -backdrop.id; // Assign a unique ID for backdrops since more than 1 should never exist per project
+    }
+    return result as DatabaseBackdrop[];
+  }
+
+  async addNewBackdrop(
+    name: string,
+    imagePaths: { costumeName: string; loadablePath: string }[],
+    projectId: number,
+  ): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        await db.execute(
+          `INSERT INTO backdrops (name, image_paths, project_id) VALUES (?, ?, ?)`,
+          [name, JSON.stringify(imagePaths), projectId],
+        );
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   addNewSprite(
     name: string,
     imagePaths: { costumeName: string; loadablePath: string }[],
@@ -46,6 +88,7 @@ export class DatabaseManager {
     imagePath: string,
     appDataDir: string,
     costumeName: string,
+    isBackdrop: boolean,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
@@ -57,10 +100,10 @@ export class DatabaseManager {
             loadablePath: convertFileSrc(`${appDataDir}/${imagePath}`),
           },
         ];
-        await db.execute(`UPDATE sprites SET image_paths = ? WHERE id = ?`, [
-          JSON.stringify(newImagePaths),
-          spriteId,
-        ]);
+        await db.execute(
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
+          [JSON.stringify(newImagePaths), spriteId],
+        );
         resolve();
       } catch (error) {
         reject(error);
@@ -72,12 +115,13 @@ export class DatabaseManager {
     spriteId: number,
     blocksJson: any,
     variablesMap: any,
+    isBackdrop: boolean,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
         await db.execute(
-          `UPDATE sprites SET blocks_json = ?, variables_map = ? WHERE id = ?`,
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET blocks_json = ?, variables_map = ? WHERE id = ?`,
           [JSON.stringify(blocksJson), JSON.stringify(variablesMap), spriteId],
         );
         resolve();
@@ -126,12 +170,13 @@ export class DatabaseManager {
   deleteVariableFromSprite(
     spriteId: number,
     variableId: string,
+    isBackdrop: boolean,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
         const sprite = await db.select<DatabaseSprite[]>(
-          `SELECT * from sprites WHERE id = ?`,
+          `SELECT * from ${isBackdrop ? "backdrops" : "sprites"} WHERE id = ?`,
           [spriteId],
         );
         //@ts-ignore
@@ -139,10 +184,10 @@ export class DatabaseManager {
         variablesMap = variablesMap.filter(
           (variable: { id: string }) => variable.id !== variableId,
         );
-        await db.execute(`UPDATE sprites SET variables_map = ? WHERE id = ?`, [
-          JSON.stringify(variablesMap),
-          spriteId,
-        ]);
+        await db.execute(
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET variables_map = ? WHERE id = ?`,
+          [JSON.stringify(variablesMap), spriteId],
+        );
         resolve();
       } catch (error) {
         reject(error);
@@ -194,12 +239,13 @@ export class DatabaseManager {
     variableId: string,
     variableName: string,
     isGlobal: boolean,
+    isBackdrop: boolean,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
         const sprite = await db.select<DatabaseSprite[]>(
-          `SELECT * from sprites WHERE id = ?`,
+          `SELECT * from ${isBackdrop ? "backdrops" : "sprites"} WHERE id = ?`,
           [spriteId],
         );
         //@ts-ignore
@@ -215,10 +261,10 @@ export class DatabaseManager {
           name: variableName,
           isGlobal: isGlobal,
         });
-        await db.execute(`UPDATE sprites SET variables_map = ? WHERE id = ?`, [
-          JSON.stringify(variablesMap),
-          spriteId,
-        ]);
+        await db.execute(
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET variables_map = ? WHERE id = ?`,
+          [JSON.stringify(variablesMap), spriteId],
+        );
         resolve();
       } catch (error) {
         reject(error);
@@ -231,6 +277,7 @@ export class DatabaseManager {
     currentCostumes: { costumeName: string; loadablePath: string }[],
     costumePath: string,
     newCostumeName: string,
+    isBackdrop: boolean,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       let newCostumes = currentCostumes.map((costume) => {
@@ -241,10 +288,10 @@ export class DatabaseManager {
       });
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
-        await db.execute(`UPDATE sprites SET image_paths = ? WHERE id = ?`, [
-          JSON.stringify(newCostumes),
-          spriteId,
-        ]);
+        await db.execute(
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
+          [JSON.stringify(newCostumes), spriteId],
+        );
         resolve();
       } catch (error) {
         reject(error);

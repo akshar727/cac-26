@@ -13,13 +13,11 @@ pub fn run() {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     description TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    broadcasts_json TEXT  DEFAULT '[]'
                 );
             ",
         },
-        //broadcasts_json TEXT,
-        //backdrops_json TEXT,
         Migration {
             version: 2,
             description: "create sprites table",
@@ -30,13 +28,30 @@ pub fn run() {
                     name TEXT NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     project_id INTEGER NOT NULL,
-                    blocks_json TEXT,
-                    image_paths TEXT,
+                    blocks_json TEXT DEFAULT '[]',
+                    image_paths TEXT  DEFAULT '[]',
+                    variables_map TEXT  DEFAULT '[]',
                     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
                 );
             ",
         },
-        //variables_map TEXT,
+        Migration {
+            version: 3,
+            description: "create backdrops table",
+            kind: MigrationKind::Up,
+            sql: "
+                CREATE TABLE IF NOT EXISTS backdrops (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    project_id INTEGER NOT NULL,
+                    blocks_json TEXT DEFAULT '[]',
+                    image_paths TEXT DEFAULT '[]',
+                    variables_map TEXT DEFAULT '[]',
+                    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+                );
+            ",
+        },
     ];
 
     tauri::Builder::default()

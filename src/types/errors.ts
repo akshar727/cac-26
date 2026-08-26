@@ -19,4 +19,11 @@ class NoProcessingThreadError extends Error {
   }
 }
 
-export { ImproperVariableError, InvalidFieldError, NoProcessingThreadError };
+class MultipleBackdropError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MultipleBackdropError";
+  }
+}
+
+export { ImproperVariableError, InvalidFieldError, NoProcessingThreadError, MultipleBackdropError };

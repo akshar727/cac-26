@@ -13,6 +13,7 @@ export class Sprite {
   _costumeAlphaMasks: Map<number, boolean[][]> = new Map();
   _costumes: HTMLImageElement[] = [];
   currentCostumeIndex = 0;
+  isBackdrop: boolean = false;
 
   constructor(
     imagePaths: { costumeName: string; loadablePath: string }[] = [],

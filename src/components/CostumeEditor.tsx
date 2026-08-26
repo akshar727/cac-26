@@ -70,7 +70,7 @@ export default function CostumeEdtior({
 
   useEffect(() => {
     console.log("Active sprite changed:", activeSprite);
-    if (activeSprite && activeSprite.image_paths.length > 0 && !activeCostume) {
+    if (activeSprite && activeSprite.image_paths.length > 0) {
       setActiveCostume(activeSprite.image_paths[0]);
     } else if (activeSprite && activeSprite.image_paths.length === 0) {
       setActiveCostume(null);
@@ -252,6 +252,8 @@ export default function CostumeEdtior({
                       spriteNameDialogValue ||
                         last.split("/").pop() ||
                         "New Costume",
+                      "isBackdrop" in activeSprite &&
+                        (activeSprite.isBackdrop as boolean),
                     );
                     refreshDataCallback();
                     setSpriteImageDialogValue("");
@@ -272,7 +274,7 @@ export default function CostumeEdtior({
           {activeCostume ? (
             <div className="flex flex-col items-center gap-2">
               <img
-                src={activeCostume?.loadablePath}
+                src={activeCostume.loadablePath}
                 alt={`Current Costume`}
                 style={{
                   maxWidth: 256,
@@ -295,6 +297,8 @@ export default function CostumeEdtior({
                       activeSprite.image_paths,
                       activeCostume.loadablePath,
                       e.target.value,
+                      "isBackdrop" in activeSprite &&
+                        (activeSprite.isBackdrop as boolean),
                     );
                     refreshDataCallback();
                     setActiveCostume({
