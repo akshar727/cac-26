@@ -881,7 +881,7 @@ export class VirtualMachine {
         } else if (blockToExecute.preset === "RANDOM_POSITION") {
           // lets not hardcode these later on
           targetX = Math.random() * 800;
-          targetY = Math.random() * 400;
+          targetY = Math.random() * 600;
         } else {
           let targetSprite = this._runtime._targets.find(
             (sprite) => sprite.id === parseInt(blockToExecute.preset),

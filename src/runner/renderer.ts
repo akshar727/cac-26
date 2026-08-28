@@ -53,7 +53,7 @@ export class Renderer {
 
         contextToUse.save();
 
-        contextToUse.translate(target.x, 400 - target.y);
+        contextToUse.translate(target.x, 600 - target.y);
 
         contextToUse.rotate(((target.direction - 90) * Math.PI) / 180);
 
@@ -66,7 +66,7 @@ export class Renderer {
         );
 
         contextToUse.restore();
-        if ((target.sayText || target.thinkText)) {
+        if (target.sayText || target.thinkText) {
           // console.log(
           //   "Rendering bubble for target",
           //   target.id,
@@ -88,10 +88,11 @@ export class Renderer {
           const bubbleHeight = lines.length * 20 + paddingY * 2;
           const bubbleX = target.x - bubbleWidth / 2;
           const bubbleY =
-            400 - target.y - (costume.height * scale) / 2 - bubbleHeight - 10;
+            600 - target.y - (costume.height * scale) / 2 - bubbleHeight - 10;
 
           contextToUse.beginPath();
           contextToUse.fillStyle = "white";
+          contextToUse.strokeStyle = "gray";
           contextToUse.roundRect(
             bubbleX,
             bubbleY,

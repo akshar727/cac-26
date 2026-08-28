@@ -435,7 +435,7 @@ export class EvaluationEngine {
         }
         // Screen dimensions
         case "screen_height": {
-          return 400;
+          return 600;
         }
         case "screen_width": {
           return 800;

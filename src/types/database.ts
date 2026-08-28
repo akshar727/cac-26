@@ -30,3 +30,11 @@ export type DatabaseBackdrop = {
   project_id: number;
   isBackdrop: boolean;
 };
+
+export type DatabaseProject = {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+  broadcasts_json: any[];
+};

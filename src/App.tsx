@@ -121,8 +121,13 @@ function App() {
   }, []);
 
   async function importDatabaseData() {
-    let spritesResult = await new DatabaseManager().getSpritesForProject(1);
-    let backdropsResult = await new DatabaseManager().getBackdropsForProject(1);
+    const projects = await new DatabaseManager().getProject();
+    let spritesResult = await new DatabaseManager().getSpritesForProject(
+      projects[0].id,
+    );
+    let backdropsResult = await new DatabaseManager().getBackdropsForProject(
+      projects[0].id,
+    );
     console.log(backdropsResult);
     let combined: (DatabaseSprite | DatabaseBackdrop)[] = [
       ...spritesResult,
@@ -150,7 +155,7 @@ function App() {
       });
     }
     let broadcastMessages =
-      await new DatabaseManager().getProjectBroadcastMessages(1);
+      await new DatabaseManager().getProjectBroadcastMessages(projects[0].id);
     broadcastMessagesRef.current = broadcastMessages as [string, string][];
   }
 
@@ -858,13 +863,13 @@ function App() {
                   className="border border-slate-300 rounded-lg"
                   id="backgroundCanvas"
                   width="800"
-                  height="450"
+                  height="600"
                 ></canvas>
                 <canvas
                   className="absolute border border-slate-300 rounded-lg"
                   id="foregroundCanvas"
                   width="800"
-                  height="450"
+                  height="600"
                 ></canvas>
               </CardContent>
               <CardFooter className="flex justify-center">

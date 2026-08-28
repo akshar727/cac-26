@@ -1,9 +1,35 @@
-import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
+import {
+  DatabaseBackdrop,
+  DatabaseProject,
+  DatabaseSprite,
+} from "@/types/database";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 
 export class DatabaseManager {
   private fileName = "cac.db";
+
+  getProject(): Promise<DatabaseProject[]> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        let projects = await db.select<DatabaseProject[]>(`SELECT * FROM projects`);
+        if (projects.length === 0) {
+          await db.execute(
+            "INSERT into projects (name, description) VALUES ('New Project', 'New Project')",
+          );
+        }
+        projects = await db.select<DatabaseProject[]>(`SELECT * FROM projects`);
+        for (const project of projects) {
+          //@ts-ignore
+          project.broadcasts_json = JSON.parse(project.broadcasts_json);
+        }
+        resolve(projects);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
 
   async getSpritesForProject(projectId: number): Promise<DatabaseSprite[]> {
     const db = await Database.load(`sqlite:${this.fileName}`);
