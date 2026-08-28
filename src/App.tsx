@@ -23,7 +23,7 @@ import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
-import SpriteSelector from "./components/spriteSelector";
+import SpriteSelector from "./components/SpriteBackdropSelector";
 
 function App() {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
@@ -210,6 +210,15 @@ function App() {
         let errorCheck = false;
         try {
           runtime.tick(deltaTime, now);
+          if (
+            runtime._scripts.filter((r) => r.trigger.type !== "start")
+              .length === 0 &&
+            (runtime._threads.length === 0 ||
+              !runtime._threads.some((thread) => thread.status !== "done"))
+          ) {
+            setCodeRunningState(false);
+            // auto stop when there are no scripts that rely on events within the program and all threads have finished
+          }
         } catch (error) {
           setCodeRunningState(false);
           errorCheck = true;
@@ -227,6 +236,10 @@ function App() {
           console.warn("Code stopped, removing event listeners");
           window.removeEventListener("keydown", keyDownEvent);
           window.removeEventListener("keyup", keyUpEvent);
+          for (const target of runtime._targets) {
+            target.clearBubbles();
+          }
+          runtime._renderer.blit(runtime._targets);
           window.removeEventListener("mousedown", mouseDownEvent);
           window.removeEventListener("mouseup", mouseUpEvent);
           window.removeEventListener("mousemove", canvasMouseMoveEvent);

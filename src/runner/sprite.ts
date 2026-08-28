@@ -13,6 +13,9 @@ export class Sprite {
   _costumeAlphaMasks: Map<number, boolean[][]> = new Map();
   _costumes: HTMLImageElement[] = [];
   currentCostumeIndex = 0;
+  sayText: string = "";
+  thinkText: string = "";
+  bubbleUntil: number = 0;
   isBackdrop: boolean = false;
 
   constructor(
@@ -26,9 +29,9 @@ export class Sprite {
       img.src = path.loadablePath;
       img.onload = () => {
         this.makeAlphaMask(img, index);
-        console.log(
-          `Alpha mask created for costume ${path.costumeName} of sprite ${this.id}`,
-        );
+        // console.log(
+        //   `Alpha mask created for costume ${path.costumeName} of sprite ${this.id}`,
+        // );
       };
       this._costumes.push(img);
       i++;
@@ -59,5 +62,23 @@ export class Sprite {
       }
     }
     this._costumeAlphaMasks.set(ind, alphaMask);
+  }
+
+  markSay(text: string, duration: number, currentTime: number) {
+    this.sayText = text;
+    console.log(`Sprite ${this.id} now marked as saying: ${text}`);
+    this.bubbleUntil = currentTime + duration * 1000;
+    // console.log(this.sayText, this.bubbleUntil, currentTime, duration);
+  }
+
+  markThink(text: string, duration: number, currentTime: number) {
+    this.thinkText = text;
+    this.bubbleUntil = currentTime + duration * 1000;
+    // console.log(this.thinkText, this.bubbleUntil, currentTime, duration);
+  }
+  clearBubbles() {
+    this.sayText = "";
+    this.thinkText = "";
+    this.bubbleUntil = 0;
   }
 }

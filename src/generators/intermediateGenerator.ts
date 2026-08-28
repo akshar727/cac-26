@@ -873,6 +873,35 @@ intermediateGenerator.forBlock["screen_distance_to"] = function (
   ];
 };
 
+intermediateGenerator.forBlock["screen_say"] = function (block, generator) {
+  const message = generator.valueToCode(block, "MESSAGE", Order.NONE) || '""';
+  const duration = generator.valueToCode(block, "DURATION", Order.NONE) || "2";
+  return JSON.stringify({
+    type: "screen_say",
+    message: getFormatted(message),
+    duration: getFormatted(duration),
+  });
+};
+
+intermediateGenerator.forBlock["screen_think"] = function (block, generator) {
+  const message = generator.valueToCode(block, "MESSAGE", Order.NONE) || '""';
+  const duration = generator.valueToCode(block, "DURATION", Order.NONE) || "2";
+  return JSON.stringify({
+    type: "screen_think",
+    message: getFormatted(message),
+    duration: getFormatted(duration),
+  });
+};
+
+intermediateGenerator.forBlock["screen_clear_speech_bubbles"] = function (
+  block,
+  generator,
+) {
+  return JSON.stringify({
+    type: "screen_clear_speech_bubbles",
+  });
+};
+
 intermediateGenerator.forBlock["screen_mouse_y"] = function (_, __) {
   return [
     JSON.stringify({

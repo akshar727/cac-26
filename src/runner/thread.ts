@@ -6,9 +6,10 @@ export class Thread {
   target: Sprite;
   script: Script;
   executionStack: StackFrame[] = []; // which sub-areas of the code are currently being executed
-  status: "running" | "waiting" | "done" = "running";
+  status: "running" | "waiting" | "done" | "bubbling" = "running";
   count = 0;
   waitUntil = 0;
+  blockedBySprite: boolean = false;
   constructor(target: Sprite, script: Script) {
     this.target = target;
     this.script = script;

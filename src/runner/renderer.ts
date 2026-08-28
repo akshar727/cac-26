@@ -66,6 +66,60 @@ export class Renderer {
         );
 
         contextToUse.restore();
+        if ((target.sayText || target.thinkText)) {
+          // console.log(
+          //   "Rendering bubble for target",
+          //   target.id,
+          //   target.sayText,
+          //   target.thinkText,
+          // );
+          const width = contextToUse.measureText(
+            target.sayText || target.thinkText,
+          ).width;
+          let lines = [];
+          // 25 chars / line
+          const text = target.sayText || target.thinkText;
+          for (let i = 0; i < text.length; i += 25) {
+            lines.push(text.slice(i, i + 25));
+          }
+          let paddingX = 10;
+          let paddingY = 10;
+          const bubbleWidth = Math.max(width + paddingX * 2, 50);
+          const bubbleHeight = lines.length * 20 + paddingY * 2;
+          const bubbleX = target.x - bubbleWidth / 2;
+          const bubbleY =
+            400 - target.y - (costume.height * scale) / 2 - bubbleHeight - 10;
+
+          contextToUse.beginPath();
+          contextToUse.fillStyle = "white";
+          contextToUse.roundRect(
+            bubbleX,
+            bubbleY,
+            bubbleWidth,
+            bubbleHeight,
+            10,
+          );
+          contextToUse.fill();
+          contextToUse.stroke();
+          contextToUse.beginPath();
+          contextToUse.moveTo(target.x - 8, bubbleY + bubbleHeight);
+          contextToUse.lineTo(target.x, bubbleY + bubbleHeight + 10);
+          contextToUse.lineTo(target.x + 8, bubbleY + bubbleHeight);
+          contextToUse.closePath();
+          contextToUse.fill();
+          contextToUse.stroke();
+          // console.log("lines", lines);
+          contextToUse.fillStyle = "black";
+          contextToUse.textBaseline = "top";
+          contextToUse.font = "16px Arial";
+          for (let i = 0; i < lines.length; i++) {
+            contextToUse.fillText(
+              lines[i],
+              bubbleX + paddingX,
+              bubbleY + paddingY + i * 20,
+            );
+          }
+        }
       }
     }
   }

@@ -52,9 +52,9 @@ export class Runtime {
       sprite.id = databaseSprite.id;
       for (const thing of databaseSprite.variables_map) {
         sprite.variables.set(thing.id, 0);
-        console.log(
-          `Sprite ${sprite.id} has variable ${thing.name} with id ${thing.id}`,
-        );
+        // console.log(
+        //   `Sprite ${sprite.id} has variable ${thing.name} with id ${thing.id}`,
+        // );
       }
       for (const otherSprite of sprites) {
         if (otherSprite.id !== databaseSprite.id) {
@@ -92,12 +92,12 @@ export class Runtime {
           block.type === "events_when_broadcast_received" ||
           block.type === "events_when_sprite_clicked"
         ) {
-          console.warn(
-            "Found top-level event block for sprite",
-            sprite.id,
-            "of type",
-            block.type,
-          );
+          // console.warn(
+          //   "Found top-level event block for sprite",
+          //   sprite.id,
+          //   "of type",
+          //   block.type,
+          // );
           let outputScript = this.compileScript(sprite.id, block);
           if (outputScript) {
             this._scripts.push(outputScript);
@@ -197,15 +197,20 @@ export class Runtime {
           yMin +
           (this._targets.find((t) => t.id.toString() === script.targetId)
             ?._costumes[currentCostumeIndex].height || 0);
-        if (x >= xMin && x <= xMax && y >= yMin && y <= yMax) {
-          this.startScript(script);
-        }
+        this.startScript(script);
+        console.log(`Sprite ${script.targetId} was clicked at (${x}, ${y}).`);
+        console.log(
+          `xMin: ${xMin}, yMin: ${yMin}, xMax: ${xMax}, yMax: ${yMax}`,
+        );
       }
     }
   }
 
   tick(deltaTime: number, currentTime: number) {
     for (const thread of this._threads) {
+      // console.log(
+      //   `Thread for sprite ${thread.target.id} is in status: ${thread.status}`,
+      // );
       this._vm.step(thread, currentTime, deltaTime);
     }
     this._threads = this._threads.filter((thread) => thread.status !== "done");

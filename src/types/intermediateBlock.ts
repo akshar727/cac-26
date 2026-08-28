@@ -63,12 +63,6 @@ export type IntermediateBlock =
       by: Value;
       body: IntermediateBlock[];
     }
-  // | {
-  //     type: "controls_forEach";
-  //     variable: string;
-  //     list: Value;
-  //     body: IntermediateBlock[];
-  //   }
   | {
       type: "screen_change_x";
       delta: Value;
@@ -133,4 +127,17 @@ export type IntermediateBlock =
       type: "screen_glide_preset";
       duration: Value;
       preset: string | "MOUSE_POINTER" | "RANDOM_POSITION";
+    }
+  | {
+      type: "screen_say";
+      message: Text | Value;
+      duration: Value;
+    }
+  | {
+      type: "screen_think";
+      message: Text | Value;
+      duration: Value;
+    }
+  | {
+      type: "screen_clear_speech_bubbles";
     };

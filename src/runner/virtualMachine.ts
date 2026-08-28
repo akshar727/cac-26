@@ -29,6 +29,23 @@ export class VirtualMachine {
 
       thread.status = "running";
     }
+    if (
+      (thread.target.sayText || thread.target.thinkText) &&
+      thread.blockedBySprite
+    ) {
+      // Handle say or think text rendering
+      if (currentTime < thread.target.bubbleUntil) {
+        return;
+      }
+      thread.target.clearBubbles();
+      for (const otherThread of this._runtime._threads) {
+        if (otherThread.target.id === thread.target.id) {
+          otherThread.blockedBySprite = false;
+        }
+      }
+      thread.blockedBySprite = false;
+      thread.status = "running"; // Ensure the thread continues running after clearing bubbles
+    }
 
     const MAX_OPERATIONS = 1000;
     let operations = 0;
@@ -43,8 +60,11 @@ export class VirtualMachine {
         console.log(
           "Thread completed for target:",
           thread.target,
+          thread,
           "program counter:",
           thread.count,
+          "Active threads:",
+          this._runtime._threads,
         );
         return;
       }
@@ -617,6 +637,10 @@ export class VirtualMachine {
       case "controls_forever": {
         const newFrame = new ForeverFrame(blockToExecute.body);
         thread.addFrame(newFrame);
+        console.log(
+          "Added ForeverFrame to thread for sprite",
+          thread.target.id,
+        );
         break;
       }
       case "controls_flow_statements": {
@@ -876,6 +900,65 @@ export class VirtualMachine {
         const endTime = startTime + duration * 1000;
         let newFrame = new GlideFrame(targetX, targetY, startTime, endTime);
         thread.addFrame(newFrame);
+        break;
+      }
+      case "screen_say": {
+        const message = this._evaluator.evaluate(
+          blockToExecute.message,
+          thread,
+        );
+        const duration = this._evaluator.evaluate(
+          blockToExecute.duration,
+          thread,
+        ) as number;
+        for (const otherThread of this._runtime._threads) {
+          if (otherThread.target.id === thread.target.id) {
+            otherThread.blockedBySprite = false;
+            otherThread.status = "running";
+            otherThread.target.sayText = "";
+            otherThread.target.thinkText = "";
+          }
+        }
+        thread.status = "bubbling";
+        console.log(`Sprite ${thread.target.id} is saying: ${message}`);
+        thread.target.markSay(message as string, duration, currentTime);
+        thread.blockedBySprite = true;
+        break;
+      }
+      case "screen_think": {
+        const message = this._evaluator.evaluate(
+          blockToExecute.message,
+          thread,
+        );
+        const duration = this._evaluator.evaluate(
+          blockToExecute.duration,
+          thread,
+        ) as number;
+        for (const otherThread of this._runtime._threads) {
+          if (otherThread.target.id === thread.target.id) {
+            otherThread.blockedBySprite = false;
+            otherThread.status = "running";
+            otherThread.target.sayText = "";
+            otherThread.target.thinkText = "";
+          }
+        }
+        thread.status = "bubbling";
+        console.log(`Sprite ${thread.target.id} is thinking: ${message}`);
+        thread.target.markThink(message as string, duration, currentTime);
+        thread.blockedBySprite = true;
+        break;
+      }
+      case "screen_clear_speech_bubbles": {
+        thread.target.clearBubbles();
+        for (const otherThread of this._runtime._threads) {
+          if (otherThread.target.id === thread.target.id) {
+            otherThread.blockedBySprite = false;
+            otherThread.status = "running";
+            otherThread.target.sayText = "";
+            otherThread.target.thinkText = "";
+          }
+        }
+        // console.error("Clear speech bubbles block is not yet implemented.");
         break;
       }
       default:

@@ -864,6 +864,54 @@ export const toolbox = {
         },
         {
           kind: "block",
+          type: "screen_say",
+          inputs: {
+            MESSAGE: {
+              shadow: {
+                type: "text",
+                fields: {
+                  TEXT: "Hello!",
+                },
+              },
+            },
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 2,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_think",
+          inputs: {
+            MESSAGE: {
+              shadow: {
+                type: "text",
+                fields: {
+                  TEXT: "Hmm...",
+                },
+              },
+            },
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 2,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_clear_speech_bubbles",
+        },
+        {
+          kind: "block",
           type: "screen_distance_to",
         },
         {
