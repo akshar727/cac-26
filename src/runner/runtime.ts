@@ -44,8 +44,8 @@ export class Runtime {
           );
         }
         sprite.isBackdrop = true;
-        sprite.x = 600;
-        sprite.y = 200;
+        sprite.x = 800 / 2;
+        sprite.y = 600 / 2;
       } else {
         sprite.isBackdrop = false;
       }

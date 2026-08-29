@@ -147,7 +147,7 @@ function App() {
           return updatedSprite || null;
         } else if (prevActiveSprite && "isBackdrop" in prevActiveSprite) {
           const updatedBackdrop = backdropsResult.find(
-            (backdrop) => backdrop.id === prevActiveSprite.id,
+            (backdrop) => backdrop.id === -prevActiveSprite.id,
           );
           return updatedBackdrop || null;
         }
@@ -308,7 +308,7 @@ function App() {
         //@ts-ignore
         setSprites((prevSprites: (DatabaseSprite | DatabaseBackdrop)[]) =>
           prevSprites.map((sprite: DatabaseSprite | DatabaseBackdrop) =>
-            sprite.id === currentActiveSprite.id && "isBackdrop" in sprite
+            sprite.id === -currentActiveSprite.id && "isBackdrop" in sprite
               ? {
                   ...sprite,
                   blocks_json: fullJson,

@@ -6,6 +6,8 @@ import {
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 
+let creationLock = false;
+
 export class DatabaseManager {
   private fileName = "cac.db";
 
@@ -13,13 +15,23 @@ export class DatabaseManager {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
-        let projects = await db.select<DatabaseProject[]>(`SELECT * FROM projects`);
-        if (projects.length === 0) {
+        let projects = await db.select<DatabaseProject[]>(
+          `SELECT * FROM projects`,
+        );
+        // console.log("Projects:", projects);
+        if (projects.length === 0 && !creationLock) {
+          creationLock = true;
           await db.execute(
             "INSERT into projects (name, description) VALUES ('New Project', 'New Project')",
           );
+          await db.execute(
+            "INSERT into backdrops (name, image_paths, project_id) VALUES ('New Backdrop', '[]', 1)",
+          );
+          console.log("Inserted new project.");
+          creationLock = false;
         }
         projects = await db.select<DatabaseProject[]>(`SELECT * FROM projects`);
+        // console.log("Projects after insertion:", projects);
         for (const project of projects) {
           //@ts-ignore
           project.broadcasts_json = JSON.parse(project.broadcasts_json);
@@ -130,6 +142,7 @@ export class DatabaseManager {
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
           [JSON.stringify(newImagePaths), spriteId],
         );
+        console.log("Updated image paths for sprite:", spriteId);
         resolve();
       } catch (error) {
         reject(error);

@@ -245,7 +245,10 @@ export default function CostumeEdtior({
                       return;
                     }
                     await new DatabaseManager().addCostumeToSprite(
-                      activeSprite.id,
+                      "isBackdrop" in activeSprite &&
+                        (activeSprite.isBackdrop as boolean)
+                        ? -activeSprite.id
+                        : activeSprite.id,
                       activeSprite.image_paths,
                       last,
                       appDataDir || "",
@@ -293,7 +296,10 @@ export default function CostumeEdtior({
                       return;
                     }
                     await new DatabaseManager().updateCostumeName(
-                      activeSprite.id,
+                      "isBackdrop" in activeSprite &&
+                        (activeSprite.isBackdrop as boolean)
+                        ? -activeSprite.id
+                        : activeSprite.id,
                       activeSprite.image_paths,
                       activeCostume.loadablePath,
                       e.target.value,
