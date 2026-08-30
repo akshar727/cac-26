@@ -170,11 +170,11 @@ export class DatabaseManager {
     });
   }
 
-  updateSpriteName(spriteId: number, name: string): Promise<void> {
+  updateSpriteName(spriteId: number, name: string, isBackdrop: boolean): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
-        await db.execute(`UPDATE sprites SET name = ? WHERE id = ?`, [
+        await db.execute(`UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET name = ? WHERE id = ?`, [
           name,
           spriteId,
         ]);
@@ -188,6 +188,7 @@ export class DatabaseManager {
     costumePath: string,
     currentCostumes: { costumeName: string; loadablePath: string }[],
     spriteId: number,
+    isBackdrop: boolean,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       let newCostumes = currentCostumes.filter(
@@ -195,7 +196,7 @@ export class DatabaseManager {
       );
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
-        await db.execute(`UPDATE sprites SET image_paths = ? WHERE id = ?`, [
+        await db.execute(`UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`, [
           JSON.stringify(newCostumes),
           spriteId,
         ]);

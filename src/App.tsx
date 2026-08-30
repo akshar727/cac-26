@@ -23,7 +23,7 @@ import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
-import SpriteSelector from "./components/SpriteBackdropSelector";
+import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 
 function App() {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
@@ -147,10 +147,14 @@ function App() {
           return updatedSprite || null;
         } else if (prevActiveSprite && "isBackdrop" in prevActiveSprite) {
           const updatedBackdrop = backdropsResult.find(
-            (backdrop) => backdrop.id === -prevActiveSprite.id,
+            // looking in diff results here
+            (backdrop) => backdrop.id === prevActiveSprite.id,
           );
           return updatedBackdrop || null;
         }
+        console.warn(
+          "Active sprite not found in updated sprites, setting to null",
+        );
         return null;
       });
     }
@@ -793,7 +797,7 @@ function App() {
             className="flex w-full h-full max-w-dvw gap-2"
           >
             <div className="flex-5" id="blocklyDiv"></div>
-            <SpriteSelector
+            <SpriteAndBackdropSelector
               sprites={sprites}
               activeSprite={activeSprite}
               setActiveSprite={setActiveSprite}
@@ -804,12 +808,6 @@ function App() {
               setSpriteNameDialogValue={setSpriteNameDialogValue}
               spriteImageDialogValue={spriteImageDialogValue}
               setSpriteImageDialogValue={setSpriteImageDialogValue}
-              backdropDialogOpen={backdropDialogOpen}
-              setbackdropDialogOpen={setbackdropDialogOpen}
-              backdropNameDialogValue={backdropNameDialogValue}
-              setbackdropNameDialogValue={setbackdropNameDialogValue}
-              backdropImageDialogValue={backdropImageDialogValue}
-              setbackdropImageDialogValue={setbackdropImageDialogValue}
               appDataDirRef={_appDataDir}
               importDatabaseData={importDatabaseData}
             />
@@ -827,7 +825,7 @@ function App() {
                 refreshDataCallback={importDatabaseData}
               />
             </div>
-            <SpriteSelector
+            <SpriteAndBackdropSelector
               sprites={sprites}
               activeSprite={activeSprite}
               setActiveSprite={setActiveSprite}
@@ -838,12 +836,6 @@ function App() {
               setSpriteNameDialogValue={setSpriteNameDialogValue}
               spriteImageDialogValue={spriteImageDialogValue}
               setSpriteImageDialogValue={setSpriteImageDialogValue}
-              backdropDialogOpen={backdropDialogOpen}
-              setbackdropDialogOpen={setbackdropDialogOpen}
-              backdropNameDialogValue={backdropNameDialogValue}
-              setbackdropNameDialogValue={setbackdropNameDialogValue}
-              backdropImageDialogValue={backdropImageDialogValue}
-              setbackdropImageDialogValue={setbackdropImageDialogValue}
               appDataDirRef={_appDataDir}
               importDatabaseData={importDatabaseData}
             />

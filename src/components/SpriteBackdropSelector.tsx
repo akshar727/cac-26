@@ -35,17 +35,11 @@ interface SpriteSelectorProps {
   setSpriteNameDialogValue: (val: string) => void;
   spriteImageDialogValue: string | null;
   setSpriteImageDialogValue: (val: string | null) => void;
-  backdropDialogOpen: boolean;
-  setbackdropDialogOpen: (open: boolean) => void;
-  backdropNameDialogValue: string | null;
-  setbackdropNameDialogValue: (val: string) => void;
-  backdropImageDialogValue: string | null;
-  setbackdropImageDialogValue: (val: string | null) => void;
   appDataDirRef: React.MutableRefObject<string | null>;
   importDatabaseData: () => Promise<void>;
 }
 
-export default function SpriteSelector({
+export default function SpriteAndBackdropSelector({
   sprites,
   activeSprite,
   setActiveSprite,
@@ -56,12 +50,6 @@ export default function SpriteSelector({
   setSpriteNameDialogValue,
   spriteImageDialogValue,
   setSpriteImageDialogValue,
-  backdropDialogOpen,
-  setbackdropDialogOpen,
-  backdropNameDialogValue,
-  setbackdropNameDialogValue,
-  backdropImageDialogValue,
-  setbackdropImageDialogValue,
   appDataDirRef,
   importDatabaseData,
 }: SpriteSelectorProps) {
@@ -132,7 +120,52 @@ export default function SpriteSelector({
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="flex flex-col gap-1 justify-center">
+          <div className="flex flex-row gap-2 py-4">
+            <Label htmlFor="spriteDialog">Sprite:</Label>
+            <Input
+              id="spriteDialog"
+              key={activeSprite?.id}
+              type="text"
+              defaultValue={activeSprite?.name}
+              placeholder="Enter sprite name"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              onFocus={(e) => {
+                e.target.select();
+              }}
+              onBlur={async (e) => {
+                if (!activeSprite) {
+                  return;
+                }
+                const newName = e.target.value;
+                if (newName === activeSprite.name) {
+                  return;
+                }
+                await new DatabaseManager().updateSpriteName(
+                  "isBackdrop" in activeSprite &&
+                    (activeSprite.isBackdrop as boolean)
+                    ? -activeSprite.id
+                    : activeSprite.id,
+                  newName,
+                  "isBackdrop" in activeSprite &&
+                    (activeSprite.isBackdrop as boolean),
+                );
+                importDatabaseData();
+                setActiveSprite({
+                  ...activeSprite,
+                  name: newName,
+                });
+                activeSpriteRef.current = {
+                  ...activeSprite,
+                  name: newName,
+                };
+              }}
+            />
+          </div>
           <Dialog
             open={spriteDialogOpen}
             onOpenChange={setSpriteDialogOpen}

@@ -329,7 +329,12 @@ export default function CostumeEdtior({
                   await new DatabaseManager().deleteCostume(
                     activeCostume.loadablePath,
                     activeSprite?.image_paths || [],
-                    activeSprite?.id || 0,
+                    "isBackdrop" in activeSprite &&
+                      (activeSprite.isBackdrop as boolean)
+                      ? -activeSprite.id
+                      : activeSprite.id,
+                    "isBackdrop" in activeSprite &&
+                      (activeSprite.isBackdrop as boolean),
                   );
                   await refreshDataCallback().then(() => {
                     setActiveCostume(null);
