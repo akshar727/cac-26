@@ -25,7 +25,13 @@ import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 
-function App() {
+function CodeEditor({
+  projectId,
+  cb,
+}: {
+  projectId: number | null;
+  cb: () => void;
+}) {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
     null,
   );
@@ -121,12 +127,12 @@ function App() {
   }, []);
 
   async function importDatabaseData() {
-    const projects = await new DatabaseManager().getProject();
+    const projects = await new DatabaseManager().getProjects();
     let spritesResult = await new DatabaseManager().getSpritesForProject(
-      projects[0].id,
+      projectId || projects[0].id,
     );
     let backdropsResult = await new DatabaseManager().getBackdropsForProject(
-      projects[0].id,
+      projectId || projects[0].id,
     );
     console.log(backdropsResult);
     let combined: (DatabaseSprite | DatabaseBackdrop)[] = [
@@ -886,10 +892,13 @@ function App() {
           </div>
         </TabsContent>
       </Tabs>
+      <Button onClick={cb} className="absolute top-2 right-2">
+        Back
+      </Button>
       <BlocklyVariablePromptDialog />
       <BroadcastPromptDialog />
     </main>
   );
 }
 
-export default App;
+export default CodeEditor;

@@ -5,13 +5,14 @@ import {
 } from "@/types/database";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
+import { resolveResource } from "@tauri-apps/api/path";
 
 let creationLock = false;
 
 export class DatabaseManager {
   private fileName = "cac.db";
 
-  getProject(): Promise<DatabaseProject[]> {
+  getProjects(): Promise<DatabaseProject[]> {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
@@ -21,11 +22,9 @@ export class DatabaseManager {
         // console.log("Projects:", projects);
         if (projects.length === 0 && !creationLock) {
           creationLock = true;
-          await db.execute(
-            "INSERT into projects (name, description) VALUES ('New Project', 'New Project')",
-          );
-          await db.execute(
-            "INSERT into backdrops (name, image_paths, project_id) VALUES ('New Backdrop', '[]', 1)",
+          await this.createProject(
+            "Default Project",
+            "This is the default project.",
           );
           console.log("Inserted new project.");
           creationLock = false;
@@ -37,6 +36,44 @@ export class DatabaseManager {
           project.broadcasts_json = JSON.parse(project.broadcasts_json);
         }
         resolve(projects);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  async createProject(name: string, description: string): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        const result = await db.execute(
+          `INSERT INTO projects (name, description) VALUES (?, ?)`,
+          [name, description],
+        );
+        let whiteBG = await resolveResource("asset/white.svg");
+        let assetPath = convertFileSrc(whiteBG);
+        await db.execute(
+          `INSERT INTO backdrops (name, image_paths, project_id) VALUES (?, ?, ?)`,
+          [
+            "Backdrop",
+            JSON.stringify([
+              { costumeName: "Backdrop 1", loadablePath: assetPath },
+            ]),
+            result.lastInsertId,
+          ],
+        );
+        await db.execute(
+          `INSERT INTO sprites (name, image_paths, project_id) VALUES (?, ?, ?)`,
+          [
+            "Sprite 1",
+            JSON.stringify([
+              { costumeName: "Costume 1", loadablePath: assetPath },
+            ]),
+            result.lastInsertId,
+          ],
+        );
+
+        resolve();
       } catch (error) {
         reject(error);
       }
@@ -110,6 +147,16 @@ export class DatabaseManager {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
+        if (!imagePaths || imagePaths.length === 0) {
+          let whiteBG = await resolveResource("asset/white.svg");
+          let assetPath = convertFileSrc(whiteBG);
+          imagePaths = [
+            {
+              costumeName: "Costume 1",
+              loadablePath: assetPath,
+            },
+          ];
+        }
         await db.execute(
           `INSERT INTO sprites (name, image_paths, project_id) VALUES (?, ?, ?)`,
           [name, JSON.stringify(imagePaths), projectId],
@@ -170,14 +217,18 @@ export class DatabaseManager {
     });
   }
 
-  updateSpriteName(spriteId: number, name: string, isBackdrop: boolean): Promise<void> {
+  updateSpriteName(
+    spriteId: number,
+    name: string,
+    isBackdrop: boolean,
+  ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
-        await db.execute(`UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET name = ? WHERE id = ?`, [
-          name,
-          spriteId,
-        ]);
+        await db.execute(
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET name = ? WHERE id = ?`,
+          [name, spriteId],
+        );
         resolve();
       } catch (error) {
         reject(error);
@@ -196,10 +247,10 @@ export class DatabaseManager {
       );
       try {
         const db = await Database.load(`sqlite:${this.fileName}`);
-        await db.execute(`UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`, [
-          JSON.stringify(newCostumes),
-          spriteId,
-        ]);
+        await db.execute(
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
+          [JSON.stringify(newCostumes), spriteId],
+        );
         resolve();
       } catch (error) {
         reject(error);

@@ -341,6 +341,7 @@ export default function CostumeEdtior({
                   });
                 }}
                 variant="destructive"
+                disabled={activeSprite.image_paths.length <= 1}
               >
                 Delete Costume
               </Button>
