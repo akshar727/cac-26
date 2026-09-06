@@ -7,12 +7,12 @@ import {
   Dialog,
   DialogClose,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { copyFile, BaseDirectory } from "@tauri-apps/plugin-fs";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { copyFile, BaseDirectory, mkdir, exists } from "@tauri-apps/plugin-fs";
 import { Field } from "./ui/field";
 import { Input } from "./ui/input";
 import { Card, CardContent, CardTitle, CardFooter } from "./ui/card";
@@ -21,6 +21,9 @@ import { FieldGroup } from "./ui/field";
 import { Label } from "./ui/label";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Skeleton } from "./ui/skeleton";
+import { PlusIcon, X } from "lucide-react";
+import { openImage } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface SpriteSelectorProps {
   sprites: (DatabaseSprite | DatabaseBackdrop)[];
@@ -36,6 +39,7 @@ interface SpriteSelectorProps {
   spriteImageDialogValue: string | null;
   setSpriteImageDialogValue: (val: string | null) => void;
   appDataDirRef: React.MutableRefObject<string | null>;
+  projectId: number | null;
   importDatabaseData: () => Promise<void>;
 }
 
@@ -51,6 +55,7 @@ export default function SpriteAndBackdropSelector({
   spriteImageDialogValue,
   setSpriteImageDialogValue,
   appDataDirRef,
+  projectId,
   importDatabaseData,
 }: SpriteSelectorProps) {
   return (
@@ -76,7 +81,7 @@ export default function SpriteAndBackdropSelector({
                   return (
                     <Card
                       className={cn(
-                        "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200",
+                        "hover:cursor-pointer relative hover:bg-slate-100 transition-colors duration-200",
                         activeSprite?.id === sprite.id &&
                           !("isBackdrop" in activeSprite)
                           ? "bg-slate-100"
@@ -92,6 +97,39 @@ export default function SpriteAndBackdropSelector({
                       }}
                       key={sprite.id}
                     >
+                      <Dialog>
+                        <DialogTrigger
+                          render={
+                            <div className="absolute hover:cursor-pointer rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 top-0 right-0 flex justify-end m-2 p-1">
+                              <X className="w-4 h-4"></X>
+                            </div>
+                          }
+                        ></DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Delete this sprite?</DialogTitle>
+                          </DialogHeader>
+                          This is a permanent action and cannot be undone. All
+                          costumes, variables, and code associated with this
+                          sprite will be lost.
+                          <DialogFooter className="bg-white">
+                            <DialogClose
+                              render={
+                                <Button
+                                  variant="destructive"
+                                  onClick={async () => {
+                                    const dbManager = new DatabaseManager();
+                                    await dbManager.deleteSprite(sprite.id);
+                                    importDatabaseData();
+                                  }}
+                                >
+                                  Delete Sprite
+                                </Button>
+                              }
+                            ></DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                       <CardContent className="flex flex-col items-center gap-2">
                         {sprite.image_paths.length === 0 ? (
                           <Skeleton className="w-16 h-16" />
@@ -120,51 +158,59 @@ export default function SpriteAndBackdropSelector({
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex flex-col gap-1 justify-center">
+        <CardFooter className="flex bg-white flex-col gap-1 justify-center">
           <div className="flex flex-row gap-2 py-4">
             <Label htmlFor="spriteDialog">Sprite:</Label>
-            <Input
-              id="spriteDialog"
-              key={activeSprite?.id}
-              type="text"
-              defaultValue={activeSprite?.name}
-              placeholder="Enter sprite name"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              onFocus={(e) => {
-                e.target.select();
-              }}
-              onBlur={async (e) => {
-                if (!activeSprite) {
-                  return;
-                }
-                const newName = e.target.value;
-                if (newName === activeSprite.name) {
-                  return;
-                }
-                await new DatabaseManager().updateSpriteName(
-                  "isBackdrop" in activeSprite &&
-                    (activeSprite.isBackdrop as boolean)
-                    ? -activeSprite.id
-                    : activeSprite.id,
-                  newName,
-                  "isBackdrop" in activeSprite &&
-                    (activeSprite.isBackdrop as boolean),
-                );
-                importDatabaseData();
-                setActiveSprite({
-                  ...activeSprite,
-                  name: newName,
-                });
-                activeSpriteRef.current = {
-                  ...activeSprite,
-                  name: newName,
-                };
-              }}
-            />
+            <Tooltip>
+              <TooltipTrigger>
+                <Input
+                  id="spriteDialog"
+                  key={activeSprite?.id}
+                  type="text"
+                  disabled={activeSprite === null}
+                  defaultValue={activeSprite?.name}
+                  placeholder="Enter sprite name"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  onFocus={(e) => {
+                    e.target.select();
+                  }}
+                  onBlur={async (e) => {
+                    if (!activeSprite) {
+                      return;
+                    }
+                    const newName = e.target.value;
+                    if (newName === activeSprite.name) {
+                      return;
+                    }
+                    await new DatabaseManager().updateSpriteName(
+                      "isBackdrop" in activeSprite &&
+                        (activeSprite.isBackdrop as boolean)
+                        ? -activeSprite.id
+                        : activeSprite.id,
+                      newName,
+                      "isBackdrop" in activeSprite &&
+                        (activeSprite.isBackdrop as boolean),
+                    );
+                    importDatabaseData();
+                    setActiveSprite({
+                      ...activeSprite,
+                      name: newName,
+                    });
+                    activeSpriteRef.current = {
+                      ...activeSprite,
+                      name: newName,
+                    };
+                  }}
+                />
+              </TooltipTrigger>
+              <TooltipContent className={activeSprite === null ? "" : "hidden"}>
+                <p>Select a sprite to edit its name.</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
           <Dialog
             open={spriteDialogOpen}
@@ -177,7 +223,12 @@ export default function SpriteAndBackdropSelector({
             }}
           >
             <DialogTrigger
-              render={<Button onClick={async () => {}}>Add a sprite</Button>}
+              render={
+                <Button onClick={async () => {}}>
+                  <PlusIcon />
+                  Add a sprite
+                </Button>
+              }
             />
             <DialogContent>
               <DialogTitle>Add a new sprite</DialogTitle>
@@ -223,15 +274,15 @@ export default function SpriteAndBackdropSelector({
                     Upload Image
                   </Button>
                   {spriteImageDialogValue && (
-                    <p className="text-sm">
+                    <p className="text-sm break-all relative">
                       Selected image(s):{" "}
                       {JSON.parse(spriteImageDialogValue).map(
                         (path: string, index: number) => (
                           <span key={index}>
                             <span
-                              className=" text-blue-500 hover:cursor-pointer hover:underline"
+                              className=" text-blue-500 hover:cursor-pointer hover:underline text-wrap"
                               onClick={async () => {
-                                await openPath(path);
+                                await openImage(path);
                               }}
                             >
                               {path.split("/").pop()}
@@ -259,13 +310,23 @@ export default function SpriteAndBackdropSelector({
                     }
                     const files = JSON.parse(spriteImageDialogValue);
                     let fileNames = [];
+                    const projectFolderName = `proj_${projectId}`;
+                    const folderExists = await exists(projectFolderName, {
+                      baseDir: BaseDirectory.AppLocalData,
+                    });
+                    if (!folderExists) {
+                      await mkdir(projectFolderName, {
+                        recursive: true,
+                        baseDir: BaseDirectory.AppLocalData,
+                      });
+                    }
                     for (const file of files) {
                       const last = file.split("/").pop();
                       if (!last) {
                         return;
                       }
                       fileNames.push(last);
-                      await copyFile(file, last, {
+                      await copyFile(file, `proj_${projectId}/${last}`, {
                         toPathBaseDir: BaseDirectory.AppLocalData,
                       });
                     }
@@ -273,13 +334,15 @@ export default function SpriteAndBackdropSelector({
                     let formattedFileNames = fileNames.map((name) => ({
                       costumeName: name.split(".")[0],
                       loadablePath: convertFileSrc(
-                        `${appDataDirRef.current}/${name}`,
+                        `${appDataDirRef.current}/proj_${projectId}/${name}`,
                       ),
+                      truePath: `proj_${projectId}/${name}`,
                     }));
+                    console.log("Project ID:", projectId);
                     await new DatabaseManager().addNewSprite(
                       spriteNameDialogValue,
                       formattedFileNames,
-                      1,
+                      projectId as number,
                     );
                     importDatabaseData();
                     setSpriteDialogOpen(false);

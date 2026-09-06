@@ -4,6 +4,7 @@ export type DatabaseSprite = {
   image_paths: {
     costumeName: string;
     loadablePath: string;
+    truePath: string | null;
   }[];
   blocks_json: any[];
   variables_map: {
@@ -20,6 +21,7 @@ export type DatabaseBackdrop = {
   image_paths: {
     costumeName: string;
     loadablePath: string;
+    truePath: string | null;
   }[];
   blocks_json: any[];
   variables_map: {

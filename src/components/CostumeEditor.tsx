@@ -1,7 +1,12 @@
-import { useState, useEffect, useReducer } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardTitle } from "./ui/card";
 import { DatabaseSprite } from "@/types/database";
 import { DatabaseManager } from "@/lib/database";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogTrigger,
@@ -10,16 +15,16 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { copyFile, BaseDirectory } from "@tauri-apps/plugin-fs";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { copyFile, BaseDirectory, mkdir, exists } from "@tauri-apps/plugin-fs";
 import { Field } from "@/components/ui/field";
 import { DialogContent, DialogFooter } from "./ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Input } from "./ui/input";
-import { cn } from "@/lib/utils";
+import { cn, openImage } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
+import { Plus } from "lucide-react";
 
 function ImageSpecs({ loadablePath }: { loadablePath: string }) {
   const [dimensions, setDimensions] = useState<{
@@ -51,10 +56,12 @@ export default function CostumeEdtior({
   activeSprite,
   refreshDataCallback,
   appDataDir,
+  projectId,
 }: {
   activeSprite: DatabaseSprite | null;
   refreshDataCallback: () => Promise<void>;
   appDataDir: string;
+  projectId: number;
 }) {
   const [activeCostume, setActiveCostume] = useState<
     DatabaseSprite["image_paths"][0] | null
@@ -157,6 +164,7 @@ export default function CostumeEdtior({
                     setNewCostumeDialogOpen(true);
                   }}
                 >
+                  <Plus />
                   Add a costume
                 </Button>
               }
@@ -213,7 +221,7 @@ export default function CostumeEdtior({
                         className=" text-blue-500 hover:cursor-pointer hover:underline"
                         onClick={async () => {
                           const path = spriteImageDialogValue;
-                          await openPath(path);
+                          await openImage(path);
                         }}
                       >
                         {spriteImageDialogValue.split("/").pop()}
@@ -237,7 +245,17 @@ export default function CostumeEdtior({
                     if (!last) {
                       return;
                     }
-                    await copyFile(file, last, {
+                    const projectFolderName = `proj_${projectId}`;
+                    const folderExists = await exists(projectFolderName, {
+                      baseDir: BaseDirectory.AppLocalData,
+                    });
+                    if (!folderExists) {
+                      await mkdir(projectFolderName, {
+                        recursive: true,
+                        baseDir: BaseDirectory.AppLocalData,
+                      });
+                    }
+                    await copyFile(file, `${projectFolderName}/${last}`, {
                       toPathBaseDir: BaseDirectory.AppLocalData,
                     });
                     console.log("Copied file:", last);
@@ -257,6 +275,7 @@ export default function CostumeEdtior({
                         "New Costume",
                       "isBackdrop" in activeSprite &&
                         (activeSprite.isBackdrop as boolean),
+                      projectId,
                     );
                     refreshDataCallback();
                     setSpriteImageDialogValue("");
@@ -286,6 +305,7 @@ export default function CostumeEdtior({
                   height: "auto",
                   objectFit: "contain",
                 }}
+                className="border rounded"
               />
               <div className="flex flex-row items-center gap-1">
                 <p className="text-sm text-center">Costume:</p>
@@ -324,31 +344,42 @@ export default function CostumeEdtior({
                   defaultValue={activeCostume.costumeName}
                 ></Input>
               </div>
-              <Button
-                onClick={async () => {
-                  await new DatabaseManager().deleteCostume(
-                    activeCostume.loadablePath,
-                    activeSprite?.image_paths || [],
-                    "isBackdrop" in activeSprite &&
-                      (activeSprite.isBackdrop as boolean)
-                      ? -activeSprite.id
-                      : activeSprite.id,
-                    "isBackdrop" in activeSprite &&
-                      (activeSprite.isBackdrop as boolean),
-                  );
-                  await refreshDataCallback().then(() => {
-                    setActiveCostume(null);
-                  });
-                }}
-                variant="destructive"
-                disabled={activeSprite.image_paths.length <= 1}
-              >
-                Delete Costume
-              </Button>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    onClick={async () => {
+                      await new DatabaseManager().deleteCostume(
+                        activeCostume.loadablePath,
+                        activeSprite?.image_paths || [],
+                        "isBackdrop" in activeSprite &&
+                          (activeSprite.isBackdrop as boolean)
+                          ? -activeSprite.id
+                          : activeSprite.id,
+                        "isBackdrop" in activeSprite &&
+                          (activeSprite.isBackdrop as boolean),
+                      );
+                      await refreshDataCallback().then(() => {
+                        setActiveCostume(null);
+                      });
+                    }}
+                    variant="destructive"
+                    disabled={activeSprite.image_paths.length <= 1}
+                  >
+                    Delete Costume
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className={
+                    activeSprite.image_paths.length <= 1 ? "" : "hidden"
+                  }
+                >
+                  <p>You cannot delete the only costume of a sprite.</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              <p>No costumes available for this sprite.</p>
+              <p>No costume selected.</p>
             </div>
           )}
         </CardContent>

@@ -21,6 +21,41 @@
           "path": "/**"
         }
       ]
-    }
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "open-macos",
+          "cmd": "open",
+          "args": [
+            "-a",
+            "Preview",
+            {
+              "validator": ".*"
+            }
+          ]
+        },
+        {
+          "name": "open-windows",
+          "cmd": "start",
+          "args": [
+            {
+              "validator": ".*"
+            }
+          ]
+        },
+        {
+          "name": "open-linux",
+          "cmd": "xdg-open",
+          "args": [
+            {
+              "validator": ".*"
+            }
+          ]
+        }
+      ]
+    },
+    "os:default"
   ]
 }

@@ -24,6 +24,7 @@ import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
+import { Undo2 } from "lucide-react";
 
 function CodeEditor({
   projectId,
@@ -606,8 +607,8 @@ function CodeEditor({
         },
       );
     }
-    const theme = Blockly.Theme.defineTheme("cac", {
-      name: "cac",
+    const theme = Blockly.Theme.defineTheme("codely", {
+      name: "codely",
       base: Blockly.Themes.Classic,
       componentStyles: {
         toolboxBackgroundColour: "#f5f5f5",
@@ -815,6 +816,7 @@ function CodeEditor({
               spriteImageDialogValue={spriteImageDialogValue}
               setSpriteImageDialogValue={setSpriteImageDialogValue}
               appDataDirRef={_appDataDir}
+              projectId={projectId}
               importDatabaseData={importDatabaseData}
             />
           </div>
@@ -826,9 +828,11 @@ function CodeEditor({
           >
             <div className="flex-5 gap-1 flex flex-row">
               <CostumeEditor
+                //@ts-ignore
                 activeSprite={activeSprite}
                 appDataDir={_appDataDir.current || ""}
                 refreshDataCallback={importDatabaseData}
+                projectId={projectId || 0}
               />
             </div>
             <SpriteAndBackdropSelector
@@ -843,6 +847,7 @@ function CodeEditor({
               spriteImageDialogValue={spriteImageDialogValue}
               setSpriteImageDialogValue={setSpriteImageDialogValue}
               appDataDirRef={_appDataDir}
+              projectId={projectId}
               importDatabaseData={importDatabaseData}
             />
           </div>
@@ -892,8 +897,13 @@ function CodeEditor({
           </div>
         </TabsContent>
       </Tabs>
-      <Button onClick={cb} className="absolute top-2 right-2">
-        Back
+      <Button
+        variant="secondary"
+        onClick={cb}
+        className="absolute top-2 right-2"
+      >
+        <Undo2 />
+        Back to Menu
       </Button>
       <BlocklyVariablePromptDialog />
       <BroadcastPromptDialog />

@@ -19,7 +19,7 @@ export class Sprite {
   isBackdrop: boolean = false;
 
   constructor(
-    imagePaths: { costumeName: string; loadablePath: string }[] = [],
+    imagePaths: { costumeName: string; loadablePath: string; truePath: string | null }[] = [],
   ) {
     let i = 0;
     for (const path of imagePaths) {

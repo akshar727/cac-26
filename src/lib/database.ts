@@ -5,12 +5,13 @@ import {
 } from "@/types/database";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
-import { resolveResource } from "@tauri-apps/api/path";
+import { BaseDirectory, resolveResource } from "@tauri-apps/api/path";
+import { remove } from "@tauri-apps/plugin-fs";
 
 let creationLock = false;
 
 export class DatabaseManager {
-  private fileName = "cac.db";
+  private fileName = "codely.db";
 
   getProjects(): Promise<DatabaseProject[]> {
     return new Promise(async (resolve, reject) => {
@@ -57,7 +58,11 @@ export class DatabaseManager {
           [
             "Backdrop",
             JSON.stringify([
-              { costumeName: "Backdrop 1", loadablePath: assetPath },
+              {
+                costumeName: "Backdrop 1",
+                loadablePath: assetPath,
+                truePath: null,
+              },
             ]),
             result.lastInsertId,
           ],
@@ -67,7 +72,11 @@ export class DatabaseManager {
           [
             "Sprite 1",
             JSON.stringify([
-              { costumeName: "Costume 1", loadablePath: assetPath },
+              {
+                costumeName: "Costume 1",
+                loadablePath: assetPath,
+                truePath: null,
+              },
             ]),
             result.lastInsertId,
           ],
@@ -122,7 +131,11 @@ export class DatabaseManager {
 
   async addNewBackdrop(
     name: string,
-    imagePaths: { costumeName: string; loadablePath: string }[],
+    imagePaths: {
+      costumeName: string;
+      loadablePath: string;
+      truePath: string | null;
+    }[],
     projectId: number,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
@@ -141,7 +154,11 @@ export class DatabaseManager {
 
   addNewSprite(
     name: string,
-    imagePaths: { costumeName: string; loadablePath: string }[],
+    imagePaths: {
+      costumeName: string;
+      loadablePath: string;
+      truePath: string | null;
+    }[],
     projectId: number,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
@@ -154,6 +171,7 @@ export class DatabaseManager {
             {
               costumeName: "Costume 1",
               loadablePath: assetPath,
+              truePath: null,
             },
           ];
         }
@@ -169,11 +187,16 @@ export class DatabaseManager {
   }
   addCostumeToSprite(
     spriteId: number,
-    oldImagePaths: { costumeName: string; loadablePath: string }[],
+    oldImagePaths: {
+      costumeName: string;
+      loadablePath: string;
+      truePath: string | null;
+    }[],
     imagePath: string,
     appDataDir: string,
     costumeName: string,
     isBackdrop: boolean,
+    projectId: number,
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
@@ -182,7 +205,10 @@ export class DatabaseManager {
           ...oldImagePaths,
           {
             costumeName: costumeName,
-            loadablePath: convertFileSrc(`${appDataDir}/${imagePath}`),
+            loadablePath: convertFileSrc(
+              `${appDataDir}/proj_${projectId}/${imagePath}`,
+            ),
+            truePath: `proj_${projectId}/${imagePath}`,
           },
         ];
         await db.execute(
@@ -237,7 +263,11 @@ export class DatabaseManager {
   }
   deleteCostume(
     costumePath: string,
-    currentCostumes: { costumeName: string; loadablePath: string }[],
+    currentCostumes: {
+      costumeName: string;
+      loadablePath: string;
+      truePath: string | null;
+    }[],
     spriteId: number,
     isBackdrop: boolean,
   ): Promise<void> {
@@ -251,6 +281,14 @@ export class DatabaseManager {
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
           [JSON.stringify(newCostumes), spriteId],
         );
+        let truePath = currentCostumes.find(
+          (c) => c.loadablePath === costumePath,
+        )?.truePath;
+        if (truePath) {
+          await remove(truePath, {
+            baseDir: BaseDirectory.AppLocalData,
+          });
+        }
         resolve();
       } catch (error) {
         reject(error);
@@ -279,6 +317,55 @@ export class DatabaseManager {
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET variables_map = ? WHERE id = ?`,
           [JSON.stringify(variablesMap), spriteId],
         );
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  deleteProject(projectId: number): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        await db.execute(`DELETE FROM projects WHERE id = ?`, [projectId]);
+        await db.execute(`DELETE FROM sprites WHERE project_id = ?`, [
+          projectId,
+        ]);
+        await db.execute(`DELETE FROM backdrops WHERE project_id = ?`, [
+          projectId,
+        ]);
+        await remove(`proj_${projectId}`, {
+          baseDir: BaseDirectory.AppLocalData,
+          recursive: true,
+        });
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  deleteSprite(spriteId: number): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.fileName}`);
+        const spriteFiles = await db.select<{ image_paths: string }[]>(
+          `SELECT image_paths from sprites WHERE id = ?`,
+          [spriteId],
+        );
+        if (spriteFiles.length > 0) {
+          const imagePaths = JSON.parse(spriteFiles[0].image_paths);
+          for (const image of imagePaths) {
+            const fileName = image.truePath;
+            if (fileName) {
+              await remove(fileName, {
+                baseDir: BaseDirectory.AppLocalData,
+              });
+            }
+          }
+        }
+        await db.execute(`DELETE FROM sprites WHERE id = ?`, [spriteId]);
         resolve();
       } catch (error) {
         reject(error);

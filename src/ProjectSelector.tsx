@@ -10,9 +10,20 @@ import {
   CardTitle,
 } from "./components/ui/card";
 import { Button } from "./components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "./components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTrigger,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "./components/ui/dialog";
 import { Label } from "./components/ui/label";
 import { Input } from "./components/ui/input";
+import { X } from "lucide-react";
+import { ScrollArea } from "./components/ui/scroll-area";
 
 export default function ProjectSelector({
   onProjectSelect,
@@ -30,70 +41,118 @@ export default function ProjectSelector({
     fetchProjects();
   }, []);
   return (
-    <div className="flex flex-col w-full gap-4 items-center h-full mt-1/2 justify-center">
-      <div>
-        <h1 className="text-2xl font-bold mt-1/2">Welcome to cac</h1>
+    <>
+      <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
+        <h1 className="text-2xl">Welcome to Codely!</h1>
         <h2 className="text-lg">
           Select a project, or create a new one to get started.
         </h2>
       </div>
-      <div className="flex w-full flex-col gap-4 px-4">
-        <div className="flex w-full justify-center flex-row flex-wrap gap-4">
-          {projects.map((project) => (
-            <Card className="w-64" key={project.id}>
-              <CardHeader>
-                <CardTitle>{project.name}</CardTitle>
-                <CardDescription>{project.description}</CardDescription>
-              </CardHeader>
-              <CardFooter className="flex justify-center bg-white">
-                <Button onClick={() => onProjectSelect(project.id)}>
-                  Open Project
+      <div className="flex flex-col w-full gap-4 items-center h-dvh justify-center">
+        <div className="flex w-full flex-col gap-4 px-4 items-center">
+          <ScrollArea className="h-128 w-fit rounded-md border">
+            <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
+              {projects.map((project) => (
+                <Card className="w-64 relative" key={project.id}>
+                  {projects.length > 1 && (
+                    <Dialog>
+                      <DialogTrigger
+                        render={
+                          <div className="absolute hover:cursor-pointer rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 top-0 right-0 flex justify-end m-2 p-1">
+                            <X className="w-4 h-4"></X>
+                          </div>
+                        }
+                      ></DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Delete this project?</DialogTitle>
+                        </DialogHeader>
+                        This is a permanent action and cannot be undone. All
+                        sprites, backdrops, and other data associated with this
+                        project will be lost.
+                        <DialogFooter className="bg-white">
+                          <DialogClose
+                            render={
+                              <Button
+                                variant="destructive"
+                                onClick={async () => {
+                                  const dbManager = new DatabaseManager();
+                                  await dbManager.deleteProject(project.id);
+                                  setProjects(await dbManager.getProjects());
+                                }}
+                              >
+                                Delete Project
+                              </Button>
+                            }
+                          ></DialogClose>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  <CardHeader>
+                    <CardTitle>{project.name}</CardTitle>
+                    <CardDescription>{project.description}</CardDescription>
+                  </CardHeader>
+                  <CardFooter className="flex justify-center bg-white">
+                    <Button
+                      variant="secondary"
+                      onClick={() => onProjectSelect(project.id)}
+                    >
+                      Open Project
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
+          <Dialog>
+            <DialogTrigger
+              render={
+                <Button className="w-fit" size="lg">
+                  Create New Project
                 </Button>
-              </CardFooter>
-            </Card>
-          ))}
+              }
+            ></DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Project</DialogTitle>
+              </DialogHeader>
+              <Label htmlFor="project-name">Project Name</Label>
+              <Input id="project-name" placeholder="Enter project name" />
+              <Label htmlFor="project-description">Project Description</Label>
+              <Input
+                id="project-description"
+                placeholder="Enter project description"
+              />
+              <Button
+                onClick={() => {
+                  (async () => {
+                    const nameInput = document.getElementById(
+                      "project-name",
+                    ) as HTMLInputElement;
+                    const descriptionInput = document.getElementById(
+                      "project-description",
+                    ) as HTMLInputElement;
+                    const name = nameInput.value;
+                    const description = descriptionInput.value;
+                    if (!name || !description) {
+                      alert("Please fill in all fields.");
+                      return;
+                    }
+                    const dbManager = new DatabaseManager();
+                    await dbManager.createProject(name, description);
+                    const projects = await dbManager.getProjects();
+                    const newProjectId = projects[projects.length - 1].id;
+                    onProjectSelect(newProjectId);
+                  })();
+                }}
+              >
+                Create Project
+              </Button>
+            </DialogContent>
+          </Dialog>
         </div>
-        <Dialog>
-          <DialogTrigger
-            render={<Button>Create New Project</Button>}
-          ></DialogTrigger>
-          <DialogContent>
-            <h1>Create new Project</h1>
-            <Label htmlFor="project-name">Project Name</Label>
-            <Input id="project-name" placeholder="Enter project name" />
-            <Label htmlFor="project-description">Project Description</Label>
-            <Input
-              id="project-description"
-              placeholder="Enter project description"
-            />
-            <Button
-              onClick={() => {
-                (async () => {
-                  const nameInput = document.getElementById(
-                    "project-name",
-                  ) as HTMLInputElement;
-                  const descriptionInput = document.getElementById(
-                    "project-description",
-                  ) as HTMLInputElement;
-                  const name = nameInput.value;
-                  const description = descriptionInput.value;
-                  if (!name || !description) {
-                    alert("Please fill in all fields.");
-                    return;
-                  }
-                  const dbManager = new DatabaseManager();
-                  await dbManager.createProject(name, description);
-                  const projects = await dbManager.getProjects();
-                  const newProjectId = projects[projects.length - 1].id;
-                  onProjectSelect(newProjectId);
-                })();
-              }}
-            >
-              Create Project
-            </Button>
-          </DialogContent>
-        </Dialog>
       </div>
-    </div>
+    </>
   );
 }
