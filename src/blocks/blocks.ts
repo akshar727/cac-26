@@ -621,6 +621,5 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     previousStatement: null,
     nextStatement: null,
     colour: 310,
-    inputsInline: true,
   },
 ]);

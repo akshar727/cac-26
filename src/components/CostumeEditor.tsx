@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
+  DialogHeader,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { copyFile, BaseDirectory, mkdir, exists } from "@tauri-apps/plugin-fs";
@@ -24,7 +25,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Input } from "./ui/input";
 import { cn, openImage } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 function ImageSpecs({ loadablePath }: { loadablePath: string }) {
   const [dimensions, setDimensions] = useState<{
@@ -108,36 +109,110 @@ export default function CostumeEdtior({
               >
                 {activeSprite.image_paths.map((imageInfo, index: number) => {
                   return (
-                    <Card
-                      key={index}
-                      onClick={() => {
-                        setActiveCostume(imageInfo);
-                      }}
-                      className={cn(
-                        "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200",
-                        activeCostume?.loadablePath === imageInfo.loadablePath
-                          ? "bg-slate-100"
-                          : "",
-                      )}
-                    >
-                      <CardContent className="flex relative flex-col items-center gap-2">
-                        <img
-                          src={imageInfo.loadablePath}
-                          alt={`Costume ${index + 1}`}
-                          style={{
-                            maxWidth: 64,
-                            maxHeight: 64,
-                            width: "auto",
-                            height: "auto",
-                            objectFit: "contain",
-                          }}
-                        />
-                        <p className="text-sm text-center">
-                          {imageInfo.costumeName}
-                        </p>
-                        <ImageSpecs loadablePath={imageInfo.loadablePath} />
-                      </CardContent>
-                    </Card>
+                    <Dialog>
+                      <Card
+                        key={index}
+                        onClick={() => {
+                          setActiveCostume(imageInfo);
+                        }}
+                        className={cn(
+                          "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200 relative",
+                          activeCostume?.loadablePath === imageInfo.loadablePath
+                            ? "bg-slate-100"
+                            : "",
+                        )}
+                      >
+                        <Tooltip>
+                          {activeSprite.image_paths.length <= 1 ? (
+                            // Only one costume: X only shows the tooltip
+                            <TooltipTrigger
+                              render={
+                                <div
+                                  className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <X className="w-4 h-4" />
+                                </div>
+                              }
+                            />
+                          ) : (
+                            // Multiple costumes: X opens the delete dialog
+                            <DialogTrigger
+                              render={
+                                <TooltipTrigger
+                                  render={
+                                    <div
+                                      className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </div>
+                                  }
+                                />
+                              }
+                            />
+                          )}
+
+                          {activeSprite.image_paths.length <= 1 && (
+                            <TooltipContent>
+                              <p>
+                                You cannot delete the only costume of a sprite.
+                              </p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                        <CardContent className="flex relative flex-col items-center gap-2">
+                          <img
+                            src={imageInfo.loadablePath}
+                            alt={`Costume ${index + 1}`}
+                            style={{
+                              maxWidth: 64,
+                              maxHeight: 64,
+                              width: "auto",
+                              height: "auto",
+                              objectFit: "contain",
+                            }}
+                          />
+                          <p className="text-sm text-center">
+                            {imageInfo.costumeName}
+                          </p>
+                          <ImageSpecs loadablePath={imageInfo.loadablePath} />
+                        </CardContent>
+                      </Card>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Delete this costume?</DialogTitle>
+                        </DialogHeader>
+                        This is a permanent action and cannot be undone.
+                        <DialogFooter className="bg-white">
+                          <DialogClose
+                            render={
+                              <Button
+                                variant="destructive"
+                                onClick={async () => {
+                                  const dbManager = new DatabaseManager();
+                                  await dbManager.deleteCostume(
+                                    imageInfo.loadablePath,
+                                    activeSprite.image_paths,
+                                    "isBackdrop" in activeSprite &&
+                                      (activeSprite.isBackdrop as boolean)
+                                      ? -activeSprite.id
+                                      : activeSprite.id,
+                                    "isBackdrop" in activeSprite &&
+                                      (activeSprite.isBackdrop as boolean),
+                                  );
+                                  await refreshDataCallback().then(() => {
+                                    setActiveCostume(null);
+                                  });
+                                }}
+                              >
+                                Delete Costume
+                              </Button>
+                            }
+                          ></DialogClose>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   );
                 })}
               </div>
@@ -344,38 +419,6 @@ export default function CostumeEdtior({
                   defaultValue={activeCostume.costumeName}
                 ></Input>
               </div>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    onClick={async () => {
-                      await new DatabaseManager().deleteCostume(
-                        activeCostume.loadablePath,
-                        activeSprite?.image_paths || [],
-                        "isBackdrop" in activeSprite &&
-                          (activeSprite.isBackdrop as boolean)
-                          ? -activeSprite.id
-                          : activeSprite.id,
-                        "isBackdrop" in activeSprite &&
-                          (activeSprite.isBackdrop as boolean),
-                      );
-                      await refreshDataCallback().then(() => {
-                        setActiveCostume(null);
-                      });
-                    }}
-                    variant="destructive"
-                    disabled={activeSprite.image_paths.length <= 1}
-                  >
-                    Delete Costume
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent
-                  className={
-                    activeSprite.image_paths.length <= 1 ? "" : "hidden"
-                  }
-                >
-                  <p>You cannot delete the only costume of a sprite.</p>
-                </TooltipContent>
-              </Tooltip>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
