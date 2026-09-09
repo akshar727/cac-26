@@ -4,13 +4,7 @@ import * as Blockly from "blockly";
 import { blocks } from "./blocks/blocks";
 import { toolbox } from "./toolbox";
 import { loops } from "blockly/blocks";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { BlocklyVariablePromptDialog } from "./components/BlocklyVariablePromptDialog";
 import { Button } from "./components/ui/button";
 import { useRef } from "react";
@@ -27,11 +21,11 @@ import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 
-function CodeEditor({
-  projectId,
+function LessonView({
+  lessonId,
   cb,
 }: {
-  projectId: number | null;
+  lessonId: number | null;
   cb: () => void;
 }) {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
@@ -53,12 +47,6 @@ function CodeEditor({
     string | null
   >(null);
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
-  const [backdropDialogOpen, setbackdropDialogOpen] = React.useState(false);
-  const [backdropImageDialogValue, setbackdropImageDialogValue] =
-    React.useState<string | null>(null);
-  const [backdropNameDialogValue, setbackdropNameDialogValue] = React.useState<
-    string | null
-  >(null);
   const _appDataDir = React.useRef<string | null>(null);
   const codeRunning = React.useRef(false);
   const [codeRunningState, setCodeRunningState] = React.useState(false);
@@ -129,12 +117,12 @@ function CodeEditor({
   }, []);
 
   async function importDatabaseData() {
-    const projects = await new DatabaseManager().getProjects();
-    let spritesResult = await new DatabaseManager().getSpritesForProject(
-      projectId || projects[0].id,
+    const lessons = await new DatabaseManager().getLessons();
+    let spritesResult = await new DatabaseManager().getSpritesForLesson(
+      lessonId || lessons[0].id,
     );
-    let backdropsResult = await new DatabaseManager().getBackdropsForProject(
-      projectId || projects[0].id,
+    let backdropsResult = await new DatabaseManager().getBackdropsForLesson(
+      lessonId || lessons[0].id,
     );
     console.log(backdropsResult);
     let combined: (DatabaseSprite | DatabaseBackdrop)[] = [
@@ -167,7 +155,7 @@ function CodeEditor({
       });
     }
     let broadcastMessages =
-      await new DatabaseManager().getProjectBroadcastMessages(projects[0].id);
+      await new DatabaseManager().getProjectBroadcastMessages(lessons[0].id);
     broadcastMessagesRef.current = broadcastMessages as [string, string][];
   }
 
@@ -820,7 +808,7 @@ function CodeEditor({
               spriteImageDialogValue={spriteImageDialogValue}
               setSpriteImageDialogValue={setSpriteImageDialogValue}
               appDataDirRef={_appDataDir}
-              projectId={projectId}
+              projectId={lessonId}
               importDatabaseData={importDatabaseData}
             />
           </div>
@@ -836,7 +824,7 @@ function CodeEditor({
                 activeSprite={activeSprite}
                 appDataDir={_appDataDir.current || ""}
                 refreshDataCallback={importDatabaseData}
-                projectId={projectId || 0}
+                projectId={lessonId || 0}
               />
             </div>
             <SpriteAndBackdropSelector
@@ -851,7 +839,7 @@ function CodeEditor({
               spriteImageDialogValue={spriteImageDialogValue}
               setSpriteImageDialogValue={setSpriteImageDialogValue}
               appDataDirRef={_appDataDir}
-              projectId={projectId}
+              projectId={lessonId}
               importDatabaseData={importDatabaseData}
             />
           </div>
@@ -915,4 +903,4 @@ function CodeEditor({
   );
 }
 
-export default CodeEditor;
+export default LessonView;

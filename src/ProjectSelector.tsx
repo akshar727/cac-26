@@ -24,32 +24,43 @@ import { Label } from "./components/ui/label";
 import { Input } from "./components/ui/input";
 import { X } from "lucide-react";
 import { ScrollArea } from "./components/ui/scroll-area";
+import { Lesson } from "./types/lesson";
 
 export default function ProjectSelector({
   onProjectSelect,
+  onLessonSelect,
 }: {
   onProjectSelect: (id: number) => void;
+  onLessonSelect: (id: number) => void;
 }) {
   const [projects, setProjects] = React.useState<
     { id: number; name: string; description: string }[]
   >([]);
+  const [lessons, setLessons] = React.useState<Lesson[]>([]);
   React.useEffect(() => {
     const fetchProjects = async () => {
       const projects = await new DatabaseManager().getProjects();
       setProjects(projects);
     };
+    const fetchLessons = async () => {
+      const lessons = await new DatabaseManager().getLessons();
+      setLessons(lessons);
+    };
     fetchProjects();
+    fetchLessons();
   }, []);
   return (
     <>
       <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
         <h1 className="text-2xl">Welcome to Codely!</h1>
         <h2 className="text-lg">
-          Select a project, or create a new one to get started.
+          Select a project or create a new one to get started. Or, open lessons
+          to learn how to use Codely and create your own projects.
         </h2>
       </div>
-      <div className="flex flex-col w-full gap-4 items-center h-dvh justify-center">
+      <div className="flex flex-row w-full gap-4 items-center h-dvh justify-center">
         <div className="flex w-full flex-col gap-4 px-4 items-center">
+          <h2 className="text-xl font-bold">My Projects</h2>
           <ScrollArea className="h-128 w-fit rounded-md border">
             <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
               {projects.map((project) => (
@@ -62,7 +73,7 @@ export default function ProjectSelector({
                             <X className="w-4 h-4"></X>
                           </div>
                         }
-                      ></DialogTrigger>
+                      />
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Delete this project?</DialogTitle>
@@ -84,7 +95,7 @@ export default function ProjectSelector({
                                 Delete Project
                               </Button>
                             }
-                          ></DialogClose>
+                          />
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
@@ -151,6 +162,29 @@ export default function ProjectSelector({
               </Button>
             </DialogContent>
           </Dialog>
+        </div>
+        <div className="flex w-full flex-col gap-4 px-4 items-center">
+          <h3 className="text-xl font-bold">Lessons</h3>
+          <ScrollArea className="h-128 w-fit rounded-md border">
+            <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
+              {lessons.map((project) => (
+                <Card className="w-64 relative" key={project.id}>
+                  <CardHeader>
+                    <CardTitle>{project.name}</CardTitle>
+                    <CardDescription>{project.description}</CardDescription>
+                  </CardHeader>
+                  <CardFooter className="flex justify-center bg-white">
+                    <Button
+                      variant="secondary"
+                      onClick={() => onLessonSelect(project.id)}
+                    >
+                      Open Lesson
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
       </div>
     </>

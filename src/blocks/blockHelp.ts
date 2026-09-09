@@ -10,7 +10,7 @@ export const blockHelp: Record<string, BlockHelp> = {
     title: "If",
     description: "Runs blocks only when a condition is true.",
     simpleExplanation: "Add conditions to decide what your program should do.",
-    example: "if touching edge, turn",
+    example: "if touching edge, turn left 90 degrees",
   },
   logic_compare: {
     title: "Compare",

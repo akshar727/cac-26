@@ -6,17 +6,19 @@ import {
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 import { BaseDirectory, resolveResource } from "@tauri-apps/api/path";
-import { remove } from "@tauri-apps/plugin-fs";
+import { exists, mkdir, remove } from "@tauri-apps/plugin-fs";
+import { Lesson, moveLesson } from "@/types/lesson";
 
 let creationLock = false;
 
 export class DatabaseManager {
-  private fileName = "codely.db";
+  private projectFileName = "codely.db";
+  private lessonsFileName = "lessons.db";
 
   getProjects(): Promise<DatabaseProject[]> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         let projects = await db.select<DatabaseProject[]>(
           `SELECT * FROM projects`,
         );
@@ -43,16 +45,39 @@ export class DatabaseManager {
     });
   }
 
+  async getLessons(): Promise<Lesson[]> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.lessonsFileName}`);
+        let lessons = await db.select<Lesson[]>(`SELECT * FROM lessons`);
+        // resolve(lessons);
+        resolve([moveLesson]); // For now, just return the moveLesson for testing
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   async createProject(name: string, description: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         const result = await db.execute(
           `INSERT INTO projects (name, description) VALUES (?, ?)`,
           [name, description],
         );
         let whiteBG = await resolveResource("asset/white.svg");
         let assetPath = convertFileSrc(whiteBG);
+        const projectFolderName = `proj_${result.lastInsertId}`;
+        const folderExists = await exists(projectFolderName, {
+          baseDir: BaseDirectory.AppLocalData,
+        });
+        if (!folderExists) {
+          await mkdir(projectFolderName, {
+            recursive: true,
+            baseDir: BaseDirectory.AppLocalData,
+          });
+        }
         await db.execute(
           `INSERT INTO backdrops (name, image_paths, project_id) VALUES (?, ?, ?)`,
           [
@@ -90,7 +115,7 @@ export class DatabaseManager {
   }
 
   async getSpritesForProject(projectId: number): Promise<DatabaseSprite[]> {
-    const db = await Database.load(`sqlite:${this.fileName}`);
+    const db = await Database.load(`sqlite:${this.projectFileName}`);
     const result = await db.select<DatabaseSprite[]>(
       `SELECT * from sprites WHERE project_id = ?`,
       [projectId],
@@ -107,7 +132,7 @@ export class DatabaseManager {
   }
 
   async getBackdropsForProject(projectId: number): Promise<DatabaseBackdrop[]> {
-    const db = await Database.load(`sqlite:${this.fileName}`);
+    const db = await Database.load(`sqlite:${this.projectFileName}`);
     const result = await db.select<DatabaseBackdrop[]>(
       `SELECT * from backdrops WHERE project_id = ?`,
       [projectId],
@@ -140,7 +165,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         await db.execute(
           `INSERT INTO backdrops (name, image_paths, project_id) VALUES (?, ?, ?)`,
           [name, JSON.stringify(imagePaths), projectId],
@@ -163,7 +188,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         if (!imagePaths || imagePaths.length === 0) {
           let whiteBG = await resolveResource("asset/white.svg");
           let assetPath = convertFileSrc(whiteBG);
@@ -200,7 +225,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         const newImagePaths = [
           ...oldImagePaths,
           {
@@ -231,7 +256,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         await db.execute(
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET blocks_json = ?, variables_map = ? WHERE id = ?`,
           [JSON.stringify(blocksJson), JSON.stringify(variablesMap), spriteId],
@@ -250,7 +275,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         await db.execute(
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET name = ? WHERE id = ?`,
           [name, spriteId],
@@ -276,7 +301,7 @@ export class DatabaseManager {
         (costume) => costume.loadablePath !== costumePath,
       );
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         await db.execute(
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
           [JSON.stringify(newCostumes), spriteId],
@@ -303,7 +328,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         const sprite = await db.select<DatabaseSprite[]>(
           `SELECT * from ${isBackdrop ? "backdrops" : "sprites"} WHERE id = ?`,
           [spriteId],
@@ -327,7 +352,7 @@ export class DatabaseManager {
   deleteProject(projectId: number): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         await db.execute(`DELETE FROM projects WHERE id = ?`, [projectId]);
         await db.execute(`DELETE FROM sprites WHERE project_id = ?`, [
           projectId,
@@ -349,7 +374,7 @@ export class DatabaseManager {
   deleteSprite(spriteId: number): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         const spriteFiles = await db.select<{ image_paths: string }[]>(
           `SELECT image_paths from sprites WHERE id = ?`,
           [spriteId],
@@ -379,7 +404,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         await db.execute(
           `UPDATE projects SET broadcasts_json = ? WHERE id = ?`,
           [JSON.stringify(messages), projectId],
@@ -394,7 +419,7 @@ export class DatabaseManager {
   getProjectBroadcastMessages(projectId: number): Promise<string[][]> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         const result = await db.select<{ broadcasts_json: string }[]>(
           `SELECT broadcasts_json from projects WHERE id = ?`,
           [projectId],
@@ -421,7 +446,7 @@ export class DatabaseManager {
   ): Promise<void> {
     return new Promise(async (resolve, reject) => {
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         const sprite = await db.select<DatabaseSprite[]>(
           `SELECT * from ${isBackdrop ? "backdrops" : "sprites"} WHERE id = ?`,
           [spriteId],
@@ -465,7 +490,7 @@ export class DatabaseManager {
         return costume;
       });
       try {
-        const db = await Database.load(`sqlite:${this.fileName}`);
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
         await db.execute(
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
           [JSON.stringify(newCostumes), spriteId],

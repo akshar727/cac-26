@@ -54,6 +54,27 @@ pub fn run() {
         },
     ];
 
+    let lessonMigrations = vec![Migration {
+        version: 1,
+        description: "create lessons table",
+        kind: MigrationKind::Up,
+        sql: "CREATE TABLE IF NOT EXISTS lessons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    
+    allowed_blocks TEXT NOT NULL,      
+    instructions TEXT NOT NULL,        
+    success_metrics TEXT NOT NULL,     
+    
+    base_state TEXT NOT NULL,          
+    
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+            ",
+    }];
+
     tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
@@ -62,6 +83,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_sql::Builder::new()
                 .add_migrations("sqlite:codely.db", migrations)
+                .add_migrations("sqlite:lessons.db", lessonMigrations)
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
