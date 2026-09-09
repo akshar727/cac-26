@@ -25,6 +25,7 @@ import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Undo2 } from "lucide-react";
+import { BlocklyHelp } from "./components/BlocklyHelp";
 
 function CodeEditor({
   projectId,
@@ -803,7 +804,10 @@ function CodeEditor({
             id="pageContainer"
             className="flex w-full h-full max-w-dvw gap-2"
           >
-            <div className="flex-5" id="blocklyDiv"></div>
+            <div className="relative flex-5">
+              <div className="h-full w-full" id="blocklyDiv"></div>
+              <BlocklyHelp workspace={workspace} />
+            </div>
             <SpriteAndBackdropSelector
               sprites={sprites}
               activeSprite={activeSprite}
