@@ -58,11 +58,13 @@ export default function CostumeEdtior({
   refreshDataCallback,
   appDataDir,
   projectId,
+  isLesson = false,
 }: {
   activeSprite: DatabaseSprite | null;
   refreshDataCallback: () => Promise<void>;
   appDataDir: string;
   projectId: number;
+  isLesson?: boolean;
 }) {
   const [activeCostume, setActiveCostume] = useState<
     DatabaseSprite["image_paths"][0] | null
@@ -123,7 +125,8 @@ export default function CostumeEdtior({
                         )}
                       >
                         <Tooltip>
-                          {activeSprite.image_paths.length <= 1 ? (
+                          {isLesson ? null : activeSprite.image_paths.length <=
+                            1 ? (
                             // Only one costume: X only shows the tooltip
                             <TooltipTrigger
                               render={
@@ -179,39 +182,41 @@ export default function CostumeEdtior({
                           <ImageSpecs loadablePath={imageInfo.loadablePath} />
                         </CardContent>
                       </Card>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Delete this costume?</DialogTitle>
-                        </DialogHeader>
-                        This is a permanent action and cannot be undone.
-                        <DialogFooter className="bg-white">
-                          <DialogClose
-                            render={
-                              <Button
-                                variant="destructive"
-                                onClick={async () => {
-                                  const dbManager = new DatabaseManager();
-                                  await dbManager.deleteCostume(
-                                    imageInfo.loadablePath,
-                                    activeSprite.image_paths,
-                                    "isBackdrop" in activeSprite &&
-                                      (activeSprite.isBackdrop as boolean)
-                                      ? -activeSprite.id
-                                      : activeSprite.id,
-                                    "isBackdrop" in activeSprite &&
-                                      (activeSprite.isBackdrop as boolean),
-                                  );
-                                  await refreshDataCallback().then(() => {
-                                    setActiveCostume(null);
-                                  });
-                                }}
-                              >
-                                Delete Costume
-                              </Button>
-                            }
-                          ></DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
+                      {!isLesson && (
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Delete this costume?</DialogTitle>
+                          </DialogHeader>
+                          This is a permanent action and cannot be undone.
+                          <DialogFooter className="bg-white">
+                            <DialogClose
+                              render={
+                                <Button
+                                  variant="destructive"
+                                  onClick={async () => {
+                                    const dbManager = new DatabaseManager();
+                                    await dbManager.deleteCostume(
+                                      imageInfo.loadablePath,
+                                      activeSprite.image_paths,
+                                      "isBackdrop" in activeSprite &&
+                                        (activeSprite.isBackdrop as boolean)
+                                        ? -activeSprite.id
+                                        : activeSprite.id,
+                                      "isBackdrop" in activeSprite &&
+                                        (activeSprite.isBackdrop as boolean),
+                                    );
+                                    await refreshDataCallback().then(() => {
+                                      setActiveCostume(null);
+                                    });
+                                  }}
+                                >
+                                  Delete Costume
+                                </Button>
+                              }
+                            ></DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      )}
                     </Dialog>
                   );
                 })}
@@ -224,145 +229,147 @@ export default function CostumeEdtior({
           )}
         </CardContent>
         <CardFooter className="flex justify-center">
-          <Dialog
-            open={newCostumeDialogOpen}
-            onOpenChange={setNewCostumeDialogOpen}
-            onOpenChangeComplete={() => {
-              setSpriteImageDialogValue("");
-              setSpriteNameDialogValue("");
-            }}
-          >
-            <DialogTrigger
-              render={
-                <Button
-                  onClick={async () => {
-                    setNewCostumeDialogOpen(true);
-                  }}
-                >
-                  <Plus />
-                  Add a costume
-                </Button>
-              }
-            />
-            <DialogContent>
-              <DialogTitle>Add a new costume</DialogTitle>
-              <DialogDescription>
-                Select an image file to add as a costume for the sprite.
-              </DialogDescription>
-              <FieldGroup>
-                <Field>
-                  <Label htmlFor="spriteName">Costume Name</Label>
-                  <Input
-                    type="text"
-                    id="spriteName"
-                    value={spriteNameDialogValue}
-                    defaultValue={
-                      spriteImageDialogValue
-                        ? spriteImageDialogValue.split("/").pop()
-                        : ""
-                    }
-                    onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                    placeholder="Enter costume name"
-                    className="border rounded px-2 py-1 w-full"
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="spriteImage">Costume Image</Label>
+          {!isLesson && (
+            <Dialog
+              open={newCostumeDialogOpen}
+              onOpenChange={setNewCostumeDialogOpen}
+              onOpenChangeComplete={() => {
+                setSpriteImageDialogValue("");
+                setSpriteNameDialogValue("");
+              }}
+            >
+              <DialogTrigger
+                render={
                   <Button
                     onClick={async () => {
-                      const selectedFile = await open({
-                        multiple: false,
-                        filters: [
-                          {
-                            name: "Images",
-                            extensions: ["png", "jpg", "jpeg", "svg"],
-                          },
-                        ],
-                      });
-                      console.log("Selected file:", selectedFile);
-                      if (selectedFile) {
-                        if (typeof selectedFile === "string") {
-                          setSpriteImageDialogValue(selectedFile);
-                        }
-                      }
+                      setNewCostumeDialogOpen(true);
                     }}
                   >
-                    Upload Image
+                    <Plus />
+                    Add a costume
                   </Button>
-                  {spriteImageDialogValue && (
-                    <p className="text-sm">
-                      Selected image:{" "}
-                      <span
-                        className=" text-blue-500 hover:cursor-pointer hover:underline"
-                        onClick={async () => {
-                          const path = spriteImageDialogValue;
-                          await openImage(path);
-                        }}
-                      >
-                        {spriteImageDialogValue.split("/").pop()}
-                      </span>
-                    </p>
-                  )}
-                </Field>
-              </FieldGroup>
-              <DialogFooter>
-                <DialogClose
-                  render={<Button variant="outline">Cancel</Button>}
-                />
-                <Button
-                  disabled={!spriteImageDialogValue}
-                  onClick={async () => {
-                    if (!spriteImageDialogValue) {
-                      return;
-                    }
-                    const file = spriteImageDialogValue;
-                    const last = file.split("/").pop();
-                    if (!last) {
-                      return;
-                    }
-                    const projectFolderName = `proj_${projectId}`;
-                    const folderExists = await exists(projectFolderName, {
-                      baseDir: BaseDirectory.AppLocalData,
-                    });
-                    if (!folderExists) {
-                      await mkdir(projectFolderName, {
-                        recursive: true,
+                }
+              />
+              <DialogContent>
+                <DialogTitle>Add a new costume</DialogTitle>
+                <DialogDescription>
+                  Select an image file to add as a costume for the sprite.
+                </DialogDescription>
+                <FieldGroup>
+                  <Field>
+                    <Label htmlFor="spriteName">Costume Name</Label>
+                    <Input
+                      type="text"
+                      id="spriteName"
+                      value={spriteNameDialogValue}
+                      defaultValue={
+                        spriteImageDialogValue
+                          ? spriteImageDialogValue.split("/").pop()
+                          : ""
+                      }
+                      onChange={(e) => setSpriteNameDialogValue(e.target.value)}
+                      placeholder="Enter costume name"
+                      className="border rounded px-2 py-1 w-full"
+                    />
+                  </Field>
+                  <Field>
+                    <Label htmlFor="spriteImage">Costume Image</Label>
+                    <Button
+                      onClick={async () => {
+                        const selectedFile = await open({
+                          multiple: false,
+                          filters: [
+                            {
+                              name: "Images",
+                              extensions: ["png", "jpg", "jpeg", "svg"],
+                            },
+                          ],
+                        });
+                        console.log("Selected file:", selectedFile);
+                        if (selectedFile) {
+                          if (typeof selectedFile === "string") {
+                            setSpriteImageDialogValue(selectedFile);
+                          }
+                        }
+                      }}
+                    >
+                      Upload Image
+                    </Button>
+                    {spriteImageDialogValue && (
+                      <p className="text-sm">
+                        Selected image:{" "}
+                        <span
+                          className=" text-blue-500 hover:cursor-pointer hover:underline"
+                          onClick={async () => {
+                            const path = spriteImageDialogValue;
+                            await openImage(path);
+                          }}
+                        >
+                          {spriteImageDialogValue.split("/").pop()}
+                        </span>
+                      </p>
+                    )}
+                  </Field>
+                </FieldGroup>
+                <DialogFooter>
+                  <DialogClose
+                    render={<Button variant="outline">Cancel</Button>}
+                  />
+                  <Button
+                    disabled={!spriteImageDialogValue}
+                    onClick={async () => {
+                      if (!spriteImageDialogValue) {
+                        return;
+                      }
+                      const file = spriteImageDialogValue;
+                      const last = file.split("/").pop();
+                      if (!last) {
+                        return;
+                      }
+                      const projectFolderName = `proj_${projectId}`;
+                      const folderExists = await exists(projectFolderName, {
                         baseDir: BaseDirectory.AppLocalData,
                       });
-                    }
-                    await copyFile(file, `${projectFolderName}/${last}`, {
-                      toPathBaseDir: BaseDirectory.AppLocalData,
-                    });
-                    console.log("Copied file:", last);
-                    if (!activeSprite) {
-                      return;
-                    }
-                    await new DatabaseManager().addCostumeToSprite(
-                      "isBackdrop" in activeSprite &&
-                        (activeSprite.isBackdrop as boolean)
-                        ? -activeSprite.id
-                        : activeSprite.id,
-                      activeSprite.image_paths,
-                      last,
-                      appDataDir || "",
-                      spriteNameDialogValue ||
-                        last.split("/").pop() ||
-                        "New Costume",
-                      "isBackdrop" in activeSprite &&
-                        (activeSprite.isBackdrop as boolean),
-                      projectId,
-                    );
-                    refreshDataCallback();
-                    setSpriteImageDialogValue("");
-                    setSpriteNameDialogValue("");
-                    setNewCostumeDialogOpen(false);
-                  }}
-                >
-                  Add Costume
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                      if (!folderExists) {
+                        await mkdir(projectFolderName, {
+                          recursive: true,
+                          baseDir: BaseDirectory.AppLocalData,
+                        });
+                      }
+                      await copyFile(file, `${projectFolderName}/${last}`, {
+                        toPathBaseDir: BaseDirectory.AppLocalData,
+                      });
+                      console.log("Copied file:", last);
+                      if (!activeSprite) {
+                        return;
+                      }
+                      await new DatabaseManager().addCostumeToSprite(
+                        "isBackdrop" in activeSprite &&
+                          (activeSprite.isBackdrop as boolean)
+                          ? -activeSprite.id
+                          : activeSprite.id,
+                        activeSprite.image_paths,
+                        last,
+                        appDataDir || "",
+                        spriteNameDialogValue ||
+                          last.split("/").pop() ||
+                          "New Costume",
+                        "isBackdrop" in activeSprite &&
+                          (activeSprite.isBackdrop as boolean),
+                        projectId,
+                      );
+                      refreshDataCallback();
+                      setSpriteImageDialogValue("");
+                      setSpriteNameDialogValue("");
+                      setNewCostumeDialogOpen(false);
+                    }}
+                  >
+                    Add Costume
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </CardFooter>
       </Card>
       <Card className="h-full flex-6">
@@ -387,7 +394,7 @@ export default function CostumeEdtior({
                 <Input
                   key={activeCostume.loadablePath}
                   onBlur={async (e) => {
-                    if (!activeSprite) {
+                    if (isLesson || !activeSprite) {
                       return;
                     }
                     await new DatabaseManager().updateCostumeName(
@@ -416,6 +423,7 @@ export default function CostumeEdtior({
                     e.target.select();
                   }}
                   className="border rounded px-2 py-1 w-full"
+                  disabled={isLesson}
                   defaultValue={activeCostume.costumeName}
                 ></Input>
               </div>

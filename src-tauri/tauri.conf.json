@@ -41,6 +41,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["./asset/**/*"]
+    "resources": ["./asset/**/*", "./lesson_assets/**/*"]
   }
 }

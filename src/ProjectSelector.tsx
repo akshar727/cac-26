@@ -3,7 +3,6 @@ import React from "react";
 import { DatabaseManager } from "./lib/database";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -16,7 +15,6 @@ import {
   DialogHeader,
   DialogTrigger,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
   DialogClose,
 } from "./components/ui/dialog";
@@ -58,10 +56,10 @@ export default function ProjectSelector({
           to learn how to use Codely and create your own projects.
         </h2>
       </div>
-      <div className="flex flex-row w-full gap-4 items-center h-dvh justify-center">
-        <div className="flex w-full flex-col gap-4 px-4 items-center">
+      <div className="grid h-dvh w-full grid-cols-1 pt-48 gap-6 px-6 md:grid-cols-2 md:px-12">
+        <div className="flex min-w-0 w-full flex-col items-center gap-4">
           <h2 className="text-xl font-bold">My Projects</h2>
-          <ScrollArea className="h-128 w-fit rounded-md border">
+          <ScrollArea className="h-128 w-full rounded-md border">
             <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
               {projects.map((project) => (
                 <Card className="w-64 relative" key={project.id}>
@@ -163,9 +161,9 @@ export default function ProjectSelector({
             </DialogContent>
           </Dialog>
         </div>
-        <div className="flex w-full flex-col gap-4 px-4 items-center">
-          <h3 className="text-xl font-bold">Lessons</h3>
-          <ScrollArea className="h-128 w-fit rounded-md border">
+        <div className="flex min-w-0 w-full flex-col items-center gap-4">
+          <h2 className="text-xl font-bold">Lessons</h2>
+          <ScrollArea className="h-128 w-full rounded-md border">
             <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
               {lessons.map((project) => (
                 <Card className="w-64 relative" key={project.id}>

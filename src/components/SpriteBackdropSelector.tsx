@@ -41,6 +41,7 @@ interface SpriteSelectorProps {
   appDataDirRef: React.MutableRefObject<string | null>;
   projectId: number | null;
   importDatabaseData: () => Promise<void>;
+  isLesson?: boolean;
 }
 
 export default function SpriteAndBackdropSelector({
@@ -57,6 +58,7 @@ export default function SpriteAndBackdropSelector({
   appDataDirRef,
   projectId,
   importDatabaseData,
+  isLesson = false,
 }: SpriteSelectorProps) {
   return (
     <>
@@ -98,13 +100,15 @@ export default function SpriteAndBackdropSelector({
                       key={sprite.id}
                     >
                       <Dialog>
-                        <DialogTrigger
-                          render={
-                            <div className="absolute hover:cursor-pointer rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 top-0 right-0 flex justify-end m-2 p-1">
-                              <X className="w-4 h-4"></X>
-                            </div>
-                          }
-                        ></DialogTrigger>
+                        {!isLesson && (
+                          <DialogTrigger
+                            render={
+                              <div className="absolute hover:cursor-pointer rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 top-0 right-0 flex justify-end m-2 p-1">
+                                <X className="w-4 h-4"></X>
+                              </div>
+                            }
+                          ></DialogTrigger>
+                        )}
                         <DialogContent>
                           <DialogHeader>
                             <DialogTitle>Delete this sprite?</DialogTitle>
@@ -167,7 +171,7 @@ export default function SpriteAndBackdropSelector({
                   id="spriteDialog"
                   key={activeSprite?.id}
                   type="text"
-                  disabled={activeSprite === null}
+                  disabled={isLesson || activeSprite === null}
                   defaultValue={activeSprite?.name}
                   placeholder="Enter sprite name"
                   onKeyDown={(e) => {
@@ -179,7 +183,7 @@ export default function SpriteAndBackdropSelector({
                     e.target.select();
                   }}
                   onBlur={async (e) => {
-                    if (!activeSprite) {
+                    if (isLesson || !activeSprite) {
                       return;
                     }
                     const newName = e.target.value;
@@ -212,148 +216,150 @@ export default function SpriteAndBackdropSelector({
               </TooltipContent>
             </Tooltip>
           </div>
-          <Dialog
-            open={spriteDialogOpen}
-            onOpenChange={setSpriteDialogOpen}
-            onOpenChangeComplete={(newState) => {
-              if (!newState) {
-                setSpriteImageDialogValue("");
-                setSpriteNameDialogValue("");
-              }
-            }}
-          >
-            <DialogTrigger
-              render={
-                <Button onClick={async () => {}}>
-                  <PlusIcon />
-                  Add a sprite
-                </Button>
-              }
-            />
-            <DialogContent>
-              <DialogTitle>Add a new sprite</DialogTitle>
-              <DialogDescription>
-                Enter the name of the new sprite and select an image file.
-              </DialogDescription>
-              <FieldGroup>
-                <Field>
-                  <Label htmlFor="spriteName">Sprite Name</Label>
-                  <Input
-                    id="spriteName"
-                    type="text"
-                    value={spriteNameDialogValue || ""}
-                    onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                    placeholder="Enter sprite name"
-                  />
-                </Field>
-                <Field>
-                  <Label htmlFor="spriteImage">Sprite Images</Label>
-                  <Button
-                    onClick={async () => {
-                      const selectedFile = await open({
-                        multiple: true,
-                        filters: [
-                          {
-                            name: "Images",
-                            extensions: ["png", "jpg", "jpeg", "svg"],
-                          },
-                        ],
-                      });
-                      console.log("Selected file:", selectedFile);
-                      if (selectedFile) {
-                        if (typeof selectedFile === "string") {
-                          setSpriteImageDialogValue("[" + selectedFile + "]");
-                        } else if (Array.isArray(selectedFile)) {
-                          setSpriteImageDialogValue(
-                            JSON.stringify(selectedFile),
-                          );
-                        }
-                      }
-                    }}
-                  >
-                    Upload Image
+          {!isLesson && (
+            <Dialog
+              open={spriteDialogOpen}
+              onOpenChange={setSpriteDialogOpen}
+              onOpenChangeComplete={(newState) => {
+                if (!newState) {
+                  setSpriteImageDialogValue("");
+                  setSpriteNameDialogValue("");
+                }
+              }}
+            >
+              <DialogTrigger
+                render={
+                  <Button onClick={async () => {}}>
+                    <PlusIcon />
+                    Add a sprite
                   </Button>
-                  {spriteImageDialogValue && (
-                    <p className="text-sm break-all relative">
-                      Selected image(s):{" "}
-                      {JSON.parse(spriteImageDialogValue).map(
-                        (path: string, index: number) => (
-                          <span key={index}>
-                            <span
-                              className=" text-blue-500 hover:cursor-pointer hover:underline text-wrap"
-                              onClick={async () => {
-                                await openImage(path);
-                              }}
-                            >
-                              {path.split("/").pop()}
+                }
+              />
+              <DialogContent>
+                <DialogTitle>Add a new sprite</DialogTitle>
+                <DialogDescription>
+                  Enter the name of the new sprite and select an image file.
+                </DialogDescription>
+                <FieldGroup>
+                  <Field>
+                    <Label htmlFor="spriteName">Sprite Name</Label>
+                    <Input
+                      id="spriteName"
+                      type="text"
+                      value={spriteNameDialogValue || ""}
+                      onChange={(e) => setSpriteNameDialogValue(e.target.value)}
+                      placeholder="Enter sprite name"
+                    />
+                  </Field>
+                  <Field>
+                    <Label htmlFor="spriteImage">Sprite Images</Label>
+                    <Button
+                      onClick={async () => {
+                        const selectedFile = await open({
+                          multiple: true,
+                          filters: [
+                            {
+                              name: "Images",
+                              extensions: ["png", "jpg", "jpeg", "svg"],
+                            },
+                          ],
+                        });
+                        console.log("Selected file:", selectedFile);
+                        if (selectedFile) {
+                          if (typeof selectedFile === "string") {
+                            setSpriteImageDialogValue("[" + selectedFile + "]");
+                          } else if (Array.isArray(selectedFile)) {
+                            setSpriteImageDialogValue(
+                              JSON.stringify(selectedFile),
+                            );
+                          }
+                        }
+                      }}
+                    >
+                      Upload Image
+                    </Button>
+                    {spriteImageDialogValue && (
+                      <p className="text-sm break-all relative">
+                        Selected image(s):{" "}
+                        {JSON.parse(spriteImageDialogValue).map(
+                          (path: string, index: number) => (
+                            <span key={index}>
+                              <span
+                                className=" text-blue-500 hover:cursor-pointer hover:underline text-wrap"
+                                onClick={async () => {
+                                  await openImage(path);
+                                }}
+                              >
+                                {path.split("/").pop()}
+                              </span>
+                              {index <
+                              JSON.parse(spriteImageDialogValue).length - 1
+                                ? ", "
+                                : ""}
                             </span>
-                            {index <
-                            JSON.parse(spriteImageDialogValue).length - 1
-                              ? ", "
-                              : ""}
-                          </span>
-                        ),
-                      )}
-                    </p>
-                  )}
-                </Field>
-              </FieldGroup>
-              <DialogFooter>
-                <DialogClose
-                  render={<Button variant="outline">Cancel</Button>}
-                />
-                <Button
-                  disabled={!spriteImageDialogValue || !spriteNameDialogValue}
-                  onClick={async () => {
-                    if (!spriteImageDialogValue || !spriteNameDialogValue) {
-                      return;
-                    }
-                    const files = JSON.parse(spriteImageDialogValue);
-                    let fileNames = [];
-                    const projectFolderName = `proj_${projectId}`;
-                    const folderExists = await exists(projectFolderName, {
-                      baseDir: BaseDirectory.AppLocalData,
-                    });
-                    if (!folderExists) {
-                      await mkdir(projectFolderName, {
-                        recursive: true,
-                        baseDir: BaseDirectory.AppLocalData,
-                      });
-                    }
-                    for (const file of files) {
-                      const last = file.split("/").pop();
-                      if (!last) {
+                          ),
+                        )}
+                      </p>
+                    )}
+                  </Field>
+                </FieldGroup>
+                <DialogFooter>
+                  <DialogClose
+                    render={<Button variant="outline">Cancel</Button>}
+                  />
+                  <Button
+                    disabled={!spriteImageDialogValue || !spriteNameDialogValue}
+                    onClick={async () => {
+                      if (!spriteImageDialogValue || !spriteNameDialogValue) {
                         return;
                       }
-                      fileNames.push(last);
-                      await copyFile(file, `proj_${projectId}/${last}`, {
-                        toPathBaseDir: BaseDirectory.AppLocalData,
+                      const files = JSON.parse(spriteImageDialogValue);
+                      let fileNames = [];
+                      const projectFolderName = `proj_${projectId}`;
+                      const folderExists = await exists(projectFolderName, {
+                        baseDir: BaseDirectory.AppLocalData,
                       });
-                    }
-                    console.log("Copied files:", fileNames);
-                    let formattedFileNames = fileNames.map((name) => ({
-                      costumeName: name.split(".")[0],
-                      loadablePath: convertFileSrc(
-                        `${appDataDirRef.current}/proj_${projectId}/${name}`,
-                      ),
-                      truePath: `proj_${projectId}/${name}`,
-                    }));
-                    console.log("Project ID:", projectId);
-                    await new DatabaseManager().addNewSprite(
-                      spriteNameDialogValue,
-                      formattedFileNames,
-                      projectId as number,
-                    );
-                    importDatabaseData();
-                    setSpriteDialogOpen(false);
-                  }}
-                  type="submit"
-                >
-                  Add sprite
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                      if (!folderExists) {
+                        await mkdir(projectFolderName, {
+                          recursive: true,
+                          baseDir: BaseDirectory.AppLocalData,
+                        });
+                      }
+                      for (const file of files) {
+                        const last = file.split("/").pop();
+                        if (!last) {
+                          return;
+                        }
+                        fileNames.push(last);
+                        await copyFile(file, `proj_${projectId}/${last}`, {
+                          toPathBaseDir: BaseDirectory.AppLocalData,
+                        });
+                      }
+                      console.log("Copied files:", fileNames);
+                      let formattedFileNames = fileNames.map((name) => ({
+                        costumeName: name.split(".")[0],
+                        loadablePath: convertFileSrc(
+                          `${appDataDirRef.current}/proj_${projectId}/${name}`,
+                        ),
+                        truePath: `proj_${projectId}/${name}`,
+                      }));
+                      console.log("Project ID:", projectId);
+                      await new DatabaseManager().addNewSprite(
+                        spriteNameDialogValue,
+                        formattedFileNames,
+                        projectId as number,
+                      );
+                      importDatabaseData();
+                      setSpriteDialogOpen(false);
+                    }}
+                    type="submit"
+                  >
+                    Add sprite
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </CardFooter>
       </Card>
       <Card className="flex-1 justify-between">

@@ -11,6 +11,28 @@ import { Lesson, moveLesson } from "@/types/lesson";
 
 let creationLock = false;
 
+type LessonRow = {
+  id: number;
+  name: string;
+  description: string;
+  allowed_blocks: string;
+  instructions: string;
+  success_metrics: string;
+  base_state: string;
+};
+
+function parseLessonRow(row: LessonRow): Lesson {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    allowedBlocks: JSON.parse(row.allowed_blocks),
+    instructions: JSON.parse(row.instructions),
+    successMetrics: JSON.parse(row.success_metrics),
+    baseState: JSON.parse(row.base_state),
+  };
+}
+
 export class DatabaseManager {
   private projectFileName = "codely.db";
   private lessonsFileName = "lessons.db";
@@ -46,16 +68,62 @@ export class DatabaseManager {
   }
 
   async getLessons(): Promise<Lesson[]> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const db = await Database.load(`sqlite:${this.lessonsFileName}`);
-        let lessons = await db.select<Lesson[]>(`SELECT * FROM lessons`);
-        // resolve(lessons);
-        resolve([moveLesson]); // For now, just return the moveLesson for testing
-      } catch (error) {
-        reject(error);
-      }
-    });
+    const db = await Database.load(`sqlite:${this.lessonsFileName}`);
+    const rows = await db.select<LessonRow[]>(`SELECT * FROM lessons`);
+    return rows.length > 0 ? rows.map(parseLessonRow) : [moveLesson];
+  }
+
+  async getLesson(lessonId: number): Promise<Lesson> {
+    const lessons = await this.getLessons();
+    const lesson = lessons.find((candidate) => candidate.id === lessonId);
+    if (!lesson) {
+      throw new Error(`Lesson ${lessonId} was not found`);
+    }
+    return lesson;
+  }
+
+  async getSpritesForLesson(
+    lessonId: number,
+  ): Promise<(DatabaseSprite | DatabaseBackdrop)[]> {
+    const lesson = await this.getLesson(lessonId);
+    const sprites: (DatabaseSprite | DatabaseBackdrop)[] = [];
+
+    for (const sprite of lesson.baseState.sprites) {
+      const imagePaths = await Promise.all(
+        sprite.image_paths.map(async (image) => ({
+          ...image,
+          loadablePath: await this.resolveLessonAsset(
+            image.loadablePath ?? image.truePath,
+          ),
+        })),
+      );
+      const isBackdrop = sprite.id < 0;
+      sprites.push({
+        id: isBackdrop ? sprite.id : sprite.id,
+        name: sprite.name,
+        image_paths: imagePaths,
+        blocks_json: lesson.baseState.blocks[String(sprite.id)] ?? [],
+        variables_map: Object.entries(lesson.baseState.variables)
+          .filter(
+            ([, variable]) => variable.owner === sprite.id || variable.global,
+          )
+          .map(([id, variable]) => ({
+            id,
+            name: id,
+            isGlobal: variable.global,
+          })),
+        ...(isBackdrop ? { isBackdrop: true } : {}),
+        project_id: lessonId,
+      } as DatabaseSprite | DatabaseBackdrop);
+    }
+
+    return sprites;
+  }
+
+  private async resolveLessonAsset(path: string | null): Promise<string> {
+    if (!path) return "";
+    const resourcePath = await resolveResource(path);
+    return convertFileSrc(resourcePath);
   }
 
   async createProject(name: string, description: string): Promise<void> {

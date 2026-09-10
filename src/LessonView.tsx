@@ -20,6 +20,7 @@ import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
+import { Lesson } from "./types/lesson";
 
 function LessonView({
   lessonId,
@@ -40,6 +41,13 @@ function LessonView({
   const [sprites, setSprites] = React.useState<
     (DatabaseSprite | DatabaseBackdrop)[]
   >([]);
+  const lessonSpritesRef = React.useRef<(DatabaseSprite | DatabaseBackdrop)[]>(
+    [],
+  );
+  const [lesson, setLesson] = React.useState<Lesson | null>(null);
+  const lessonRef = React.useRef<Lesson | null>(null);
+  const [currentStep, setCurrentStep] = React.useState(0);
+  const currentStepRef = React.useRef(0);
   const [spriteImageDialogValue, setSpriteImageDialogValue] = React.useState<
     string | null
   >(null);
@@ -49,6 +57,7 @@ function LessonView({
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
   const _appDataDir = React.useRef<string | null>(null);
   const codeRunning = React.useRef(false);
+  const runtimeRef = React.useRef<Runtime | null>(null);
   const [codeRunningState, setCodeRunningState] = React.useState(false);
   const broadcastMessagesRef = useRef<[string, string][]>([]);
   const spritesRef = useRef(sprites);
@@ -65,6 +74,103 @@ function LessonView({
   React.useEffect(() => {
     spritesRef.current = sprites;
   }, [sprites]);
+
+  React.useEffect(() => {
+    lessonRef.current = lesson;
+  }, [lesson]);
+
+  React.useEffect(() => {
+    currentStepRef.current = currentStep;
+    if (workspace && lesson) {
+      workspace.updateToolbox(createLessonToolbox(lesson, currentStep));
+    }
+  }, [currentStep, lesson, workspace]);
+
+  React.useEffect(() => {
+    setCurrentStep(0);
+    currentStepRef.current = 0;
+  }, [lessonId]);
+
+  function createLessonToolbox(currentLesson: Lesson, step: number) {
+    const allowedTypes = new Set(currentLesson.allowedBlocks[step] ?? []);
+
+    const filterContents = (contents: any[]): any[] =>
+      contents.reduce((filtered, item) => {
+        if (item.kind === "category") {
+          if (item.name === "Functions") return filtered;
+          const contents = filterContents(item.contents ?? []);
+          if (contents.length > 0) {
+            filtered.push({ ...item, contents });
+          }
+          return filtered;
+        }
+
+        if (item.kind !== "block" || allowedTypes.has(item.type)) {
+          filtered.push(item);
+        }
+        return filtered;
+      }, []);
+
+    return {
+      ...toolbox,
+      contents: filterContents(toolbox.contents),
+    };
+  }
+
+  function checkCurrentStepSuccess(): boolean {
+    const currentLesson = lessonRef.current;
+    const workspace = Blockly.getMainWorkspace();
+    if (!currentLesson || !workspace) return false;
+
+    const metric = currentLesson.successMetrics[currentStepRef.current];
+    if (!metric) {
+      return false;
+    }
+
+    if (metric.check === "predicate") {
+      const target = runtimeRef.current?._targets.find(
+        (item) => !item.isBackdrop,
+      );
+      if (!target || !metric.expression) return false;
+      try {
+        return new Function("target", `return Boolean(${metric.expression});`)(
+          target,
+        );
+      } catch (error) {
+        console.error("Invalid lesson predicate:", metric.expression, error);
+        return false;
+      }
+    }
+
+    if (metric.check !== "exists" || !metric.blockType) return false;
+
+    function matchesMetric(block: Blockly.Block, expected: any): boolean {
+      if (block.type !== expected.blockType) return false;
+      if (!expected.next) return true;
+
+      const nextBlock = block.getNextBlock();
+      return nextBlock ? matchesMetric(nextBlock, expected.next) : false;
+    }
+
+    return workspace
+      .getTopBlocks(false)
+      .some((block) => matchesMetric(block, metric));
+  }
+
+  function advanceLessonStep() {
+    const currentLesson = lessonRef.current;
+    if (!currentLesson) return;
+    setCurrentStep((step) =>
+      Math.min(step + 1, currentLesson.allowedBlocks.length),
+    );
+  }
+
+  function renderBasePositions() {
+    if (sprites.length === 0) return;
+    const runtime = new Runtime(sprites, () => runtimeRef.current?.render());
+    runtimeRef.current = runtime;
+    runtime.render();
+  }
 
   // this effect should only add stuff into the workspace, not fetch data.
   React.useEffect(() => {
@@ -109,54 +215,46 @@ function LessonView({
   React.useEffect(() => {
     // Register the blocks and generator with Blockly
     async function setup() {
-      await importDatabaseData();
-      await setupWorkspace();
+      const loadedLesson = await importDatabaseData();
+      await setupWorkspace(loadedLesson);
       _appDataDir.current = await appDataDir();
     }
     setup();
   }, []);
 
-  async function importDatabaseData() {
-    const lessons = await new DatabaseManager().getLessons();
-    let spritesResult = await new DatabaseManager().getSpritesForLesson(
-      lessonId || lessons[0].id,
+  async function importDatabaseData(): Promise<Lesson | null> {
+    if (lessonId === null) return null;
+
+    const dbManager = new DatabaseManager();
+    const lessonResult = await dbManager.getLesson(lessonId);
+    const spritesResult = await dbManager.getSpritesForLesson(lessonId);
+    setLesson(lessonResult);
+    lessonRef.current = lessonResult;
+    setSprites(spritesResult);
+    lessonSpritesRef.current = spritesResult;
+    const firstSprite = spritesResult.find(
+      (sprite) => !("isBackdrop" in sprite),
     );
-    let backdropsResult = await new DatabaseManager().getBackdropsForLesson(
-      lessonId || lessons[0].id,
-    );
-    console.log(backdropsResult);
-    let combined: (DatabaseSprite | DatabaseBackdrop)[] = [
-      ...spritesResult,
-      ...backdropsResult,
-    ];
-    setSprites(combined);
-    if (!activeSprite && spritesResult.length > 0) {
-      setActiveSprite(spritesResult[0]);
-      console.log("Active sprite set to:", spritesResult[0]);
-      console.log("All sprites:", spritesResult);
+    if (!activeSprite && firstSprite) {
+      setActiveSprite(firstSprite);
     } else {
       setActiveSprite((prevActiveSprite) => {
-        if (prevActiveSprite && !("isBackdrop" in prevActiveSprite)) {
-          const updatedSprite = spritesResult.find(
-            (sprite) => sprite.id === prevActiveSprite.id,
-          );
-          return updatedSprite || null;
-        } else if (prevActiveSprite && "isBackdrop" in prevActiveSprite) {
-          const updatedBackdrop = backdropsResult.find(
-            // looking in diff results here
-            (backdrop) => backdrop.id === prevActiveSprite.id,
-          );
-          return updatedBackdrop || null;
-        }
-        console.warn(
-          "Active sprite not found in updated sprites, setting to null",
+        return (
+          spritesResult.find((sprite) => sprite.id === prevActiveSprite?.id) ??
+          firstSprite ??
+          null
         );
-        return null;
       });
     }
-    let broadcastMessages =
-      await new DatabaseManager().getProjectBroadcastMessages(lessons[0].id);
-    broadcastMessagesRef.current = broadcastMessages as [string, string][];
+    broadcastMessagesRef.current = lessonResult.baseState.broadcasts.map(
+      (broadcast) => [broadcast.name, broadcast.name],
+    );
+    return lessonResult;
+  }
+
+  async function refreshLessonData(): Promise<void> {
+    if (lessonId === null) return;
+    setSprites(lessonSpritesRef.current);
   }
 
   const runCode = () => {
@@ -165,7 +263,19 @@ function LessonView({
     try {
       setCodeRunningState(true);
       codeRunning.current = true;
-      const runtime = new Runtime(sprites);
+      const workspace = Blockly.getMainWorkspace();
+      const currentBlocks = workspace
+        ?.getTopBlocks(false)
+        .map((block) => Blockly.serialization.blocks.save(block));
+      const runtimeSprites = sprites.map((sprite) =>
+        sprite.id === activeSpriteRef.current?.id
+          ? { ...sprite, blocks_json: currentBlocks ?? sprite.blocks_json }
+          : sprite,
+      );
+      const runtime = new Runtime(runtimeSprites, () =>
+        runtimeRef.current?.render(),
+      );
+      runtimeRef.current = runtime;
       runtime.start();
       const canvas = document.getElementById("foregroundCanvas");
       if (canvas === null) {
@@ -178,10 +288,10 @@ function LessonView({
       const keyUpEvent = (event: KeyboardEvent) => {
         runtime.keyReleased(event.key);
       };
-      const mouseDownEvent = (event: MouseEvent) => {
+      const mouseDownEvent = (_event: MouseEvent) => {
         runtime._mouseDown = true;
       };
-      const mouseUpEvent = (event: MouseEvent) => {
+      const mouseUpEvent = (_event: MouseEvent) => {
         runtime._mouseDown = false;
       };
       const canvasClickEvent = function (event: MouseEvent) {
@@ -215,6 +325,9 @@ function LessonView({
         let errorCheck = false;
         try {
           runtime.tick(deltaTime, now);
+          if (lessonId !== null && checkCurrentStepSuccess()) {
+            advanceLessonStep();
+          }
           if (
             runtime._scripts.filter((r) => r.trigger.type !== "start")
               .length === 0 &&
@@ -244,7 +357,6 @@ function LessonView({
           for (const target of runtime._targets) {
             target.clearBubbles();
           }
-          runtime._renderer.blit(runtime._targets);
           window.removeEventListener("mousedown", mouseDownEvent);
           window.removeEventListener("mouseup", mouseUpEvent);
           window.removeEventListener("mousemove", canvasMouseMoveEvent);
@@ -260,6 +372,7 @@ function LessonView({
 
   const stopCode = () => {
     codeRunning.current = false;
+    runtimeRef.current?.stopAll();
   };
 
   function saveCurrentWorkspaceToDatabase() {
@@ -282,6 +395,23 @@ function LessonView({
       const blockJson = Blockly.serialization.blocks.save(block);
       fullJson.push(blockJson);
     }
+
+    if (lessonId !== null) {
+      const spriteId = currentActiveSprite.id;
+      const updatedSprites = lessonSpritesRef.current.map((sprite) =>
+        sprite.id === spriteId
+          ? {
+              ...sprite,
+              blocks_json: fullJson,
+              variables_map: [...currentActiveSprite.variables_map],
+            }
+          : sprite,
+      );
+      lessonSpritesRef.current = updatedSprites;
+      setSprites(updatedSprites);
+      return;
+    }
+
     (async () => {
       const savedVariables = activeSpriteRef.current?.variables_map;
       await new DatabaseManager().updateSpriteBlocksAndVariables(
@@ -391,7 +521,7 @@ function LessonView({
     flyout?.reflow();
   }
 
-  async function setupWorkspace() {
+  async function setupWorkspace(currentLesson: Lesson | null = lesson) {
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.89);
     Blockly.utils.colour.setHsvValue(0.85);
@@ -627,15 +757,9 @@ function LessonView({
       throw new Error(`div with id 'blocklyDiv' not found`);
     }
     registerContinuousToolbox();
-    const filteredToolbox = {
-      ...toolbox,
-      contents: toolbox.contents.filter((item) => {
-        if (item.kind === "category" && item.name === "Functions") {
-          return false;
-        }
-        return true;
-      }),
-    };
+    const filteredToolbox = currentLesson
+      ? createLessonToolbox(currentLesson, currentStepRef.current)
+      : toolbox;
     let ws = Blockly.inject(blocklyDiv, {
       toolbox: filteredToolbox,
       plugins: {
@@ -661,23 +785,49 @@ function LessonView({
       // No need to save after one of these.
       if (e.type === Blockly.Events.VAR_DELETE) {
         const variableId = (e as Blockly.Events.VarDelete).varId;
-        if (!variableId) return;
+        if (!variableId || !activeSpriteRef.current) return;
         console.log("Deleting variable:", variableId);
 
         void (async () => {
           try {
-            await new DatabaseManager().deleteVariableFromSprite(
-              activeSpriteRef.current!.id,
-              variableId,
-              "isBackdrop" in activeSpriteRef.current! &&
-                (activeSpriteRef.current!.isBackdrop as boolean),
-            );
-
-            await importDatabaseData();
+            const currentSprite = activeSpriteRef.current!;
+            if (lessonId !== null) {
+              const updatedSprites = lessonSpritesRef.current.map((sprite) =>
+                sprite.id === currentSprite.id
+                  ? {
+                      ...sprite,
+                      variables_map: sprite.variables_map.filter(
+                        (variable) => variable.id !== variableId,
+                      ),
+                    }
+                  : sprite,
+              );
+              lessonSpritesRef.current = updatedSprites;
+              setSprites(updatedSprites);
+              const updatedActiveSprite = updatedSprites.find(
+                (sprite) => sprite.id === currentSprite.id,
+              );
+              if (updatedActiveSprite) {
+                activeSpriteRef.current = updatedActiveSprite;
+                setActiveSprite(updatedActiveSprite);
+              }
+            } else {
+              await new DatabaseManager().deleteVariableFromSprite(
+                currentSprite.id,
+                variableId,
+                "isBackdrop" in currentSprite && currentSprite.isBackdrop,
+              );
+              await importDatabaseData();
+            }
           } catch (error) {
             console.error("Error deleting variable:", error);
           }
         })();
+      }
+      if (lessonId !== null && e.type === Blockly.Events.BLOCK_MOVE) {
+        if (checkCurrentStepSuccess()) {
+          advanceLessonStep();
+        }
       }
       if (e.isUiEvent) return;
       saveCurrentWorkspaceToDatabase();
@@ -694,7 +844,7 @@ function LessonView({
         );
       });
     });
-    ws.updateToolbox(toolbox);
+    ws.updateToolbox(filteredToolbox);
     Blockly.svgResize(ws);
     ws.addChangeListener(shadowBlockConversionChangeListener);
     Blockly.dialog.setPrompt(
@@ -704,7 +854,7 @@ function LessonView({
         originalCallback: (value: string | null) => void,
       ) => {
         function createNewVariable(name: string | null, isGlobal: boolean) {
-          if (!name) {
+          if (!name || !activeSpriteRef.current) {
             return;
           }
           if (!Blockly.getMainWorkspace()) {
@@ -720,15 +870,42 @@ function LessonView({
                 (
                   Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
                 ).refreshToolboxSelection();
-                await new DatabaseManager().addVariableToSprite(
-                  activeSpriteRef.current!.id,
-                  variable.getId(),
-                  variable.getName(),
-                  isGlobal,
-                  "isBackdrop" in activeSpriteRef.current! &&
-                    (activeSpriteRef.current!.isBackdrop as boolean),
-                );
-                await importDatabaseData();
+                const currentSprite = activeSpriteRef.current;
+                if (!currentSprite) return;
+                if (lessonId !== null) {
+                  const updatedSprites = lessonSpritesRef.current.map(
+                    (sprite) =>
+                      sprite.id === currentSprite.id
+                        ? {
+                            ...sprite,
+                            variables_map: [
+                              ...sprite.variables_map,
+                              {
+                                id: variable.getId(),
+                                name: variable.getName(),
+                                isGlobal,
+                              },
+                            ],
+                          }
+                        : sprite,
+                  );
+                  lessonSpritesRef.current = updatedSprites;
+                  setSprites(updatedSprites);
+                  activeSpriteRef.current =
+                    updatedSprites.find(
+                      (sprite) => sprite.id === currentSprite.id,
+                    ) ?? currentSprite;
+                  setActiveSprite(activeSpriteRef.current);
+                } else {
+                  await new DatabaseManager().addVariableToSprite(
+                    currentSprite.id,
+                    variable.getId(),
+                    variable.getName(),
+                    isGlobal,
+                    "isBackdrop" in currentSprite && currentSprite.isBackdrop,
+                  );
+                  await importDatabaseData();
+                }
               } finally {
                 Blockly.Events.enable();
               }
@@ -762,35 +939,65 @@ function LessonView({
     );
   }
   return (
-    <main className="p-2 bg-slate-50 dark:bg-slate-800 min-h-dvh h-dvh max-h-dvh text-slate-900">
+    <main className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 p-2 text-slate-900 dark:bg-slate-800">
+      {lesson && (
+        <section className="mb-2 shrink-0 rounded-lg border bg-white p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-semibold">{lesson.name}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {lesson.description}
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 text-sm">
+            {lesson.instructions[currentStep] ?? "Lesson complete."}
+          </p>
+          <p className="shrink-0 text-sm font-medium text-muted-foreground">
+            Step {Math.min(currentStep + 1, lesson.instructions.length)} of{" "}
+            {lesson.instructions.length}
+          </p>
+        </section>
+      )}
       <Tabs
         defaultValue="blocks"
         onValueChange={(value) => {
           async function change() {
             if (value === "blocks") {
-              await importDatabaseData();
-              await setupWorkspace();
+              if (lessonId === null) {
+                await importDatabaseData();
+                await setupWorkspace();
+              }
               setTimeout(() => {
                 const workspace = Blockly.getMainWorkspace();
                 Blockly.svgResize(workspace as Blockly.WorkspaceSvg);
               }, 100);
             } else {
               saveCurrentWorkspaceToDatabase();
+              if (value === "screen") {
+                setTimeout(() => {
+                  renderBasePositions();
+                }, 100);
+              }
             }
           }
           change();
         }}
-        className="w-full h-full"
+        className="flex min-h-0 w-full flex-1 flex-col"
       >
         <TabsList>
           <TabsTrigger value="blocks">Code</TabsTrigger>
           <TabsTrigger value="costumes">Costumes</TabsTrigger>
           <TabsTrigger value="screen">Screen</TabsTrigger>
         </TabsList>
-        <TabsContent value="blocks" className="w-full h-full max-w-dvw">
+        <TabsContent
+          value="blocks"
+          keepMounted
+          className="min-h-0 w-full flex-1 max-w-dvw"
+        >
           <div
             id="pageContainer"
-            className="flex w-full h-full max-w-dvw gap-2"
+            className="flex h-full min-h-0 w-full max-w-dvw gap-2"
           >
             <div className="relative flex-5">
               <div className="h-full w-full" id="blocklyDiv"></div>
@@ -809,22 +1016,27 @@ function LessonView({
               setSpriteImageDialogValue={setSpriteImageDialogValue}
               appDataDirRef={_appDataDir}
               projectId={lessonId}
-              importDatabaseData={importDatabaseData}
+              importDatabaseData={refreshLessonData}
+              isLesson
             />
           </div>
         </TabsContent>
-        <TabsContent value="costumes" className="w-full h-full max-w-dvw">
+        <TabsContent
+          value="costumes"
+          className="min-h-0 w-full flex-1 max-w-dvw"
+        >
           <div
             id="pageContainer"
-            className="flex w-full h-full max-w-dvw gap-2"
+            className="flex h-full min-h-0 w-full max-w-dvw gap-2"
           >
             <div className="flex-5 gap-1 flex flex-row">
               <CostumeEditor
                 //@ts-ignore
                 activeSprite={activeSprite}
                 appDataDir={_appDataDir.current || ""}
-                refreshDataCallback={importDatabaseData}
+                refreshDataCallback={refreshLessonData}
                 projectId={lessonId || 0}
+                isLesson
               />
             </div>
             <SpriteAndBackdropSelector
@@ -840,14 +1052,15 @@ function LessonView({
               setSpriteImageDialogValue={setSpriteImageDialogValue}
               appDataDirRef={_appDataDir}
               projectId={lessonId}
-              importDatabaseData={importDatabaseData}
+              importDatabaseData={refreshLessonData}
+              isLesson
             />
           </div>
         </TabsContent>
-        <TabsContent value="screen" className="w-full h-full max-w-dvw">
+        <TabsContent value="screen" className="min-h-0 w-full flex-1 max-w-dvw">
           <div
             id="pageContainer"
-            className="flex w-full h-full max-w-dvw gap-2"
+            className="flex h-full min-h-0 w-full max-w-dvw gap-2"
           >
             <Card
               id="outputPane"
@@ -892,7 +1105,7 @@ function LessonView({
       <Button
         variant="secondary"
         onClick={cb}
-        className="absolute top-2 right-2"
+        className="absolute right-2 top-4"
       >
         <Undo2 />
         Back to Menu

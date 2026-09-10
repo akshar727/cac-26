@@ -19,7 +19,12 @@ export class Sprite {
   isBackdrop: boolean = false;
 
   constructor(
-    imagePaths: { costumeName: string; loadablePath: string; truePath: string | null }[] = [],
+    imagePaths: {
+      costumeName: string;
+      loadablePath: string;
+      truePath: string | null;
+    }[] = [],
+    onImageLoaded?: () => void,
   ) {
     let i = 0;
     for (const path of imagePaths) {
@@ -29,6 +34,7 @@ export class Sprite {
       img.src = path.loadablePath;
       img.onload = () => {
         this.makeAlphaMask(img, index);
+        onImageLoaded?.();
         // console.log(
         //   `Alpha mask created for costume ${path.costumeName} of sprite ${this.id}`,
         // );

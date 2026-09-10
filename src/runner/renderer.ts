@@ -49,6 +49,19 @@ export class Renderer {
       if (target.visible) {
         const costume = target._costumes[target.currentCostumeIndex];
 
+        if (target.isBackdrop) {
+          if (costume.complete && costume.naturalWidth > 0) {
+            contextToUse.drawImage(
+              costume,
+              0,
+              0,
+              background.width,
+              background.height,
+            );
+          }
+          continue;
+        }
+
         const scale = target.size / 100;
 
         contextToUse.save();

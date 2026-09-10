@@ -4,11 +4,7 @@ import * as Blockly from "blockly";
 import { blocks } from "./blocks/blocks";
 import { toolbox } from "./toolbox";
 import { loops } from "blockly/blocks";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { BlocklyVariablePromptDialog } from "./components/BlocklyVariablePromptDialog";
 import { Button } from "./components/ui/button";
 import { useRef } from "react";
@@ -169,7 +165,7 @@ function CodeEditor({
     try {
       setCodeRunningState(true);
       codeRunning.current = true;
-      const runtime = new Runtime(sprites);
+      const runtime = new Runtime(sprites, () => runtime.render());
       runtime.start();
       const canvas = document.getElementById("foregroundCanvas");
       if (canvas === null) {
@@ -393,6 +389,11 @@ function CodeEditor({
     }
 
     flyout?.reflow();
+  }
+  function renderBasePositions() {
+    if (sprites.length === 0) return;
+    const runtime = new Runtime(sprites, () => runtime.render());
+    runtime.render();
   }
 
   async function setupWorkspace() {
@@ -778,6 +779,10 @@ function CodeEditor({
                 const workspace = Blockly.getMainWorkspace();
                 Blockly.svgResize(workspace as Blockly.WorkspaceSvg);
               }, 100);
+            } else if (value === "screen") {
+              setTimeout(() => {
+                renderBasePositions();
+              }, 100);
             } else {
               saveCurrentWorkspaceToDatabase();
             }
@@ -791,7 +796,11 @@ function CodeEditor({
           <TabsTrigger value="costumes">Costumes</TabsTrigger>
           <TabsTrigger value="screen">Screen</TabsTrigger>
         </TabsList>
-        <TabsContent value="blocks" className="w-full h-full max-w-dvw">
+        <TabsContent
+          value="blocks"
+          keepMounted
+          className="w-full h-full max-w-dvw"
+        >
           <div
             id="pageContainer"
             className="flex w-full h-full max-w-dvw gap-2"

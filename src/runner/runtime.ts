@@ -19,7 +19,10 @@ export class Runtime {
   _mouseX: number = 1000; // so that sprites at 0,0 dont get triggered by mouse down
   _mouseY: number = 1000;
   _renderer: Renderer;
-  constructor(sprites: (DatabaseSprite | DatabaseBackdrop)[]) {
+  constructor(
+    sprites: (DatabaseSprite | DatabaseBackdrop)[],
+    onImageLoaded?: () => void,
+  ) {
     console.warn("Runtime initialized with sprites:", sprites);
     this._vm = new VirtualMachine(this);
     this._renderer = new Renderer();
@@ -36,6 +39,7 @@ export class Runtime {
       sprite = new Sprite(
         //@ts-ignore
         databaseSprite.image_paths || [],
+        onImageLoaded,
       );
       if ("isBackdrop" in databaseSprite && databaseSprite.isBackdrop) {
         if (this._targets.find((s) => s.id < 0)) {
@@ -48,6 +52,8 @@ export class Runtime {
         sprite.y = 600 / 2;
       } else {
         sprite.isBackdrop = false;
+        sprite.x = 800 / 2;
+        sprite.y = 600 / 2;
       }
       sprite.id = databaseSprite.id;
       for (const thing of databaseSprite.variables_map) {
@@ -249,6 +255,10 @@ export class Runtime {
 
   stopAll() {
     this._threads = [];
+  }
+
+  render() {
+    this._renderer.blit(this._targets);
   }
 
   setMousePosition(x: number, y: number) {
