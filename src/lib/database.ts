@@ -7,7 +7,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 import { BaseDirectory, resolveResource } from "@tauri-apps/api/path";
 import { exists, mkdir, remove } from "@tauri-apps/plugin-fs";
-import { Lesson, moveLesson } from "@/types/lesson";
+import { Lesson, builtInLessons } from "@/types/lesson";
 
 let creationLock = false;
 
@@ -70,7 +70,7 @@ export class DatabaseManager {
   async getLessons(): Promise<Lesson[]> {
     const db = await Database.load(`sqlite:${this.lessonsFileName}`);
     const rows = await db.select<LessonRow[]>(`SELECT * FROM lessons`);
-    return rows.length > 0 ? rows.map(parseLessonRow) : [moveLesson];
+    return rows.length > 0 ? rows.map(parseLessonRow) : builtInLessons;
   }
 
   async getLesson(lessonId: number): Promise<Lesson> {
@@ -122,8 +122,12 @@ export class DatabaseManager {
 
   private async resolveLessonAsset(path: string | null): Promise<string> {
     if (!path) return "";
-    const resourcePath = await resolveResource(path);
-    return convertFileSrc(resourcePath);
+    try {
+      const resourcePath = await resolveResource(path);
+      return convertFileSrc(resourcePath);
+    } catch {
+      return "";
+    }
   }
 
   async createProject(name: string, description: string): Promise<void> {

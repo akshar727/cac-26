@@ -62,7 +62,7 @@ export default function ProjectSelector({
           <ScrollArea className="h-128 w-full rounded-md border">
             <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
               {projects.map((project) => (
-                <Card className="w-64 relative" key={project.id}>
+                <Card className="relative" key={project.id}>
                   {projects.length > 1 && (
                     <Dialog>
                       <DialogTrigger
@@ -166,7 +166,7 @@ export default function ProjectSelector({
           <ScrollArea className="h-128 w-full rounded-md border">
             <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
               {lessons.map((project) => (
-                <Card className="w-64 relative" key={project.id}>
+                <Card className=" relative" key={project.id}>
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
                     <CardDescription>{project.description}</CardDescription>

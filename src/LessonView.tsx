@@ -92,12 +92,26 @@ function LessonView({
   }, [lessonId]);
 
   function createLessonToolbox(currentLesson: Lesson, step: number) {
-    const allowedTypes = new Set(currentLesson.allowedBlocks[step] ?? []);
+    const allowedTypes = new Set(
+      typeof currentLesson.allowedBlocks[0] === "string"
+        ? (currentLesson.allowedBlocks as string[])
+        : ((currentLesson.allowedBlocks as string[][])[step] ?? []),
+    );
 
     const filterContents = (contents: any[]): any[] =>
       contents.reduce((filtered, item) => {
         if (item.kind === "category") {
           if (item.name === "Functions") return filtered;
+          if (item.custom === "VARIABLE") {
+            if (
+              allowedTypes.has("variables_set") ||
+              allowedTypes.has("variables_get") ||
+              allowedTypes.has("math_change")
+            ) {
+              filtered.push(item);
+            }
+            return filtered;
+          }
           const contents = filterContents(item.contents ?? []);
           if (contents.length > 0) {
             filtered.push({ ...item, contents });
@@ -117,14 +131,11 @@ function LessonView({
     };
   }
 
-  function checkCurrentStepSuccess(): boolean {
-    const currentLesson = lessonRef.current;
+  function evaluateLessonMetric(metric: any): boolean {
     const workspace = Blockly.getMainWorkspace();
-    if (!currentLesson || !workspace) return false;
-
-    const metric = currentLesson.successMetrics[currentStepRef.current];
-    if (!metric) {
-      return false;
+    if (!workspace || !metric) return false;
+    if (metric.check === "codeRan") {
+      return codeRunning.current;
     }
 
     if (metric.check === "predicate") {
@@ -142,14 +153,115 @@ function LessonView({
       }
     }
 
+    if (metric.check === "variable") {
+      return lessonSpritesRef.current.some((sprite) =>
+        sprite.variables_map.some(
+          (variable) =>
+            variable.name === metric.name &&
+            (metric.global === undefined ||
+              variable.isGlobal === metric.global),
+        ),
+      );
+    }
+
+    if (metric.check === "broadcast") {
+      return broadcastMessagesRef.current.some(
+        ([name, value]) => name === metric.name || value === metric.name,
+      );
+    }
+
+    if (metric.check === "costumeCount") {
+      const sprite = lessonSpritesRef.current.find(
+        (candidate) => candidate.id === metric.spriteId,
+      );
+      return Boolean(sprite && sprite.image_paths.length >= metric.minimum);
+    }
+
+    if (metric.check === "spriteCount") {
+      return (
+        lessonSpritesRef.current.filter((sprite) => !("isBackdrop" in sprite))
+          .length >= metric.minimum
+      );
+    }
+
+    if (metric.check === "blockCount") {
+      return (
+        workspace.getAllBlocks(false).filter((block) => !block.isShadow())
+          .length >= metric.minimum
+      );
+    }
+
     if (metric.check !== "exists" || !metric.blockType) return false;
-
+    // console.warn("Running a EXISTS check");
     function matchesMetric(block: Blockly.Block, expected: any): boolean {
-      if (block.type !== expected.blockType) return false;
+      if (Array.isArray(expected)) {
+        for (const exp of expected) {
+          if (matchesMetric(block, exp)) {
+            return true;
+          }
+        }
+        console.log(
+          `Block ${block.type} does not match any of the expected metrics:`,
+          expected,
+        );
+        return false;
+      }
+      if (!block) {
+        console.error("NULL block: ", expected);
+        return false;
+      }
+      if (
+        block.type &&
+        expected.blockType &&
+        block.type !== expected.blockType
+      ) {
+        return false;
+      }
+      if (expected.inputs) {
+        for (const [inputName, expectedValue] of Object.entries(
+          expected.inputs,
+        )) {
+          const input = block.getInput(inputName);
+          if (!input?.connection?.targetBlock()) {
+            console.error(`Input ${inputName} not found on block`, block.type);
+            return false;
+          }
+          if (
+            !input ||
+            !matchesMetric(input.connection?.targetBlock()!, expectedValue)
+          ) {
+            console.log(
+              `Input ${inputName} on block`,
+              block.type,
+              "does not match expected value:",
+              expectedValue,
+            );
+            return false;
+          }
+        }
+      }
+      if (expected.fields) {
+        for (const [fieldName, expectedValue] of Object.entries(
+          expected.fields,
+        )) {
+          const field = block.getField(fieldName);
+          if (!field || String(field.getValue()) !== String(expectedValue)) {
+            console.log(
+              `Field ${fieldName} on block`,
+              block.type,
+              "does not match expected value:",
+              expectedValue,
+            );
+            return false;
+          }
+        }
+      }
+      if (expected.next) {
+        const nextBlock = block.getNextBlock();
+        return nextBlock ? matchesMetric(nextBlock, expected.next) : false;
+      }
       if (!expected.next) return true;
-
-      const nextBlock = block.getNextBlock();
-      return nextBlock ? matchesMetric(nextBlock, expected.next) : false;
+      return false;
     }
 
     return workspace
@@ -157,12 +269,31 @@ function LessonView({
       .some((block) => matchesMetric(block, metric));
   }
 
-  function advanceLessonStep() {
+  function reconcileLessonProgress() {
     const currentLesson = lessonRef.current;
     if (!currentLesson) return;
-    setCurrentStep((step) =>
-      Math.min(step + 1, currentLesson.allowedBlocks.length),
-    );
+    if (currentStepRef.current >= currentLesson.successMetrics.length) return;
+    const metrics = currentLesson.successMetrics;
+    const completedCount = Math.min(currentStepRef.current, metrics.length);
+
+    for (let index = 0; index < completedCount; index++) {
+      if (
+        !evaluateLessonMetric(metrics[index]) &&
+        metrics[index].check !== "codeRan"
+      ) {
+        currentStepRef.current = index;
+        setCurrentStep(index);
+        return;
+      }
+    }
+    if (
+      currentStepRef.current < metrics.length &&
+      evaluateLessonMetric(metrics[currentStepRef.current])
+    ) {
+      const nextStep = currentStepRef.current + 1;
+      currentStepRef.current = nextStep;
+      setCurrentStep(nextStep);
+    }
   }
 
   function renderBasePositions() {
@@ -325,9 +456,7 @@ function LessonView({
         let errorCheck = false;
         try {
           runtime.tick(deltaTime, now);
-          if (lessonId !== null && checkCurrentStepSuccess()) {
-            advanceLessonStep();
-          }
+          if (lessonId !== null) reconcileLessonProgress();
           if (
             runtime._scripts.filter((r) => r.trigger.type !== "start")
               .length === 0 &&
@@ -383,7 +512,7 @@ function LessonView({
       activeSpriteRef.current && "isBackdrop" in activeSpriteRef.current
         ? -activeSpriteRef.current.id
         : activeSpriteRef.current?.id; // we do this to get back to the actual id of the backdrop in the database (negative numbers just work well here)
-    console.warn("Saving workspace for sprite with id:", realId);
+    // console.warn("Saving workspace for sprite with id:", realId);
     const currentActiveSprite = activeSpriteRef.current;
     if (!currentActiveSprite) {
       return;
@@ -811,6 +940,7 @@ function LessonView({
                 activeSpriteRef.current = updatedActiveSprite;
                 setActiveSprite(updatedActiveSprite);
               }
+              reconcileLessonProgress();
             } else {
               await new DatabaseManager().deleteVariableFromSprite(
                 currentSprite.id,
@@ -824,11 +954,7 @@ function LessonView({
           }
         })();
       }
-      if (lessonId !== null && e.type === Blockly.Events.BLOCK_MOVE) {
-        if (checkCurrentStepSuccess()) {
-          advanceLessonStep();
-        }
-      }
+      if (lessonId !== null) reconcileLessonProgress();
       if (e.isUiEvent) return;
       saveCurrentWorkspaceToDatabase();
     });
@@ -896,6 +1022,7 @@ function LessonView({
                       (sprite) => sprite.id === currentSprite.id,
                     ) ?? currentSprite;
                   setActiveSprite(activeSpriteRef.current);
+                  reconcileLessonProgress();
                 } else {
                   await new DatabaseManager().addVariableToSprite(
                     currentSprite.id,
