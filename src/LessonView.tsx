@@ -154,7 +154,13 @@ function LessonView({
     }
 
     if (metric.check === "variable") {
-      return lessonSpritesRef.current.some((sprite) =>
+      const spritesToCheck =
+        metric.spriteId === undefined
+          ? lessonSpritesRef.current
+          : lessonSpritesRef.current.filter(
+              (sprite) => sprite.id === metric.spriteId,
+            );
+      return spritesToCheck.some((sprite) =>
         sprite.variables_map.some(
           (variable) =>
             variable.name === metric.name &&
@@ -185,13 +191,30 @@ function LessonView({
     }
 
     if (metric.check === "blockCount") {
+      const blockCount = workspace
+        .getAllBlocks(false)
+        .filter((block) => !block.isShadow()).length;
       return (
-        workspace.getAllBlocks(false).filter((block) => !block.isShadow())
-          .length >= metric.minimum
+        (metric.minimum === undefined || blockCount >= metric.minimum) &&
+        (metric.maximum === undefined || blockCount <= metric.maximum)
       );
     }
 
     if (metric.check !== "exists" || !metric.blockType) return false;
+
+    let metricWorkspace = workspace;
+    if (metric.spriteId !== undefined) {
+      const sprite = lessonSpritesRef.current.find(
+        (candidate) => candidate.id === metric.spriteId,
+      );
+      if (!sprite) return false;
+
+      metricWorkspace = new Blockly.Workspace();
+      for (const block of sprite.blocks_json) {
+        Blockly.serialization.blocks.append(block, metricWorkspace);
+      }
+    }
+
     // console.warn("Running a EXISTS check");
     function matchesMetric(block: Blockly.Block, expected: any): boolean {
       if (Array.isArray(expected)) {
@@ -233,6 +256,7 @@ function LessonView({
             console.log(
               `Input ${inputName} on block`,
               block.type,
+              `${input.connection?.targetBlock()?.type}`,
               "does not match expected value:",
               expectedValue,
             );
@@ -245,10 +269,25 @@ function LessonView({
           expected.fields,
         )) {
           const field = block.getField(fieldName);
-          if (!field || String(field.getValue()) !== String(expectedValue)) {
+          let val = field?.getValue();
+          if (
+            fieldName === "VAR" &&
+            (block.type === "variables_set" ||
+              block.type === "variables_get" ||
+              block.type === "math_change")
+          ) {
+            // Do nothing, this is a special case
+            val = lessonSpritesRef.current
+              .find((sprite) =>
+                sprite.variables_map.some((variable) => variable.id === val),
+              )
+              ?.variables_map.find((variable) => variable.id === val)?.name;
+          }
+          if (!field || String(val) !== String(expectedValue)) {
             console.log(
               `Field ${fieldName} on block`,
               block.type,
+              `${field?.getValue()}`,
               "does not match expected value:",
               expectedValue,
             );
@@ -264,9 +303,13 @@ function LessonView({
       return false;
     }
 
-    return workspace
+    const matches = metricWorkspace
       .getTopBlocks(false)
       .some((block) => matchesMetric(block, metric));
+    if (metricWorkspace !== workspace) {
+      metricWorkspace.dispose();
+    }
+    return matches;
   }
 
   function reconcileLessonProgress() {
@@ -286,11 +329,15 @@ function LessonView({
         return;
       }
     }
-    if (
-      currentStepRef.current < metrics.length &&
-      evaluateLessonMetric(metrics[currentStepRef.current])
+    let nextStep = currentStepRef.current;
+    while (
+      nextStep < metrics.length &&
+      evaluateLessonMetric(metrics[nextStep])
     ) {
-      const nextStep = currentStepRef.current + 1;
+      nextStep += 1;
+    }
+
+    if (nextStep !== currentStepRef.current) {
       currentStepRef.current = nextStep;
       setCurrentStep(nextStep);
     }
@@ -583,82 +630,16 @@ function LessonView({
       );
     })();
   }
-  function refreshAllBroadcastFields() {
-    const workspace = Blockly.getMainWorkspace();
-
-    if (!workspace) {
-      return;
-    }
-
-    const options: [string, string][] = [...broadcastMessagesRef.current];
-
-    if (options.length === 0) {
-      options.push(["message 1", "message 1"]);
-    }
-
-    options.push(["Rename message...", "RENAME_MESSAGE"]);
-    options.push(["New Message...", "NEW_MESSAGE"]);
-
-    for (const block of workspace.getAllBlocks(false)) {
-      const field = block.getField("BROADCAST");
-
-      if (!field) {
-        continue;
-      }
-
-      const currentValue = field.getValue();
-
-      // @ts-ignore
-      field.setOptions(options);
-
-      if (
-        broadcastMessagesRef.current.some(([, value]) => value === currentValue)
-      ) {
-        field.setValue(currentValue);
-      }
-    }
-    //@ts-ignore
-    const flyout = workspace.getFlyout();
-
-    if (flyout) {
-      for (const item of flyout.getContents()) {
-        if (item.type !== "block") {
-          continue;
-        }
-
-        const block = item.element as Blockly.Block;
-        const field = block.getField("BROADCAST");
-        if (!field) {
-          continue;
-        }
-
-        const currentValue = field.getValue();
-
-        // @ts-ignore
-        field.setOptions(options);
-
-        if (
-          broadcastMessagesRef.current.some(
-            ([, value]) => value === currentValue,
-          )
-        ) {
-          field.setValue(currentValue);
-        }
-      }
-    }
-
-    flyout?.reflow();
-  }
 
   async function setupWorkspace(currentLesson: Lesson | null = lesson) {
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.89);
     Blockly.utils.colour.setHsvValue(0.85);
-    if (!Blockly.getMainWorkspace()) {
+    if (true) {
       Blockly.common.defineBlocks(blocks);
       loops.loopTypes.add("controls_forever"); //register it as a loop block so break/continue doesnt look grayed out
       Blockly.Extensions.register("costume_dropdown_extension", function () {
-        //@ts-ignore
+        // @ts-ignore
         this.getField("COSTUME").setOptions(function () {
           const options = [];
 
@@ -683,7 +664,7 @@ function LessonView({
           } else {
             options.push(["none", "NONE"]);
           }
-
+          console.log(options);
           return options;
         });
       });
@@ -693,8 +674,8 @@ function LessonView({
         if (!field) {
           return;
         }
-        function optionsFn(toSet: [string, string][]) {
-          // console.log(`Setting broadcast options with:`, toSet);
+        function optionsFn() {
+          const toSet = broadcastMessagesRef.current;
           const options = [];
           for (const broadcastOption in toSet) {
             options.push(toSet[broadcastOption]);
@@ -716,7 +697,7 @@ function LessonView({
           return options;
         }
         //@ts-ignore
-        field.setOptions(optionsFn(broadcastMessagesRef.current));
+        field.setOptions(optionsFn);
         field.setValidator((newValue) => {
           if (newValue === "NEW_MESSAGE") {
             let i = 1;
@@ -730,7 +711,6 @@ function LessonView({
                 //@ts-ignore
                 .getOptions()
                 .some(
-                  //@ts-ignoer
                   ([text, value]: [string, string]) =>
                     text === defaultName && value === defaultName,
                 )
@@ -748,10 +728,10 @@ function LessonView({
                     ...broadcastMessagesRef.current,
                     [name, name],
                   ];
-
-                  refreshAllBroadcastFields();
-
+                  //@ts-ignore
+                  field.setOptions(optionsFn);
                   field.setValue(name);
+                  reconcileLessonProgress();
                 },
               },
             });
@@ -772,10 +752,10 @@ function LessonView({
                     broadcastMessagesRef.current.map(([text, value]) =>
                       value === oldName ? [name, name] : [text, value],
                     );
-
-                  refreshAllBroadcastFields();
-
+                  //@ts-ignore
+                  field.setOptions(optionsFn);
                   field.setValue(name);
+                  reconcileLessonProgress();
                 },
               },
             });
@@ -954,9 +934,12 @@ function LessonView({
           }
         })();
       }
-      if (lessonId !== null) reconcileLessonProgress();
       if (e.isUiEvent) return;
       saveCurrentWorkspaceToDatabase();
+      if (lessonId !== null && e.type !== Blockly.Events.BLOCK_CREATE) {
+        // random bug that exists when this runs on block_create so its not necessary to check then
+        reconcileLessonProgress();
+      }
     });
     ws.registerToolboxCategoryCallback("PROCEDURE_NORETURNS", (workspace) => {
       return Blockly.Procedures.flyoutCategory(workspace).filter((item) => {
@@ -1065,19 +1048,38 @@ function LessonView({
       },
     );
   }
+
+  function unregisterCustomBlockExtensions() {
+    const mainWorkspace = Blockly.getMainWorkspace();
+    if (mainWorkspace) {
+      mainWorkspace.dispose();
+      setWorkspace(null);
+    }
+
+    for (const extensionName of [
+      "costume_dropdown_extension",
+      "broadcast_dropdown_extension",
+      "touching_dropdown_extension",
+      "glide_preset_dropdown_extension",
+      "distance_to_dropdown_extension",
+    ]) {
+      Blockly.Extensions.unregister(extensionName);
+    }
+  }
+
   return (
     <main className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 p-2 text-slate-900 dark:bg-slate-800">
       {lesson && (
-        <section className="mb-2 shrink-0 rounded-lg border bg-white p-4 shadow-sm">
+        <section className="mb-1 shrink-0 rounded-lg border bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl font-semibold">{lesson.name}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className=" text-sm text-muted-foreground">
                 {lesson.description}
               </p>
             </div>
           </div>
-          <p className="mt-3 text-sm">
+          <p className=" text-sm">
             {lesson.instructions[currentStep] ?? "Lesson complete."}
           </p>
           <p className="shrink-0 text-sm font-medium text-muted-foreground">
@@ -1191,7 +1193,7 @@ function LessonView({
           >
             <Card
               id="outputPane"
-              className="flex flex-col min-w-2/5 w-full overflow-auto m-4"
+              className="flex flex-col min-w-2/5 w-full overflow-auto"
             >
               <CardContent className="relative flex w-full flex-col justify-center items-center">
                 <canvas
@@ -1207,7 +1209,7 @@ function LessonView({
                   height="600"
                 ></canvas>
               </CardContent>
-              <CardFooter className="flex justify-center">
+              <CardFooter className="flex p-1 justify-center gap-1 items-center">
                 <Button
                   onClick={() => {
                     runCode();
@@ -1231,8 +1233,11 @@ function LessonView({
       </Tabs>
       <Button
         variant="secondary"
-        onClick={cb}
-        className="absolute right-2 top-4"
+        onClick={() => {
+          unregisterCustomBlockExtensions();
+          cb();
+        }}
+        className="absolute right-4 top-4"
       >
         <Undo2 />
         Back to Menu

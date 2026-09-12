@@ -279,7 +279,7 @@ export const blockHelp: Record<string, BlockHelp> = {
   screen_change_y: {
     title: "Change Y",
     description: "Changes the sprite's vertical position by an amount.",
-    simpleExplanation: "Positive values move down; negative values move up.",
+    simpleExplanation: "Positive values move up; negative values move down.",
     example: "change y by -10",
   },
   screen_rotate_clockwise: {

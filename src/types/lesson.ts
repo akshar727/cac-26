@@ -90,13 +90,21 @@ const hero = lessonSprite(1, "Monster", [
     truePath: "lesson_assets/shared/Frank-a.svg",
   },
 ]);
-const stage = lessonSprite(-1, "Stage", [
-  {
-    costumeName: "backdrop1",
-    truePath: "lesson_assets/shared/bg.png",
-  },
-]);
+function stageMaker(bgId: number = 0) {
+  let suffix = bgId === 1 ? ".svg" : ".png";
+  return lessonSprite(-1, "Stage", [
+    {
+      costumeName: `backdrop${bgId}`,
+      truePath: `lesson_assets/shared/bg${bgId}${suffix}`,
+    },
+  ]);
+}
+const stage1 = stageMaker(1);
+const stage0 = stageMaker(0);
+const stage2 = stageMaker(2);
+const stage3 = stageMaker(3);
 const whenStartedBlock = "events_when_started";
+
 export const moveLesson = createLesson(
   0,
   "Move the sprite",
@@ -133,7 +141,7 @@ export const moveLesson = createLesson(
       check: "codeRan",
     },
   ],
-  [stage, hero],
+  [stage0, hero],
   [],
 );
 
@@ -156,6 +164,7 @@ export const positionLesson = createLesson(
   [
     "Drag a when started block into the workspace.",
     "Now drag a 'set position x y' block and connect it under the when started block.",
+    "Set the x value to 600 and the y value to 200.",
     "Add a 'rotate ↻' block below the set position block.",
     `Go to the "Screen" tab and press Run Code.`,
     "Congratulations! You have completed the lesson.",
@@ -176,12 +185,32 @@ export const positionLesson = createLesson(
       next: {
         check: "exists",
         blockType: "screen_set_position",
+        inputs: {
+          X: {
+            check: "exists",
+            blockType: "math_number",
+            fields: { NUM: 600 },
+          },
+          Y: {
+            check: "exists",
+            blockType: "math_number",
+            fields: { NUM: 200 },
+          },
+        },
+      },
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "screen_set_position",
         next: { check: "exists", blockType: "screen_rotate_clockwise" },
       },
     },
     { check: "codeRan" },
   ],
-  [hero, stage],
+  [hero, stage1],
 );
 
 export const loopLesson = createLesson(
@@ -242,7 +271,7 @@ export const loopLesson = createLesson(
     },
     { check: "codeRan" },
   ],
-  [hero, stage],
+  [hero, stage3],
 );
 
 export const decisionLesson = createLesson(
@@ -255,28 +284,94 @@ export const decisionLesson = createLesson(
     "logic_compare",
     "logic_operation",
     "logic_negate",
+    "controls_forever",
+    "controls_repeat_ext",
     "logic_boolean",
     "logic_touching",
     "logic_key_down",
     "screen_change_x",
     "screen_change_y",
+    "screen_glide_preset",
     "math_number",
   ],
   [
-    "Drag a When Started block and an If block.",
-    "Put a touching or key down question into the If block.",
-    "Put a change x block inside the If block. Test the program by pressing Run Code.",
+    "Drag a When Started block into the workspace",
+    "Next, drag a forever block and connect it under the When Started block.",
+    "Drag an If block and connect it inside the forever block.",
+    "Put a touching question into the If block. Set it to check if the sprite is touching the mouse pointer.",
+    "Put a glide to mouse-pointer block inside the If block. Change the mouse-pointer to 'random position'.",
+    "Go to the Screen tab and press Run Code.",
+    "Great job! You have completed the lesson. Hover the mouse pointer over the sprite to see it glide to a random position.",
   ],
   [
     {
       check: "exists",
       blockType: whenStartedBlock,
-      next: { check: "exists", blockType: "controls_if" },
     },
-    { check: "blockCount", minimum: 3 },
-    { check: "blockCount", minimum: 4 },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: { check: "exists", blockType: "controls_forever" },
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "controls_forever",
+        inputs: { DO: { check: "exists", blockType: "controls_if" } },
+      },
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "controls_forever",
+        inputs: {
+          DO: {
+            check: "exists",
+            blockType: "controls_if",
+            inputs: {
+              IF0: {
+                check: "exists",
+                blockType: "logic_touching",
+                fields: { TOUCHING: "MOUSE_POINTER" },
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "controls_forever",
+        inputs: {
+          DO: {
+            check: "exists",
+            blockType: "controls_if",
+            inputs: {
+              IF0: {
+                check: "exists",
+                blockType: "logic_touching",
+                fields: { TOUCHING: "MOUSE_POINTER" },
+              },
+              DO0: {
+                check: "exists",
+                blockType: "screen_glide_preset",
+                fields: { GLIDE_PRESET: "RANDOM_POSITION" },
+              },
+            },
+          },
+        },
+      },
+    },
+    { check: "codeRan" },
   ],
-  [hero, stage],
+  [hero, stage2],
 );
 
 export const textLesson = createLesson(
@@ -294,10 +389,21 @@ export const textLesson = createLesson(
   ],
   [
     "Drag a When Started block.",
-    "Connect a say block and type a short greeting.",
-    "Add a think block after it. Run the program and read both bubbles.",
+    "Connect a say block under the When Started block. Type anything you want in the say block.",
+    "Connect a think block after the say block. Type anything you want in the think block.",
+    "Go to the Screen tab and press Run Code to read both bubbles.",
+    "Congratulations! You have completed the lesson.",
   ],
   [
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: { check: "exists", blockType: "screen_say" },
+    },
     {
       check: "exists",
       blockType: whenStartedBlock,
@@ -307,10 +413,9 @@ export const textLesson = createLesson(
         next: { check: "exists", blockType: "screen_think" },
       },
     },
-    { check: "blockCount", minimum: 3 },
-    { check: "blockCount", minimum: 3 },
+    { check: "codeRan" },
   ],
-  [hero, stage],
+  [hero, stage3],
 );
 
 export const costumeLesson = createLesson(
@@ -324,27 +429,71 @@ export const costumeLesson = createLesson(
     "screen_say",
     "logic_wait",
     "controls_repeat_ext",
+    "math_number",
   ],
   [
-    "Use the sprite selector to look at the two costumes named Idle and Happy.",
-    "Drag a When Started block and connect a next costume block.",
-    "Add a Repeat block so the costume changes more than once. Run the program.",
+    "Use the sprite selector to look at the two costumes named Idle and Happy. Then, Drag a When Started block.",
+    "Connect a Repeat block under the When Started block.",
+    "Place a next costume block inside the Repeat block.",
+    "Place a wait block inside the Repeat block after the next costume block. Set the wait time to 1 second.",
+    "Set the Repeat block to 2 times.",
+    "Go to the Screen tab and press Run Code to see the costume change more than once.",
+    "Congratulations! You have completed the lesson.",
   ],
   [
-    { check: "costumeCount", spriteId: 1, minimum: 2 },
+    { check: "exists", blockType: whenStartedBlock },
     {
       check: "exists",
       blockType: whenStartedBlock,
-      next: { check: "exists", blockType: "screen_next_costume" },
+      next: { check: "exists", blockType: "controls_repeat_ext" },
     },
-    { check: "blockCount", minimum: 3 },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "controls_repeat_ext",
+        inputs: { DO: { check: "exists", blockType: "screen_next_costume" } },
+      },
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "controls_repeat_ext",
+        inputs: {
+          DO: {
+            check: "exists",
+            blockType: "screen_next_costume",
+            next: { check: "exists", blockType: "logic_wait" },
+          },
+        },
+      },
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "controls_repeat_ext",
+        inputs: {
+          TIMES: {
+            check: "exists",
+            blockType: "math_number",
+            fields: { NUM: 2 },
+          },
+        },
+      },
+    },
+    { check: "codeRan" },
   ],
   [
     lessonSprite(1, "Hero", [
       { costumeName: "Idle", truePath: "lesson_assets/shared/hero-idle.svg" },
       { costumeName: "Happy", truePath: "lesson_assets/shared/hero-happy.svg" },
     ]),
-    stage,
+    stage1,
   ],
 );
 
@@ -355,6 +504,7 @@ export const appearanceLesson = createLesson(
   [
     whenStartedBlock,
     "screen_show",
+    "logic_wait",
     "screen_hide",
     "screen_set_size",
     "screen_change_size",
@@ -363,23 +513,65 @@ export const appearanceLesson = createLesson(
   ],
   [
     "Drag a When Started block.",
-    "Connect a hide block, then a wait block is not needed: connect a show block next.",
-    "Add a set size block and choose 50. Run the program and watch the sprite change.",
+    "Connect a hide block under the When Started block.",
+    "Add a wait block after the hide block. Then, connect a show block after the hide block.",
+    "Connect a set size block after the show block. Set the size to 50%.",
+    "Go to the Screen tab and press Run Code to watch the sprite change.",
+    "Congratulations! You have completed the lesson.",
   ],
   [
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: { check: "exists", blockType: "screen_hide" },
+    },
     {
       check: "exists",
       blockType: whenStartedBlock,
       next: {
         check: "exists",
         blockType: "screen_hide",
-        next: { check: "exists", blockType: "screen_show" },
+        next: {
+          check: "exists",
+          blockType: "logic_wait",
+          next: { check: "exists", blockType: "screen_show" },
+        },
       },
     },
-    { check: "blockCount", minimum: 3 },
-    { check: "blockCount", minimum: 4 },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "screen_hide",
+        next: {
+          check: "exists",
+          blockType: "logic_wait",
+          next: {
+            check: "exists",
+            blockType: "screen_show",
+            next: {
+              check: "exists",
+              blockType: "screen_set_size",
+              inputs: {
+                SIZE_SET: {
+                  check: "exists",
+                  blockType: "math_number",
+                  fields: { NUM: 50 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    { check: "codeRan" },
   ],
-  [hero, stage],
+  [hero, stage0],
 );
 
 export const localVariableLesson = createLesson(
@@ -396,25 +588,108 @@ export const localVariableLesson = createLesson(
     "text",
   ],
   [
-    "Select the Hero sprite and create a variable named score. Keep it local.",
-    "Drag a When Started block and set score to 0.",
-    "Add a change score by 1 block and use score in a say block. Run the program.",
+    "Select the Monster sprite and create a variable named score. Keep the score variable local (this sprite only).",
+    "Drag a When Started block.",
+    "Connect a set score block under the When Started block. Set score to 50.",
+    "Connect a change score by block after the set score block. Set the change amount to 55.",
+    "Connect a say block after the change score block. Put score in the say block.",
+    "Go to the Screen tab and press Run Code.",
+    "Congratulations! You have completed the lesson.",
   ],
   [
-    { check: "variable", name: "score", global: false },
+    { check: "variable", name: "score", spriteId: 1, global: false },
+    { check: "exists", blockType: whenStartedBlock },
     {
       check: "exists",
       blockType: whenStartedBlock,
-      next: { check: "exists", blockType: "variables_set" },
+      next: {
+        check: "exists",
+        blockType: "variables_set",
+        fields: { VAR: "score" },
+        inputs: {
+          VALUE: {
+            check: "exists",
+            blockType: "math_number",
+            fields: { NUM: 50 },
+          },
+        },
+      },
     },
-    { check: "blockCount", minimum: 4 },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "variables_set",
+        fields: { VAR: "score" },
+        inputs: {
+          VALUE: {
+            check: "exists",
+            blockType: "math_number",
+            fields: { NUM: 50 },
+          },
+        },
+        next: {
+          check: "exists",
+          blockType: "math_change",
+          fields: { VAR: "score" },
+          inputs: {
+            DELTA: {
+              check: "exists",
+              blockType: "math_number",
+              fields: { NUM: 55 },
+            },
+          },
+        },
+      },
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "variables_set",
+        fields: { VAR: "score" },
+        inputs: {
+          VALUE: {
+            check: "exists",
+            blockType: "math_number",
+            fields: { NUM: 50 },
+          },
+        },
+        next: {
+          check: "exists",
+          blockType: "math_change",
+          fields: { VAR: "score" },
+          inputs: {
+            DELTA: {
+              check: "exists",
+              blockType: "math_number",
+              fields: { NUM: 55 },
+            },
+          },
+          next: {
+            check: "exists",
+            blockType: "screen_say",
+            inputs: {
+              MESSAGE: {
+                check: "exists",
+                blockType: "variables_get",
+                fields: { VAR: "score" },
+              },
+            },
+          },
+        },
+      },
+    },
+    { check: "codeRan" },
   ],
   [
     hero,
     lessonSprite(2, "Friend", [
-      { costumeName: "Friend", truePath: "lesson_assets/shared/friend.svg" },
+      { costumeName: "Friend", truePath: "lesson_assets/shared/Friend-a.svg" },
     ]),
-    stage,
+    stage0,
   ],
 );
 
@@ -426,6 +701,9 @@ export const globalVariableLesson = createLesson(
     whenStartedBlock,
     "variables_set",
     "variables_get",
+    "screen_set_position",
+    "screen_set_x",
+    "screen_set_y",
     "math_change",
     "screen_say",
     "events_when_sprite_clicked",
@@ -433,21 +711,55 @@ export const globalVariableLesson = createLesson(
     "text",
   ],
   [
-    "Select the Hero sprite and create a variable named points. Mark it global.",
-    "Select the Friend sprite and create a local variable named messageCount.",
-    "Make both sprites use points. Run the program and check that both sprites can read the shared value.",
+    "Select the Monster sprite and create a variable named xpos. Mark the xpos variable global (all sprites).",
+    "On the Monster sprite, drag a When Started block into the workspace. Drag a set xpos block under the When Started block. Set xpos to 500.",
+    "On the Friend sprite, drag a When Started block into the workspace. Drag a set position y block under the When Started block. Set y to xpos.",
+    "Go to the Screen tab and press Run Code to see that both sprites can read and use the xpos variable.",
+    "Congratulations! You have completed the lesson.",
   ],
   [
-    { check: "spriteCount", minimum: 2 },
-    { check: "variable", name: "points", global: true },
-    { check: "variable", name: "messageCount", global: false },
+    { check: "variable", name: "xpos", spriteId: 1, global: true },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "variables_set",
+        fields: { VAR: "xpos" },
+        inputs: {
+          VALUE: {
+            check: "exists",
+            blockType: "math_number",
+            fields: { NUM: 500 },
+          },
+        },
+      },
+      spriteId: 1,
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      next: {
+        check: "exists",
+        blockType: "screen_set_y",
+        inputs: {
+          Y: {
+            check: "exists",
+            blockType: "variables_get",
+            fields: { VAR: "xpos" },
+          },
+        },
+      },
+      spriteId: 2,
+    },
+    { check: "codeRan" },
   ],
   [
     hero,
     lessonSprite(2, "Friend", [
-      { costumeName: "Friend", truePath: "lesson_assets/shared/friend.svg" },
+      { costumeName: "Friend", truePath: "lesson_assets/shared/Friend-a.svg" },
     ]),
-    stage,
+    stage0,
   ],
 );
 
@@ -464,187 +776,52 @@ export const broadcastLesson = createLesson(
     "text",
   ],
   [
-    "Use the message menu to create a broadcast named start dance.",
-    "On the Hero sprite, add When Started and broadcast start dance.",
-    "On the Friend sprite, add When I Receive start dance and make it say Ready.",
+    "Click on the dropdown menu on the broadcast block in the toolbox. Create a broadcast named start dance.",
+    "On the Monster sprite, add a When Started block.",
+    "Connect a broadcast block under the When Started block. Set it to broadcast start dance.",
+    "On the Friend sprite, add a When I Receive block. Set it to start dance.",
+    "Connect a say block under the When I Receive block.",
+    "Go to the Screen tab and press Run Code.",
+    "Congratulations! You have completed the lesson.",
   ],
   [
     { check: "broadcast", name: "start dance" },
-    { check: "spriteCount", minimum: 2 },
-    { check: "blockCount", minimum: 2 },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      spriteId: 1,
+    },
+    {
+      check: "exists",
+      blockType: whenStartedBlock,
+      spriteId: 1,
+      next: {
+        check: "exists",
+        blockType: "events_broadcast",
+        fields: { BROADCAST: "start dance" },
+      },
+    },
+    {
+      check: "exists",
+      blockType: "events_when_broadcast_received",
+      fields: { BROADCAST: "start dance" },
+      spriteId: 2,
+    },
+    {
+      check: "exists",
+      blockType: "events_when_broadcast_received",
+      fields: { BROADCAST: "start dance" },
+      next: { check: "exists", blockType: "screen_say" },
+      spriteId: 2,
+    },
+    { check: "codeRan" },
   ],
   [
     hero,
     lessonSprite(2, "Friend", [
-      { costumeName: "Friend", truePath: "lesson_assets/shared/friend.svg" },
+      { costumeName: "Friend", truePath: "lesson_assets/shared/hero-idle.svg" },
     ]),
-    stage,
-  ],
-  [],
-);
-
-export const sceneLesson = createLesson(
-  10,
-  "Build a Small Scene",
-  "Use several sprites, costumes, and a backdrop to make a scene.",
-  [
-    whenStartedBlock,
-    "events_when_sprite_clicked",
-    "screen_set_costume",
-    "screen_next_costume",
-    "screen_set_position",
-    "screen_say",
-    "screen_show",
-    "screen_hide",
-    "math_number",
-  ],
-  [
-    "Look at the Stage backdrop and the two sprites. Each sprite has two costumes.",
-    "Place the Hero on the left and the Friend on the right using set position blocks.",
-    "Make one sprite say a greeting when it is clicked. Change its costume too.",
-  ],
-  [
-    { check: "spriteCount", minimum: 2 },
-    { check: "costumeCount", spriteId: 1, minimum: 2 },
-    { check: "costumeCount", spriteId: 2, minimum: 2 },
-  ],
-  [
-    lessonSprite(1, "Hero", [
-      { costumeName: "Blue", truePath: "lesson_assets/shared/hero-blue.svg" },
-      { costumeName: "Red", truePath: "lesson_assets/shared/hero-red.svg" },
-    ]),
-    lessonSprite(2, "Friend", [
-      { costumeName: "Calm", truePath: "lesson_assets/shared/friend-calm.svg" },
-      {
-        costumeName: "Excited",
-        truePath: "lesson_assets/shared/friend-excited.svg",
-      },
-    ]),
-    lessonSprite(-1, "Stage", [
-      { costumeName: "Park", truePath: "lesson_assets/shared/park.png" },
-    ]),
-  ],
-);
-
-const summativeBlocks = [
-  "controls_if",
-  "controls_repeat_ext",
-  "controls_whileUntil",
-  "controls_for",
-  "controls_forever",
-  "controls_flow_statements",
-  "logic_compare",
-  "logic_operation",
-  "logic_negate",
-  "logic_boolean",
-  "logic_null",
-  "logic_ternary",
-  "logic_wait",
-  "logic_touching",
-  "logic_key_down",
-  "logic_mouse_down",
-  "math_number",
-  "math_arithmetic",
-  "math_single",
-  "math_trig",
-  "math_constant",
-  "math_number_property",
-  "math_round",
-  "math_on_list",
-  "math_modulo",
-  "math_constrain",
-  "math_random_int",
-  "math_random_float",
-  "math_atan2",
-  "text",
-  "text_join",
-  "text_append",
-  "text_length",
-  "text_isEmpty",
-  "text_charAt",
-  "text_changeCase",
-  "text_trim",
-  "text_count",
-  "text_replace",
-  "text_reverse",
-  "events_when_started",
-  "events_when_key_pressed",
-  "events_when_sprite_clicked",
-  "events_broadcast",
-  "events_when_broadcast_received",
-  "screen_set_position",
-  "screen_set_x",
-  "screen_set_y",
-  "screen_change_x",
-  "screen_change_y",
-  "screen_rotate_clockwise",
-  "screen_rotate_counterclockwise",
-  "screen_set_rotation",
-  "screen_rotation",
-  "screen_next_costume",
-  "screen_set_costume",
-  "screen_show",
-  "screen_hide",
-  "screen_set_size",
-  "screen_change_size",
-  "screen_glide",
-  "screen_glide_preset",
-  "screen_say",
-  "screen_think",
-  "screen_clear_speech_bubbles",
-  "screen_distance_to",
-  "screen_position_x",
-  "screen_position_y",
-  "screen_height",
-  "screen_width",
-  "screen_sprite_size",
-  "screen_mouse_x",
-  "screen_mouse_y",
-  "variables_set",
-  "variables_get",
-  "math_change",
-];
-
-export const summativeLesson = createLesson(
-  11,
-  "Codely Adventure",
-  "Create a small interactive story using the skills from every lesson.",
-  summativeBlocks,
-  [
-    "Use at most 30 blocks. Start with When Started and create a variable named score.",
-    "Use two sprites. Make the Hero move and change costume. Make the Friend react when clicked.",
-    "Use a broadcast named scene ready so one sprite can tell the other sprite what to do.",
-    "Add one condition and one loop. Make the sprites say something that helps the story make sense.",
-    "Run the story. Check that the sprites, costumes, variable, condition, loop, and broadcast all work together.",
-  ],
-  [
-    { check: "blockCount", minimum: 3 },
-    { check: "spriteCount", minimum: 2 },
-    { check: "variable", name: "score" },
-    { check: "broadcast", name: "scene ready" },
-    { check: "blockCount", minimum: 8 },
-  ],
-  [
-    lessonSprite(1, "Hero", [
-      { costumeName: "Hero", truePath: "lesson_assets/shared/hero.svg" },
-      {
-        costumeName: "Hero Jump",
-        truePath: "lesson_assets/shared/hero-jump.svg",
-      },
-    ]),
-    lessonSprite(2, "Friend", [
-      { costumeName: "Friend", truePath: "lesson_assets/shared/friend.svg" },
-      {
-        costumeName: "Friend Wave",
-        truePath: "lesson_assets/shared/friend-wave.svg",
-      },
-    ]),
-    lessonSprite(-1, "Stage", [
-      {
-        costumeName: "Story World",
-        truePath: "lesson_assets/shared/story-world.png",
-      },
-    ]),
+    stage0,
   ],
   [],
 );
@@ -660,6 +837,4 @@ export const builtInLessons: Lesson[] = [
   localVariableLesson,
   globalVariableLesson,
   broadcastLesson,
-  sceneLesson,
-  summativeLesson,
 ];

@@ -324,72 +324,6 @@ function CodeEditor({
       );
     })();
   }
-  function refreshAllBroadcastFields() {
-    const workspace = Blockly.getMainWorkspace();
-
-    if (!workspace) {
-      return;
-    }
-
-    const options: [string, string][] = [...broadcastMessagesRef.current];
-
-    if (options.length === 0) {
-      options.push(["message 1", "message 1"]);
-    }
-
-    options.push(["Rename message...", "RENAME_MESSAGE"]);
-    options.push(["New Message...", "NEW_MESSAGE"]);
-
-    for (const block of workspace.getAllBlocks(false)) {
-      const field = block.getField("BROADCAST");
-
-      if (!field) {
-        continue;
-      }
-
-      const currentValue = field.getValue();
-
-      // @ts-ignore
-      field.setOptions(options);
-
-      if (
-        broadcastMessagesRef.current.some(([, value]) => value === currentValue)
-      ) {
-        field.setValue(currentValue);
-      }
-    }
-    //@ts-ignore
-    const flyout = workspace.getFlyout();
-
-    if (flyout) {
-      for (const item of flyout.getContents()) {
-        if (item.type !== "block") {
-          continue;
-        }
-
-        const block = item.element as Blockly.Block;
-        const field = block.getField("BROADCAST");
-        if (!field) {
-          continue;
-        }
-
-        const currentValue = field.getValue();
-
-        // @ts-ignore
-        field.setOptions(options);
-
-        if (
-          broadcastMessagesRef.current.some(
-            ([, value]) => value === currentValue,
-          )
-        ) {
-          field.setValue(currentValue);
-        }
-      }
-    }
-
-    flyout?.reflow();
-  }
   function renderBasePositions() {
     if (sprites.length === 0) return;
     const runtime = new Runtime(sprites, () => runtime.render());
@@ -403,6 +337,8 @@ function CodeEditor({
     if (!Blockly.getMainWorkspace()) {
       Blockly.common.defineBlocks(blocks);
       loops.loopTypes.add("controls_forever"); //register it as a loop block so break/continue doesnt look grayed out
+    }
+    if (true) {
       Blockly.Extensions.register("costume_dropdown_extension", function () {
         //@ts-ignore
         this.getField("COSTUME").setOptions(function () {
@@ -439,8 +375,10 @@ function CodeEditor({
         if (!field) {
           return;
         }
-        function optionsFn(toSet: [string, string][]) {
+        function optionsFn() {
+          const toSet = broadcastMessagesRef.current;
           // console.log(`Setting broadcast options with:`, toSet);
+          console.log(`Setting broadcast options with:`, toSet);
           const options = [];
           for (const broadcastOption in toSet) {
             options.push(toSet[broadcastOption]);
@@ -462,7 +400,7 @@ function CodeEditor({
           return options;
         }
         //@ts-ignore
-        field.setOptions(optionsFn(broadcastMessagesRef.current));
+        field.setOptions(optionsFn);
         field.setValidator((newValue) => {
           if (newValue === "NEW_MESSAGE") {
             let i = 1;
@@ -476,7 +414,6 @@ function CodeEditor({
                 //@ts-ignore
                 .getOptions()
                 .some(
-                  //@ts-ignoer
                   ([text, value]: [string, string]) =>
                     text === defaultName && value === defaultName,
                 )
@@ -494,10 +431,10 @@ function CodeEditor({
                     ...broadcastMessagesRef.current,
                     [name, name],
                   ];
-
-                  refreshAllBroadcastFields();
-
+                  //@ts-ignore
+                  field.setOptions(optionsFn);
                   field.setValue(name);
+                  
                 },
               },
             });
@@ -518,9 +455,8 @@ function CodeEditor({
                     broadcastMessagesRef.current.map(([text, value]) =>
                       value === oldName ? [name, name] : [text, value],
                     );
-
-                  refreshAllBroadcastFields();
-
+                  //@ts-ignore
+                  field.setOptions(optionsFn);
                   field.setValue(name);
                 },
               },
@@ -766,6 +702,25 @@ function CodeEditor({
       },
     );
   }
+
+  function unregisterCustomBlockExtensions() {
+    const mainWorkspace = Blockly.getMainWorkspace();
+    if (mainWorkspace) {
+      mainWorkspace.dispose();
+      setWorkspace(null);
+    }
+
+    for (const extensionName of [
+      "costume_dropdown_extension",
+      "broadcast_dropdown_extension",
+      "touching_dropdown_extension",
+      "glide_preset_dropdown_extension",
+      "distance_to_dropdown_extension",
+    ]) {
+      Blockly.Extensions.unregister(extensionName);
+    }
+  }
+
   return (
     <main className="p-2 bg-slate-50 dark:bg-slate-800 min-h-dvh h-dvh max-h-dvh text-slate-900">
       <Tabs
@@ -864,7 +819,7 @@ function CodeEditor({
           >
             <Card
               id="outputPane"
-              className="flex flex-col min-w-2/5 w-full overflow-auto m-4"
+              className="flex flex-col justify-between min-w-2/5 w-full overflow-auto m-4"
             >
               <CardContent className="relative flex w-full flex-col justify-center items-center">
                 <canvas
@@ -880,7 +835,7 @@ function CodeEditor({
                   height="600"
                 ></canvas>
               </CardContent>
-              <CardFooter className="flex justify-center">
+              <CardFooter className="flex justify-center gap-1 items-center">
                 <Button
                   onClick={() => {
                     runCode();
@@ -904,7 +859,10 @@ function CodeEditor({
       </Tabs>
       <Button
         variant="secondary"
-        onClick={cb}
+        onClick={() => {
+          unregisterCustomBlockExtensions();
+          cb();
+        }}
         className="absolute top-2 right-2"
       >
         <Undo2 />

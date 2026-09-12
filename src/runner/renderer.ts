@@ -80,12 +80,6 @@ export class Renderer {
 
         contextToUse.restore();
         if (target.sayText || target.thinkText) {
-          // console.log(
-          //   "Rendering bubble for target",
-          //   target.id,
-          //   target.sayText,
-          //   target.thinkText,
-          // );
           const width = contextToUse.measureText(
             target.sayText || target.thinkText,
           ).width;

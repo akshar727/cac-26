@@ -115,13 +115,6 @@ export class EvaluationEngine {
       }
       case "logic_touching": {
         if (condition.target === "MOUSE_POINTER") {
-          console.log(
-            this._runtime._renderer.mouseTouchingSprite(
-              processingThread.target,
-              this._runtime._mouseX,
-              this._runtime._mouseY,
-            ),
-          );
           return this._runtime._renderer.mouseTouchingSprite(
             processingThread.target,
             this._runtime._mouseX,

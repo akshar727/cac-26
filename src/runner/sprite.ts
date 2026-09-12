@@ -71,14 +71,14 @@ export class Sprite {
   }
 
   markSay(text: string, duration: number, currentTime: number) {
-    this.sayText = text;
+    this.sayText = String(text);
     console.log(`Sprite ${this.id} now marked as saying: ${text}`);
     this.bubbleUntil = currentTime + duration * 1000;
     // console.log(this.sayText, this.bubbleUntil, currentTime, duration);
   }
 
   markThink(text: string, duration: number, currentTime: number) {
-    this.thinkText = text;
+    this.thinkText = String(text);
     this.bubbleUntil = currentTime + duration * 1000;
     // console.log(this.thinkText, this.bubbleUntil, currentTime, duration);
   }

@@ -303,7 +303,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     type: "events_when_sprite_clicked",
     tooltip: "Run code when the sprite is clicked",
     helpUrl: "",
-    message0: "When this sprite clicked",
+    message0: "When this sprite is clicked",
     nextStatement: null,
     colour: 44,
     inputsInline: true,

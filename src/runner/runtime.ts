@@ -263,7 +263,7 @@ export class Runtime {
 
   setMousePosition(x: number, y: number) {
     this._mouseX = x;
-    this._mouseY = y;
+    this._mouseY = 600 - y;
   }
   getMousePosition(): { x: number; y: number } {
     return { x: this._mouseX, y: this._mouseY };
