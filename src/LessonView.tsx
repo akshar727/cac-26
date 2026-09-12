@@ -635,9 +635,11 @@ function LessonView({
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.89);
     Blockly.utils.colour.setHsvValue(0.85);
-    if (true) {
+    if (!Blockly.getMainWorkspace()) {
       Blockly.common.defineBlocks(blocks);
       loops.loopTypes.add("controls_forever"); //register it as a loop block so break/continue doesnt look grayed out
+    }
+    try {
       Blockly.Extensions.register("costume_dropdown_extension", function () {
         // @ts-ignore
         this.getField("COSTUME").setOptions(function () {
@@ -834,6 +836,8 @@ function LessonView({
           });
         },
       );
+    } catch (error) {
+      // it doesn't matter
     }
     const theme = Blockly.Theme.defineTheme("codely", {
       name: "codely",
@@ -1075,7 +1079,7 @@ function LessonView({
             <div>
               <h1 className="text-xl font-semibold">{lesson.name}</h1>
               <p className=" text-sm text-muted-foreground">
-                {lesson.description}
+                {lesson.longDescription}
               </p>
             </div>
           </div>

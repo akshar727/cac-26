@@ -26,6 +26,119 @@ import { Input } from "./ui/input";
 import { cn, openImage } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
 import { Plus, X } from "lucide-react";
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import type { UniqueIdentifier } from "@dnd-kit/abstract";
+
+type Costume = DatabaseSprite["image_paths"][number];
+
+function SortableCostumeCard({
+  costume,
+  index,
+  isActive,
+  isLesson,
+  canDelete,
+  onSelect,
+  onDelete,
+}: {
+  costume: Costume;
+  index: number;
+  isActive: boolean;
+  isLesson: boolean;
+  canDelete: boolean;
+  onSelect: () => void;
+  onDelete: () => Promise<void>;
+}) {
+  const id = costume.loadablePath as UniqueIdentifier;
+  const { isDragging, ref } = useSortable({
+    id,
+    index,
+    group: "costumes",
+    disabled: isLesson,
+  });
+
+  return (
+    <Dialog>
+      <Card
+        ref={ref}
+        onClick={onSelect}
+        className={cn(
+          "hover:cursor-grab hover:bg-slate-100 transition-colors duration-200 relative",
+          isActive ? "bg-slate-100" : "",
+          isDragging ? "opacity-50" : "",
+        )}
+      >
+        <Tooltip>
+          {!isLesson && canDelete ? (
+            <DialogTrigger
+              nativeButton={false}
+              render={
+                <TooltipTrigger
+                  render={
+                    <div
+                      className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <X className="w-4 h-4" />
+                    </div>
+                  }
+                />
+              }
+            />
+          ) : !isLesson ? (
+            <TooltipTrigger
+              render={
+                <div
+                  className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <X className="w-4 h-4" />
+                </div>
+              }
+            />
+          ) : null}
+          {!isLesson && !canDelete && (
+            <TooltipContent>
+              <p>You cannot delete the only costume of a sprite.</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+        <CardContent className="flex relative flex-col items-center gap-2">
+          <img
+            src={costume.loadablePath}
+            alt={`Costume ${index + 1}`}
+            style={{
+              maxWidth: 64,
+              maxHeight: 64,
+              width: "auto",
+              height: "auto",
+              objectFit: "contain",
+            }}
+          />
+          <p className="text-sm text-center">{costume.costumeName}</p>
+          <ImageSpecs loadablePath={costume.loadablePath} />
+        </CardContent>
+      </Card>
+      {!isLesson && canDelete && (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this costume?</DialogTitle>
+          </DialogHeader>
+          This is a permanent action and cannot be undone.
+          <DialogFooter className="bg-white">
+            <DialogClose
+              render={
+                <Button variant="destructive" onClick={onDelete}>
+                  Delete Costume
+                </Button>
+              }
+            />
+          </DialogFooter>
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+}
 
 function ImageSpecs({ loadablePath }: { loadablePath: string }) {
   const [dimensions, setDimensions] = useState<{
@@ -77,9 +190,12 @@ export default function CostumeEdtior({
   const [newCostumeDialogOpen, setNewCostumeDialogOpen] = useState(false);
   const [spriteImageDialogValue, setSpriteImageDialogValue] = useState("");
   const [spriteNameDialogValue, setSpriteNameDialogValue] = useState("");
+  const [costumes, setCostumes] = useState<Costume[]>(
+    activeSprite?.image_paths ?? [],
+  );
 
   useEffect(() => {
-    console.log("Active sprite changed:", activeSprite);
+    setCostumes(activeSprite?.image_paths ?? []);
     if (activeSprite && activeSprite.image_paths.length > 0) {
       setActiveCostume(activeSprite.image_paths[0]);
     } else if (activeSprite && activeSprite.image_paths.length === 0) {
@@ -104,124 +220,73 @@ export default function CostumeEdtior({
         <CardContent className="flex flex-col gap-2">
           <CardTitle>Costumes</CardTitle>
           {activeSprite && activeSprite.image_paths.length > 0 ? (
-            <ScrollArea>
-              <div
-                key={JSON.stringify(activeSprite)}
-                className="grid grid-cols-1 gap-2 p-1"
-              >
-                {activeSprite.image_paths.map((imageInfo, index: number) => {
-                  return (
-                    <Dialog>
-                      <Card
-                        key={index}
-                        onClick={() => {
-                          setActiveCostume(imageInfo);
-                        }}
-                        className={cn(
-                          "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200 relative",
-                          activeCostume?.loadablePath === imageInfo.loadablePath
-                            ? "bg-slate-100"
-                            : "",
-                        )}
-                      >
-                        <Tooltip>
-                          {isLesson ? null : activeSprite.image_paths.length <=
-                            1 ? (
-                            // Only one costume: X only shows the tooltip
-                            <TooltipTrigger
-                              render={
-                                <div
-                                  className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <X className="w-4 h-4" />
-                                </div>
-                              }
-                            />
-                          ) : (
-                            // Multiple costumes: X opens the delete dialog
-                            <DialogTrigger
-                              render={
-                                <TooltipTrigger
-                                  render={
-                                    <div
-                                      className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </div>
-                                  }
-                                />
-                              }
-                            />
-                          )}
-
-                          {activeSprite.image_paths.length <= 1 && (
-                            <TooltipContent>
-                              <p>
-                                You cannot delete the only costume of a sprite.
-                              </p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                        <CardContent className="flex relative flex-col items-center gap-2">
-                          <img
-                            src={imageInfo.loadablePath}
-                            alt={`Costume ${index + 1}`}
-                            style={{
-                              maxWidth: 64,
-                              maxHeight: 64,
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain",
-                            }}
-                          />
-                          <p className="text-sm text-center">
-                            {imageInfo.costumeName}
-                          </p>
-                          <ImageSpecs loadablePath={imageInfo.loadablePath} />
-                        </CardContent>
-                      </Card>
-                      {!isLesson && (
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Delete this costume?</DialogTitle>
-                          </DialogHeader>
-                          This is a permanent action and cannot be undone.
-                          <DialogFooter className="bg-white">
-                            <DialogClose
-                              render={
-                                <Button
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    const dbManager = new DatabaseManager();
-                                    await dbManager.deleteCostume(
-                                      imageInfo.loadablePath,
-                                      activeSprite.image_paths,
-                                      "isBackdrop" in activeSprite &&
-                                        (activeSprite.isBackdrop as boolean)
-                                        ? -activeSprite.id
-                                        : activeSprite.id,
-                                      "isBackdrop" in activeSprite &&
-                                        (activeSprite.isBackdrop as boolean),
-                                    );
-                                    await refreshDataCallback().then(() => {
-                                      setActiveCostume(null);
-                                    });
-                                  }}
-                                >
-                                  Delete Costume
-                                </Button>
-                              }
-                            ></DialogClose>
-                          </DialogFooter>
-                        </DialogContent>
-                      )}
-                    </Dialog>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+            <DragDropProvider
+              onDragEnd={async ({ operation, canceled }) => {
+                if (canceled) return;
+                const source = operation.source as {
+                  initialIndex?: number;
+                  index?: number;
+                } | null;
+                const sourceIndex = source?.initialIndex;
+                const targetIndex = source?.index;
+                if (
+                  sourceIndex == null ||
+                  targetIndex == null ||
+                  sourceIndex === targetIndex ||
+                  sourceIndex < 0 ||
+                  targetIndex < 0 ||
+                  sourceIndex >= costumes.length ||
+                  targetIndex >= costumes.length
+                ) {
+                  return;
+                }
+                const nextCostumes = [...costumes];
+                const [movedCostume] = nextCostumes.splice(sourceIndex, 1);
+                nextCostumes.splice(targetIndex, 0, movedCostume);
+                setCostumes(nextCostumes);
+                await new DatabaseManager().updateCostumeOrder(
+                  "isBackdrop" in activeSprite && activeSprite.isBackdrop
+                    ? -activeSprite.id
+                    : activeSprite.id,
+                  nextCostumes,
+                  "isBackdrop" in activeSprite &&
+                    Boolean(activeSprite.isBackdrop),
+                );
+                await refreshDataCallback();
+              }}
+            >
+              <ScrollArea>
+                <div className="grid grid-cols-1 gap-2 p-1">
+                  {costumes.map((costume, index) => (
+                    <SortableCostumeCard
+                      key={costume.loadablePath}
+                      costume={costume}
+                      index={index}
+                      isActive={
+                        activeCostume?.loadablePath === costume.loadablePath
+                      }
+                      isLesson={isLesson}
+                      canDelete={costumes.length > 1}
+                      onSelect={() => setActiveCostume(costume)}
+                      onDelete={async () => {
+                        await new DatabaseManager().deleteCostume(
+                          costume.loadablePath,
+                          costumes,
+                          "isBackdrop" in activeSprite &&
+                            activeSprite.isBackdrop
+                            ? -activeSprite.id
+                            : activeSprite.id,
+                          "isBackdrop" in activeSprite &&
+                            Boolean(activeSprite.isBackdrop),
+                        );
+                        await refreshDataCallback();
+                        setActiveCostume(null);
+                      }}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+            </DragDropProvider>
           ) : (
             <div className="flex flex-col gap-2">
               <p>No costumes available for this sprite.</p>

@@ -431,4 +431,24 @@ export const blockHelp: Record<string, BlockHelp> = {
     description: "Creates a custom block that runs the connected blocks.",
     simpleExplanation: "Use it to group blocks together and give them a name.",
   },
+  variables_set: {
+    title: "Set Variable",
+    description: "Changes the value of a variable.",
+    simpleExplanation: "Choose a variable and provide a new value for it.",
+  },
+  variables_get: {
+    title: "Get Variable",
+    description: "Reports the current value of a variable.",
+    simpleExplanation: "Use this block to read the value of a variable.",
+  },
+  math_change: {
+    title: "Change Variable",
+    description: "Increases or decreases a variable's value by an amount.",
+    simpleExplanation: "Use it to add or subtract from a variable.",
+  },
+  procedures_callnoreturn: {
+    title: "Call Function",
+    description: "Runs the blocks inside a custom block.",
+    simpleExplanation: "Use it to execute the code defined in a function.",
+  },
 };

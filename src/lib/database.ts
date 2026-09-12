@@ -15,6 +15,7 @@ type LessonRow = {
   id: number;
   name: string;
   description: string;
+  longDescription: string;
   allowed_blocks: string;
   instructions: string;
   success_metrics: string;
@@ -26,6 +27,7 @@ function parseLessonRow(row: LessonRow): Lesson {
     id: row.id,
     name: row.name,
     description: row.description,
+    longDescription: row.longDescription,
     allowedBlocks: JSON.parse(row.allowed_blocks),
     instructions: JSON.parse(row.instructions),
     successMetrics: JSON.parse(row.success_metrics),
@@ -358,6 +360,7 @@ export class DatabaseManager {
       }
     });
   }
+
   deleteCostume(
     costumePath: string,
     currentCostumes: {
@@ -566,6 +569,29 @@ export class DatabaseManager {
         await db.execute(
           `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
           [JSON.stringify(newCostumes), spriteId],
+        );
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  updateCostumeOrder(
+    spriteId: number,
+    costumes: {
+      costumeName: string;
+      loadablePath: string;
+      truePath: string | null;
+    }[],
+    isBackdrop: boolean,
+  ): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await Database.load(`sqlite:${this.projectFileName}`);
+        await db.execute(
+          `UPDATE ${isBackdrop ? "backdrops" : "sprites"} SET image_paths = ? WHERE id = ?`,
+          [JSON.stringify(costumes), spriteId],
         );
         resolve();
       } catch (error) {

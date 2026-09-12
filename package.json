@@ -17,6 +17,7 @@
     "@blockly/field-colour-hsv-sliders": "^13.2.0",
     "@blockly/shadow-block-converter": "^13.2.0",
     "@blockly/theme-dark": "^13.2.0",
+    "@dnd-kit/react": "^0.5.0",
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",

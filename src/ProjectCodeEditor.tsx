@@ -124,7 +124,6 @@ function CodeEditor({
     let backdropsResult = await new DatabaseManager().getBackdropsForProject(
       projectId || projects[0].id,
     );
-    console.log(backdropsResult);
     let combined: (DatabaseSprite | DatabaseBackdrop)[] = [
       ...spritesResult,
       ...backdropsResult,
@@ -338,7 +337,7 @@ function CodeEditor({
       Blockly.common.defineBlocks(blocks);
       loops.loopTypes.add("controls_forever"); //register it as a loop block so break/continue doesnt look grayed out
     }
-    if (true) {
+    try {
       Blockly.Extensions.register("costume_dropdown_extension", function () {
         //@ts-ignore
         this.getField("COSTUME").setOptions(function () {
@@ -378,7 +377,6 @@ function CodeEditor({
         function optionsFn() {
           const toSet = broadcastMessagesRef.current;
           // console.log(`Setting broadcast options with:`, toSet);
-          console.log(`Setting broadcast options with:`, toSet);
           const options = [];
           for (const broadcastOption in toSet) {
             options.push(toSet[broadcastOption]);
@@ -434,7 +432,6 @@ function CodeEditor({
                   //@ts-ignore
                   field.setOptions(optionsFn);
                   field.setValue(name);
-                  
                 },
               },
             });
@@ -536,6 +533,8 @@ function CodeEditor({
           });
         },
       );
+    } catch (error) {
+      // console.error("Error registering Blockly extensions:", error);
     }
     const theme = Blockly.Theme.defineTheme("codely", {
       name: "codely",

@@ -2,6 +2,7 @@ export type Lesson = {
   id: number;
   name: string;
   description: string;
+  longDescription: string;
   allowedBlocks: string[] | string[][];
   instructions: string[];
   successMetrics: any[];
@@ -68,6 +69,7 @@ function createLesson(
   id: number,
   name: string,
   description: string,
+  longDescription: string,
   allowedBlocks: string[] | string[][],
   instructions: string[],
   successMetrics: any[],
@@ -78,6 +80,7 @@ function createLesson(
     id,
     name,
     description,
+    longDescription,
     allowedBlocks,
     instructions,
     successMetrics,
@@ -109,6 +112,7 @@ export const moveLesson = createLesson(
   0,
   "Move the sprite",
   "Make the sprite move when the green flag is clicked.",
+  "This lesson will teach you how to make a sprite move when the green flag is clicked. You will use blocks from the Events and Motion categories to create the movement.",
   [
     "events_when_started",
     "screen_change_x",
@@ -149,6 +153,7 @@ export const positionLesson = createLesson(
   1,
   "Place and Turn",
   "Learn to place a sprite and turn it.",
+  "This lesson will teach you how to place a sprite on the screen and turn it. You will use blocks from the Events and Motion categories to create the placement and rotation.",
   [
     whenStartedBlock,
     "screen_set_position",
@@ -164,8 +169,8 @@ export const positionLesson = createLesson(
   [
     "Drag a when started block into the workspace.",
     "Now drag a 'set position x y' block and connect it under the when started block.",
-    "Set the x value to 600 and the y value to 200.",
-    "Add a 'rotate ↻' block below the set position block.",
+    "Set the x value to 600 and the y value to 200. This will place the sprite in the lower right corner of the screen.",
+    "Add a 'rotate ↻' block below the set position block. This will rotate the sprite clockwise by a default of 15 degrees.",
     `Go to the "Screen" tab and press Run Code.`,
     "Congratulations! You have completed the lesson.",
   ],
@@ -217,6 +222,7 @@ export const loopLesson = createLesson(
   2,
   "Repeat a Movement",
   "Learn how a loop repeats the same action.",
+  "This lesson will teach you how to use a loop to repeat the same action multiple times. You will use blocks from the Control and Motion categories to create the loop and the repeated action.",
   [
     whenStartedBlock,
     "controls_repeat_ext",
@@ -228,9 +234,9 @@ export const loopLesson = createLesson(
   ],
   [
     "Drag a when started block.",
-    "Place a repeat block under it",
+    "Place a repeat block under the when started block.",
     "Place a change x block inside the repeat block.",
-    "Set the repeat number to 5 inside the repeat block.",
+    "Set the repeat number to 5 inside the repeat block. This will make the sprite change its x position 5 times.",
     "Go to the Screen tab and press Run Code.",
     "Well done! You have completed the lesson.",
   ],
@@ -278,6 +284,7 @@ export const decisionLesson = createLesson(
   3,
   "Make a Choice",
   "Learn to use a condition to decide what a sprite does.",
+  "This lesson will teach you how to use a condition to decide what a sprite does. You will use blocks from the Control and Sensing categories to create the condition and the actions based on that condition.",
   [
     whenStartedBlock,
     "controls_if",
@@ -378,6 +385,7 @@ export const textLesson = createLesson(
   4,
   "Say and Think",
   "Learn to show a message in a speech or thought bubble.",
+  "This lesson will teach you how to display messages in speech or thought bubbles. You will use blocks from the Events and Screen categories to create the bubbles.",
   [
     whenStartedBlock,
     "screen_say",
@@ -391,7 +399,7 @@ export const textLesson = createLesson(
     "Drag a When Started block.",
     "Connect a say block under the When Started block. Type anything you want in the say block.",
     "Connect a think block after the say block. Type anything you want in the think block.",
-    "Go to the Screen tab and press Run Code to read both bubbles.",
+    "Go to the Screen tab and press Run Code to see both bubbles show one after another.",
     "Congratulations! You have completed the lesson.",
   ],
   [
@@ -422,6 +430,7 @@ export const costumeLesson = createLesson(
   5,
   "Animate Costumes",
   "Learn that one sprite can have more than one costume.",
+  "This lesson will teach you how to animate a sprite by changing its costumes. You will use blocks from the Events and Screen categories to create the animation.",
   [
     whenStartedBlock,
     "screen_next_costume",
@@ -437,7 +446,7 @@ export const costumeLesson = createLesson(
     "Place a next costume block inside the Repeat block.",
     "Place a wait block inside the Repeat block after the next costume block. Set the wait time to 1 second.",
     "Set the Repeat block to 2 times.",
-    "Go to the Screen tab and press Run Code to see the costume change more than once.",
+    "Go to the Screen tab and press Run Code to see the costume change twice.",
     "Congratulations! You have completed the lesson.",
   ],
   [
@@ -501,6 +510,7 @@ export const appearanceLesson = createLesson(
   6,
   "Show, Hide, and Resize",
   "Learn to change whether a sprite is visible and how large it is.",
+  "This lesson will teach you how to change whether a sprite is visible and how large it is. You will use blocks from the Events and Screen categories to create the visibility and size changes.",
   [
     whenStartedBlock,
     "screen_show",
@@ -517,7 +527,7 @@ export const appearanceLesson = createLesson(
     "Add a wait block after the hide block. Then, connect a show block after the hide block.",
     "Connect a set size block after the show block. Set the size to 50%.",
     "Go to the Screen tab and press Run Code to watch the sprite change.",
-    "Congratulations! You have completed the lesson.",
+    "Congratulations! You have completed the lesson. Try adjusting the size to see how the sprite changes.",
   ],
   [
     {
@@ -578,6 +588,7 @@ export const localVariableLesson = createLesson(
   7,
   "Remember a Score",
   "Learn to create and use a local variable on one sprite.",
+  "This lesson will teach you how to create and use a local variable on one sprite. You will use blocks from the Events, Variables, and Motion categories to create the variable and manipulate its value.",
   [
     whenStartedBlock,
     "variables_set",
@@ -594,7 +605,7 @@ export const localVariableLesson = createLesson(
     "Connect a change score by block after the set score block. Set the change amount to 55.",
     "Connect a say block after the change score block. Put score in the say block.",
     "Go to the Screen tab and press Run Code.",
-    "Congratulations! You have completed the lesson.",
+    "Congratulations! You have completed the lesson. Sprites can only read and use their own local variables.",
   ],
   [
     { check: "variable", name: "score", spriteId: 1, global: false },
@@ -697,6 +708,7 @@ export const globalVariableLesson = createLesson(
   8,
   "Share a Score",
   "Learn the difference between local and global variables with two sprites.",
+  "This lesson will teach you the difference between local and global variables with two sprites. You will use blocks from the Events, Variables, and Motion categories to create and manipulate a global variable that can be accessed by both sprites.",
   [
     whenStartedBlock,
     "variables_set",
@@ -715,7 +727,7 @@ export const globalVariableLesson = createLesson(
     "On the Monster sprite, drag a When Started block into the workspace. Drag a set xpos block under the When Started block. Set xpos to 500.",
     "On the Friend sprite, drag a When Started block into the workspace. Drag a set position y block under the When Started block. Set y to xpos.",
     "Go to the Screen tab and press Run Code to see that both sprites can read and use the xpos variable.",
-    "Congratulations! You have completed the lesson.",
+    "Congratulations! You have completed the lesson. Global variables can be read and used by all sprites, while local variables can only be read and used by the sprite that created them.",
   ],
   [
     { check: "variable", name: "xpos", spriteId: 1, global: true },
@@ -767,6 +779,7 @@ export const broadcastLesson = createLesson(
   9,
   "Send a Message",
   "Learn how sprites can work together with a broadcast.",
+  "This lesson will teach you how sprites can work together with a broadcast. You will use blocks from the Events and Screen categories to create a broadcast that triggers an action in another sprite.",
   [
     whenStartedBlock,
     "events_broadcast",
@@ -782,7 +795,7 @@ export const broadcastLesson = createLesson(
     "On the Friend sprite, add a When I Receive block. Set it to start dance.",
     "Connect a say block under the When I Receive block.",
     "Go to the Screen tab and press Run Code.",
-    "Congratulations! You have completed the lesson.",
+    "Congratulations! You have completed the lesson. Sprites can communicate with each other using broadcasts and coordinate actions.",
   ],
   [
     { check: "broadcast", name: "start dance" },

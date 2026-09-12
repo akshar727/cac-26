@@ -102,6 +102,7 @@ export default function SpriteAndBackdropSelector({
                       <Dialog>
                         {!isLesson && (
                           <DialogTrigger
+                            nativeButton={false}
                             render={
                               <div className="absolute hover:cursor-pointer rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 top-0 right-0 flex justify-end m-2 p-1">
                                 <X className="w-4 h-4"></X>
