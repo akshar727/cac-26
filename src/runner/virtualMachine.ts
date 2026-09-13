@@ -13,7 +13,6 @@ import { IntermediateBlock } from "../types/intermediateBlock";
 import { EvaluationEngine } from "./evaluationEngine";
 import { Procedure } from "@/types/field";
 import { ImproperVariableError } from "@/types/errors";
-import { Script } from "./script";
 
 export class VirtualMachine {
   _evaluator: EvaluationEngine;
@@ -58,15 +57,15 @@ export class VirtualMachine {
         thread.count >= thread.script.blocks.length
       ) {
         thread.status = "done";
-        console.log(
-          "Thread completed for target:",
-          thread.target,
-          thread,
-          "program counter:",
-          thread.count,
-          "Active threads:",
-          this._runtime._threads,
-        );
+        // console.log(
+        //   "Thread completed for target:",
+        //   thread.target,
+        //   thread,
+        //   "program counter:",
+        //   thread.count,
+        //   "Active threads:",
+        //   this._runtime._threads,
+        // );
         return;
       }
       let foreverRuntimeYield = false;
@@ -76,7 +75,10 @@ export class VirtualMachine {
       if (thread.executionStack.length > 0) {
         const currentFrame = thread.currentFrame();
         if (currentFrame) {
-          if (currentFrame.isComplete()) {
+          if (
+            currentFrame.isComplete() &&
+            !(currentFrame instanceof GlideFrame)
+          ) {
             if (currentFrame instanceof ForFrame) {
               currentFrame._currentValue += currentFrame._stepValue;
               console.warn(
@@ -150,10 +152,7 @@ export class VirtualMachine {
           //   JSON.parse(JSON.stringify(currentFrame)),
           // );
           if (currentFrame instanceof GlideFrame) {
-            if (
-              thread.target.x === currentFrame._targetX &&
-              thread.target.y === currentFrame._targetY
-            ) {
+            if (currentFrame._cancelled) {
               thread.popFrame();
               if (thread.executionStack.length === 0) {
                 thread.count++;
@@ -161,13 +160,17 @@ export class VirtualMachine {
               continue;
             }
             currentFrame.updateElapsedTime(currentTime);
-            const { dx, dy } = currentFrame.getDxDy(
-              thread.target.x,
-              thread.target.y,
-              deltaTime,
-            );
-            thread.target.x += dx;
-            thread.target.y += dy;
+            const position = currentFrame.getPosition();
+            thread.target.x = position.x;
+            thread.target.y = position.y;
+            if (currentFrame.isComplete()) {
+              thread.target.x = currentFrame._targetX;
+              thread.target.y = currentFrame._targetY;
+              thread.popFrame();
+              if (thread.executionStack.length === 0) {
+                thread.count++;
+              }
+            }
             return;
           }
           blockToExecute = currentFrame._body[currentFrame._position];
@@ -834,19 +837,7 @@ export class VirtualMachine {
         break;
       }
       case "screen_clone": {
-        const clone = this._runtime.createClone(thread.target);
-        const cloneScript = Object.assign(new Script(), thread.script, {
-          id: crypto.randomUUID(),
-          targetId: clone.id.toString(),
-          blocks: thread.script.blocks,
-        });
-        const cloneThread = new Thread(clone, cloneScript);
-        cloneThread.count =
-          thread.executionStack.length === 0 ? thread.count + 1 : thread.count;
-        cloneThread.executionStack = thread.executionStack.map((frame) =>
-          this.cloneFrame(frame),
-        );
-        this._runtime._threads.push(cloneThread);
+        this._runtime.createClone(thread.target);
         break;
       }
       case "screen_glide": {
@@ -869,7 +860,15 @@ export class VirtualMachine {
           `Glide from (${thread.target.x}, ${thread.target.y}) to (${targetX}, ${targetY}) over ${duration} seconds.`,
         );
         console.log(`Start time: ${startTime}, End time: ${endTime}`);
-        let newFrame = new GlideFrame(targetX, targetY, startTime, endTime);
+        this.cancelOtherGlides(thread);
+        const newFrame = new GlideFrame(
+          thread.target.x,
+          thread.target.y,
+          targetX,
+          targetY,
+          startTime,
+          endTime,
+        );
         thread.addFrame(newFrame);
         break;
       }
@@ -915,7 +914,15 @@ export class VirtualMachine {
 
         const startTime = performance.now();
         const endTime = startTime + duration * 1000;
-        let newFrame = new GlideFrame(targetX, targetY, startTime, endTime);
+        this.cancelOtherGlides(thread);
+        const newFrame = new GlideFrame(
+          thread.target.x,
+          thread.target.y,
+          targetX,
+          targetY,
+          startTime,
+          endTime,
+        );
         thread.addFrame(newFrame);
         break;
       }
@@ -985,6 +992,18 @@ export class VirtualMachine {
     }
   }
 
+  private cancelOtherGlides(thread: Thread) {
+    for (const otherThread of this._runtime._threads) {
+      if (otherThread.target === thread.target && otherThread !== thread) {
+        const frame = otherThread.currentFrame();
+        if (frame instanceof GlideFrame) {
+          frame.cancel();
+          otherThread.status = "done";
+        }
+      }
+    }
+  }
+
   private cloneFrame(frame: ReturnType<Thread["currentFrame"]>): any {
     if (frame instanceof RepeatFrame) {
       const clone = new RepeatFrame(frame._times, frame._body);
@@ -1043,11 +1062,15 @@ export class VirtualMachine {
     }
     if (frame instanceof GlideFrame) {
       const clone = new GlideFrame(
+        frame._startX,
+        frame._startY,
         frame._targetX,
         frame._targetY,
-        frame._currentTime,
+        frame._startTime,
         frame._endTime,
       );
+      clone._currentTime = frame._currentTime;
+      clone._cancelled = frame._cancelled;
       clone._position = frame._position;
       clone._finished = frame._finished;
       return clone;

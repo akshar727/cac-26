@@ -218,7 +218,9 @@ export default function CostumeEdtior({
     <>
       <Card className="h-full flex-1 min-w-40 flex justify-between">
         <CardContent className="flex flex-col gap-2">
-          <CardTitle>Costumes</CardTitle>
+          <CardTitle>
+            {(activeSprite?.id || 1) < 0 ? "Backdrops" : "Costumes"}
+          </CardTitle>
           {activeSprite && activeSprite.image_paths.length > 0 ? (
             <DragDropProvider
               onDragEnd={async ({ operation, canceled }) => {
@@ -311,18 +313,26 @@ export default function CostumeEdtior({
                     }}
                   >
                     <Plus />
-                    Add a costume
+                    Add a {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"}
                   </Button>
                 }
               />
               <DialogContent>
-                <DialogTitle>Add a new costume</DialogTitle>
+                <DialogTitle>
+                  Add a new{" "}
+                  {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"}
+                </DialogTitle>
                 <DialogDescription>
-                  Select an image file to add as a costume for the sprite.
+                  Select an image file to add as a{" "}
+                  {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"} for the
+                  sprite.
                 </DialogDescription>
                 <FieldGroup>
                   <Field>
-                    <Label htmlFor="spriteName">Costume Name</Label>
+                    <Label htmlFor="spriteName">
+                      {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}{" "}
+                      Name
+                    </Label>
                     <Input
                       type="text"
                       id="spriteName"
@@ -333,12 +343,15 @@ export default function CostumeEdtior({
                           : ""
                       }
                       onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                      placeholder="Enter costume name"
+                      placeholder={`Enter ${(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"} name`}
                       className="border rounded px-2 py-1 w-full"
                     />
                   </Field>
                   <Field>
-                    <Label htmlFor="spriteImage">Costume Image</Label>
+                    <Label htmlFor="spriteImage">
+                      {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}{" "}
+                      Image
+                    </Label>
                     <Button
                       onClick={async () => {
                         const selectedFile = await open({
@@ -429,7 +442,7 @@ export default function CostumeEdtior({
                       setNewCostumeDialogOpen(false);
                     }}
                   >
-                    Add Costume
+                    Add {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -439,12 +452,14 @@ export default function CostumeEdtior({
       </Card>
       <Card className="h-full flex-6">
         <CardContent className="flex flex-col gap-2">
-          <CardTitle>Current Costume</CardTitle>
+          <CardTitle>
+            Current {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}
+          </CardTitle>
           {activeCostume ? (
             <div className="flex flex-col items-center gap-2">
               <img
                 src={activeCostume.loadablePath}
-                alt={`Current Costume`}
+                alt={`Current ${(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}`}
                 style={{
                   maxWidth: 256,
                   maxHeight: 256,
@@ -455,7 +470,9 @@ export default function CostumeEdtior({
                 className="border rounded"
               />
               <div className="flex flex-row items-center gap-1">
-                <p className="text-sm text-center">Costume:</p>
+                <p className="text-sm text-center">
+                  {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}:
+                </p>
                 <Input
                   key={activeCostume.loadablePath}
                   onBlur={async (e) => {
@@ -495,7 +512,10 @@ export default function CostumeEdtior({
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              <p>No costume selected.</p>
+              <p>
+                No {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"}{" "}
+                selected.
+              </p>
             </div>
           )}
         </CardContent>

@@ -110,20 +110,29 @@ export class ForeverFrame extends StackFrame {
 }
 
 export class GlideFrame extends StackFrame {
+  _startX: number;
+  _startY: number;
   _targetX: number;
   _targetY: number;
+  _startTime: number;
   _endTime: number;
   _currentTime: number;
+  _cancelled = false;
 
   constructor(
+    startX: number,
+    startY: number,
     targetX: number,
     targetY: number,
     currentTime: number,
     endTime: number,
   ) {
     super([]);
+    this._startX = startX;
+    this._startY = startY;
     this._targetX = targetX;
     this._targetY = targetY;
+    this._startTime = currentTime;
     this._endTime = endTime;
     this._currentTime = currentTime;
   }
@@ -132,31 +141,27 @@ export class GlideFrame extends StackFrame {
     this._currentTime = newTime;
   }
 
-  getDxDy(
-    currentX: number,
-    currentY: number,
-    deltaTime: number,
-  ): { dx: number; dy: number } {
-    const remainingTime = this._endTime - this._currentTime;
+  cancel() {
+    this._cancelled = true;
+  }
 
-    if (remainingTime <= 0) {
-      return { dx: 0, dy: 0 };
-    }
-    const dt = Math.min(deltaTime, remainingTime);
-    let dx = ((this._targetX - currentX) / (remainingTime / 1000)) * dt;
-    let dy = ((this._targetY - currentY) / (remainingTime / 1000)) * dt;
-    const nextX = currentX + dx;
-    const nextY = currentY + dy;
-    const reachedX = (this._targetX - currentX) * (this._targetX - nextX) <= 0;
-    const reachedY = (this._targetY - currentY) * (this._targetY - nextY) <= 0;
+  getPosition(): { x: number; y: number } {
+    const duration = this._endTime - this._startTime;
+    const progress =
+      duration <= 0
+        ? 1
+        : Math.min(
+            1,
+            Math.max(0, (this._currentTime - this._startTime) / duration),
+          );
 
     return {
-      dx: reachedX ? this._targetX - currentX : dx,
-      dy: reachedY ? this._targetY - currentY : dy,
+      x: this._startX + (this._targetX - this._startX) * progress,
+      y: this._startY + (this._targetY - this._startY) * progress,
     };
   }
 
   isComplete(): boolean {
-    return this._currentTime >= this._endTime;
+    return this._cancelled || this._currentTime >= this._endTime;
   }
 }

@@ -20,6 +20,7 @@ import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
+import theme from "./blocks/theme";
 
 function CodeEditor({
   projectId,
@@ -166,7 +167,9 @@ function CodeEditor({
       codeRunning.current = true;
       const runtime = new Runtime(sprites, () => runtime.render());
       runtime.start();
-      const canvas = document.getElementById("foregroundCanvas") as HTMLCanvasElement;
+      const canvas = document.getElementById(
+        "foregroundCanvas",
+      ) as HTMLCanvasElement;
       if (canvas === null) {
         console.error("what");
         return;
@@ -538,26 +541,6 @@ function CodeEditor({
     } catch (error) {
       // console.error("Error registering Blockly extensions:", error);
     }
-    const theme = Blockly.Theme.defineTheme("codely", {
-      name: "codely",
-      base: Blockly.Themes.Classic,
-      componentStyles: {
-        toolboxBackgroundColour: "#f5f5f5",
-        flyoutBackgroundColour: "#f5f5f5",
-      },
-      categoryStyles: {
-        screen_category: {
-          colour: "310",
-        },
-        event_category: {
-          colour: "44",
-        },
-        loop_category: {
-          colour: "113",
-        },
-      },
-      startHats: true,
-    });
 
     // Set up UI elements and inject Blockly
     const blocklyDiv = document.getElementById("blocklyDiv");
@@ -749,7 +732,9 @@ function CodeEditor({
       >
         <TabsList>
           <TabsTrigger value="blocks">Code</TabsTrigger>
-          <TabsTrigger value="costumes">Costumes</TabsTrigger>
+          <TabsTrigger value="costumes">
+            {(activeSprite?.id || 1) < 0 ? "Backdrops" : "Costumes"}
+          </TabsTrigger>
           <TabsTrigger value="screen">Screen</TabsTrigger>
         </TabsList>
         <TabsContent
