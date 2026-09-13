@@ -185,6 +185,10 @@ export class Renderer {
   }
 
   mouseTouchingSprite(sprite: Sprite, mouseX: number, mouseY: number): boolean {
+    if (!sprite.visible || sprite.isBackdrop) {
+      return false;
+    }
+
     const mask = sprite._costumeAlphaMasks.get(sprite.currentCostumeIndex);
 
     if (!mask) {
@@ -207,6 +211,20 @@ export class Renderer {
     }
 
     return mask[pixel.y][pixel.x];
+  }
+
+  spriteAt(
+    targets: Sprite[],
+    worldX: number,
+    worldY: number,
+  ): Sprite | undefined {
+    for (let index = targets.length - 1; index >= 0; index--) {
+      const target = targets[index];
+      if (this.mouseTouchingSprite(target, worldX, worldY)) {
+        return target;
+      }
+    }
+    return undefined;
   }
 
   spritesTouching(a: Sprite, b: Sprite): boolean {

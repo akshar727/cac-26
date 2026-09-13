@@ -461,6 +461,27 @@ export class EvaluationEngine {
             return Math.sqrt(dx * dx + dy * dy);
           }
         }
+        case "math_round_to": {
+          const value = this.evaluate(field.value, processingThread) as number;
+          const digits = this.evaluate(
+            field.digits,
+            processingThread,
+          ) as number;
+          const factor = Math.pow(10, digits);
+          switch (field.operator) {
+            case "ROUND":
+              return Math.round(value * factor) / factor;
+            case "ROUNDUP":
+              return Math.ceil(value * factor) / factor;
+            case "ROUNDDOWN":
+              return Math.floor(value * factor) / factor;
+            default:
+              throw new InvalidFieldError(
+                //@ts-ignore
+                `Unknown operator: ${field.operator}. ${JSON.stringify(field)}`,
+              );
+          }
+        }
         default:
           throw new InvalidFieldError(
             `Unknown value type: ${(field as { type: string }).type}. ${JSON.stringify(

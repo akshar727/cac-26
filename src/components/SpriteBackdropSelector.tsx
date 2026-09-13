@@ -92,10 +92,6 @@ export default function SpriteAndBackdropSelector({
                       onClick={() => {
                         setActiveSprite(sprite);
                         activeSpriteRef.current = sprite;
-                        // console.log("Active sprite set to:", sprite);
-                        setTimeout(() => {
-                          // console.log(activeSprite);
-                        }, 0);
                       }}
                       key={sprite.id}
                     >

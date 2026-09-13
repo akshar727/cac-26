@@ -140,4 +140,7 @@ export type IntermediateBlock =
     }
   | {
       type: "screen_clear_speech_bubbles";
+    }
+  | {
+      type: "screen_clone";
     };

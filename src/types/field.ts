@@ -100,6 +100,12 @@ export type Value =
   | {
       type: "screen_distance_to";
       target: string | "MOUSE_POINTER";
+    }
+  | {
+      type: "math_round_to";
+      operator: "ROUND" | "ROUNDUP" | "ROUNDDOWN";
+      value: Value;
+      digits: Value;
     };
 
 export const valueTypes = [
@@ -127,6 +133,7 @@ export const valueTypes = [
   "screen_mouse_x",
   "screen_mouse_y",
   "screen_distance_to",
+  "math_round_to",
 ] as const;
 
 export type ValueType = (typeof valueTypes)[number];

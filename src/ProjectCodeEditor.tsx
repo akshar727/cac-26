@@ -166,7 +166,7 @@ function CodeEditor({
       codeRunning.current = true;
       const runtime = new Runtime(sprites, () => runtime.render());
       runtime.start();
-      const canvas = document.getElementById("foregroundCanvas");
+      const canvas = document.getElementById("foregroundCanvas") as HTMLCanvasElement;
       if (canvas === null) {
         console.error("what");
         return;
@@ -177,23 +177,23 @@ function CodeEditor({
       const keyUpEvent = (event: KeyboardEvent) => {
         runtime.keyReleased(event.key);
       };
-      const mouseDownEvent = (event: MouseEvent) => {
+      const mouseDownEvent = () => {
         runtime._mouseDown = true;
       };
-      const mouseUpEvent = (event: MouseEvent) => {
+      const mouseUpEvent = () => {
         runtime._mouseDown = false;
       };
       const canvasClickEvent = function (event: MouseEvent) {
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
+        const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
         runtime.screenClick(x, y);
       };
       const canvasMouseMoveEvent = (event: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
         runtime.setMousePosition(
-          event.clientX - rect.left,
-          event.clientY - rect.top,
+          ((event.clientX - rect.left) / rect.width) * canvas.width,
+          ((event.clientY - rect.top) / rect.height) * canvas.height,
         );
         return {
           x: event.clientX - rect.left,
@@ -227,7 +227,10 @@ function CodeEditor({
           setCodeRunningState(false);
           errorCheck = true;
           window.removeEventListener("keydown", keyDownEvent);
-          //@ts-expect-error
+          window.removeEventListener("keyup", keyUpEvent);
+          window.removeEventListener("mousedown", mouseDownEvent);
+          window.removeEventListener("mouseup", mouseUpEvent);
+          window.removeEventListener("mousemove", canvasMouseMoveEvent);
           canvas.removeEventListener("click", canvasClickEvent);
           if (!(error instanceof TypeError)) {
             console.error("Error during runtime tick:", error);
@@ -240,15 +243,14 @@ function CodeEditor({
           console.warn("Code stopped, removing event listeners");
           window.removeEventListener("keydown", keyDownEvent);
           window.removeEventListener("keyup", keyUpEvent);
+          window.removeEventListener("mousedown", mouseDownEvent);
+          window.removeEventListener("mouseup", mouseUpEvent);
+          window.removeEventListener("mousemove", canvasMouseMoveEvent);
+          canvas.removeEventListener("click", canvasClickEvent);
           for (const target of runtime._targets) {
             target.clearBubbles();
           }
           runtime._renderer.blit(runtime._targets);
-          window.removeEventListener("mousedown", mouseDownEvent);
-          window.removeEventListener("mouseup", mouseUpEvent);
-          window.removeEventListener("mousemove", canvasMouseMoveEvent);
-          //@ts-expect-error
-          canvas.removeEventListener("click", canvasClickEvent);
         }
       }
       requestAnimationFrame(step);

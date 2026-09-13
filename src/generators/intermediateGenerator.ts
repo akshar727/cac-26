@@ -987,3 +987,24 @@ intermediateGenerator.forBlock["controls_forever"] = function (block, _) {
     body: JSON.parse("[" + body + "]"),
   });
 };
+
+intermediateGenerator.forBlock["math_round_to"] = function (block, generator) {
+  const value = generator.valueToCode(block, "NUMBER", Order.NONE) || "0";
+  const op = block.getFieldValue("OP");
+  const digits = generator.valueToCode(block, "DECIMALS", Order.NONE) || "0";
+  return [
+    JSON.stringify({
+      type: "math_round_to",
+      operator: op,
+      value: getFormatted(value),
+      digits: getFormatted(digits),
+    }),
+    Order.NONE,
+  ];
+};
+
+intermediateGenerator.forBlock["screen_clone"] = function (__, _) {
+  return JSON.stringify({
+    type: "screen_clone",
+  });
+};

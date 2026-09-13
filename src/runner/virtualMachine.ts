@@ -13,6 +13,7 @@ import { IntermediateBlock } from "../types/intermediateBlock";
 import { EvaluationEngine } from "./evaluationEngine";
 import { Procedure } from "@/types/field";
 import { ImproperVariableError } from "@/types/errors";
+import { Script } from "./script";
 
 export class VirtualMachine {
   _evaluator: EvaluationEngine;
@@ -832,6 +833,22 @@ export class VirtualMachine {
         this._runtime.broadcastReceived(broadcastMessage);
         break;
       }
+      case "screen_clone": {
+        const clone = this._runtime.createClone(thread.target);
+        const cloneScript = Object.assign(new Script(), thread.script, {
+          id: crypto.randomUUID(),
+          targetId: clone.id.toString(),
+          blocks: thread.script.blocks,
+        });
+        const cloneThread = new Thread(clone, cloneScript);
+        cloneThread.count =
+          thread.executionStack.length === 0 ? thread.count + 1 : thread.count;
+        cloneThread.executionStack = thread.executionStack.map((frame) =>
+          this.cloneFrame(frame),
+        );
+        this._runtime._threads.push(cloneThread);
+        break;
+      }
       case "screen_glide": {
         const duration = this._evaluator.evaluate(
           blockToExecute.duration,
@@ -966,5 +983,75 @@ export class VirtualMachine {
         console.warn("Unknown block type:", blockToExecute.type);
         break;
     }
+  }
+
+  private cloneFrame(frame: ReturnType<Thread["currentFrame"]>): any {
+    if (frame instanceof RepeatFrame) {
+      const clone = new RepeatFrame(frame._times, frame._body);
+      clone._position = frame._position;
+      clone._currentCount = frame._currentCount;
+      clone._finished = frame._finished;
+      return clone;
+    }
+    if (frame instanceof IfFrame) {
+      const clone = new IfFrame(frame._body);
+      clone._position = frame._position;
+      clone._finished = frame._finished;
+      return clone;
+    }
+    if (frame instanceof ProcedureFrameNoReturn) {
+      const clone = new ProcedureFrameNoReturn(
+        frame._procedure,
+        frame._arguments.map((argument) => ({
+          name: argument.name,
+          value: argument.value as number | string | boolean,
+        })),
+      );
+      clone._position = frame._position;
+      clone._finished = frame._finished;
+      clone._pendingEvaluation = frame._pendingEvaluation;
+      return clone;
+    }
+    if (frame instanceof RepeatWhileUntilFrame) {
+      const clone = new RepeatWhileUntilFrame(
+        frame._condition,
+        frame._body,
+        frame._mode,
+      );
+      clone._position = frame._position;
+      clone._finished = frame._finished;
+      return clone;
+    }
+    if (frame instanceof ForFrame) {
+      const clone = new ForFrame(
+        frame._variableName,
+        frame._startValue,
+        frame._endValue,
+        frame._stepValue,
+        frame._body,
+      );
+      clone._position = frame._position;
+      clone._currentValue = frame._currentValue;
+      clone._finished = frame._finished;
+      return clone;
+    }
+    if (frame instanceof ForeverFrame) {
+      const clone = new ForeverFrame(frame._body);
+      clone._position = frame._position;
+      clone._finished = frame._finished;
+      return clone;
+    }
+    if (frame instanceof GlideFrame) {
+      const clone = new GlideFrame(
+        frame._targetX,
+        frame._targetY,
+        frame._currentTime,
+        frame._endTime,
+      );
+      clone._position = frame._position;
+      clone._finished = frame._finished;
+      return clone;
+    }
+    throw new Error("Unsupported stack frame while cloning a thread");
   }
 }

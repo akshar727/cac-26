@@ -622,4 +622,43 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     nextStatement: null,
     colour: 310,
   },
+  {
+    type: "math_round_to",
+    tooltip: "Round a number to a specified number of decimal places",
+    helpUrl: "",
+    message0: "%1 %2 to %3 decimal places",
+    args0: [
+      {
+        type: "field_dropdown",
+        name: "OP",
+        options: [
+          ["%{BKY_MATH_ROUND_OPERATOR_ROUND}", "ROUND"],
+          ["%{BKY_MATH_ROUND_OPERATOR_ROUNDUP}", "ROUNDUP"],
+          ["%{BKY_MATH_ROUND_OPERATOR_ROUNDDOWN}", "ROUNDDOWN"],
+        ],
+      },
+      {
+        type: "input_value",
+        name: "NUMBER",
+        check: "Number",
+      },
+      {
+        type: "input_value",
+        name: "DECIMALS",
+        check: "Number",
+      },
+    ],
+    output: "Number",
+    colour: 230,
+    inputsInline: true,
+  },
+  {
+    type: "screen_clone",
+    tooltip: "Create a clone of the current sprite",
+    helpUrl: "",
+    message0: "create clone of myself",
+    previousStatement: null,
+    nextStatement: null,
+    colour: 310,
+  },
 ]);

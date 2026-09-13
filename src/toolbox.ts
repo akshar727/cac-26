@@ -238,6 +238,31 @@ export const toolbox = {
         },
         {
           kind: "block",
+          type: "math_round_to",
+          fields: {
+            OP: "ROUND",
+          },
+          inputs: {
+            NUMBER: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 3.14159,
+                },
+              },
+            },
+            DECIMALS: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 2,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
           type: "math_on_list",
           fields: {
             OP: "SUM",
@@ -909,6 +934,10 @@ export const toolbox = {
         {
           kind: "block",
           type: "screen_clear_speech_bubbles",
+        },
+        {
+          kind: "block",
+          type: "screen_clone",
         },
         {
           kind: "block",

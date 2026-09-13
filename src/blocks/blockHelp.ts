@@ -10,7 +10,7 @@ export const blockHelp: Record<string, BlockHelp> = {
     title: "If",
     description: "Runs blocks only when a condition is true.",
     simpleExplanation: "Add conditions to decide what your program should do.",
-    example: "if touching edge, turn left 90 degrees",
+    example: "if touching edge, rotate clockwise 90 degrees",
   },
   logic_compare: {
     title: "Compare",
@@ -22,7 +22,7 @@ export const blockHelp: Record<string, BlockHelp> = {
     title: "And / Or",
     description: "Combines two Boolean conditions.",
     simpleExplanation: "AND needs both conditions; OR needs at least one.",
-    example: "key down AND touching edge",
+    example: "left arrow key down AND touching edge",
   },
   logic_negate: {
     title: "Not",
@@ -184,6 +184,7 @@ export const blockHelp: Record<string, BlockHelp> = {
     title: "Reverse Text",
     description: "Reverses the order of characters in text.",
     simpleExplanation: "The last character becomes the first.",
+    example: "reverse Hello becomes olleH",
   },
   events_when_started: {
     title: "When Started",
@@ -194,8 +195,9 @@ export const blockHelp: Record<string, BlockHelp> = {
   events_when_key_pressed: {
     title: "When Key Pressed",
     description: "Runs the connected blocks when the selected key is pressed.",
-    simpleExplanation: "Choose a key to create a keyboard-controlled script.",
-    example: "when space key pressed, jump",
+    simpleExplanation:
+      "Choose a key to create a keyboard-controlled set of blocks.",
+    example: "when space key pressed, change y position by 10",
   },
   events_when_sprite_clicked: {
     title: "When Sprite Clicked",
@@ -219,7 +221,7 @@ export const blockHelp: Record<string, BlockHelp> = {
     title: "Set Position",
     description: "Moves the sprite to the specified x and y coordinates.",
     simpleExplanation: "X controls left and right; Y controls up and down.",
-    example: "set position x 0 y 0",
+    example: "set position x 0, y 0",
   },
   screen_set_x: {
     title: "Set X Position",
@@ -450,5 +452,18 @@ export const blockHelp: Record<string, BlockHelp> = {
     title: "Call Function",
     description: "Runs the blocks inside a custom block.",
     simpleExplanation: "Use it to execute the code defined in a function.",
+  },
+  math_round_to: {
+    title: "Round to Decimal Places",
+    description: "Rounds a number to a specified number of decimal places.",
+    simpleExplanation:
+      "Use it to round a number to a specific number of decimal places.",
+    example: "round 5.23 to 1 decimal place",
+  },
+  screen_clone: {
+    title: "Clone",
+    description: "Creates a copy of the sprite.",
+    simpleExplanation:
+      "Use it to create multiple instances of a sprite. Each clone runs the same scripts as the original sprite.",
   },
 };

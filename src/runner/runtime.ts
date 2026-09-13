@@ -18,6 +18,7 @@ export class Runtime {
   _vm: VirtualMachine;
   _mouseX: number = 1000; // so that sprites at 0,0 dont get triggered by mouse down
   _mouseY: number = 1000;
+  _nextCloneId = 1;
   _renderer: Renderer;
   constructor(
     sprites: (DatabaseSprite | DatabaseBackdrop)[],
@@ -58,9 +59,11 @@ export class Runtime {
       sprite.id = databaseSprite.id;
       for (const thing of databaseSprite.variables_map) {
         sprite.variables.set(thing.id, 0);
-        // console.log(
-        //   `Sprite ${sprite.id} has variable ${thing.name} with id ${thing.id}`,
-        // );
+        if (thing.isGlobal) {
+          sprite.globalVariableNames.add(thing.id);
+        } else {
+          sprite.localVariableNames.add(thing.id);
+        }
       }
       for (const otherSprite of sprites) {
         if (otherSprite.id !== databaseSprite.id) {
@@ -75,6 +78,7 @@ export class Runtime {
         }
       }
       this._targets.push(sprite);
+      this._nextCloneId = Math.max(this._nextCloneId, sprite.id + 1);
       let topBlocks = spriteWorkspace.getTopBlocks(false);
       for (const block of topBlocks) {
         if (
@@ -171,43 +175,20 @@ export class Runtime {
   }
 
   screenClick(x: number, y: number) {
+    const clickedTarget = this._renderer.spriteAt(this._targets, x, 600 - y);
+    if (!clickedTarget) {
+      return;
+    }
+
+    const scriptOwnerId = (
+      clickedTarget.cloneSourceId ?? clickedTarget.id
+    ).toString();
     for (const script of this._scripts) {
-      if (script.trigger.type === "sprite_clicked") {
-        const canvas = document.getElementById(
-          "foregroundCanvas",
-        ) as HTMLCanvasElement;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          console.error("Could not get 2D context from canvas");
-          return;
-        }
-        const pixelData = ctx.getImageData(x, y, 1, 1).data;
-        if (pixelData[3] === 0) {
-          // Clicked on transparent pixel, ignore
-          continue;
-        }
-        let xMin =
-          this._targets.find((t) => t.id.toString() === script.targetId)?.x ||
-          0;
-        let yMin =
-          this._targets.find((t) => t.id.toString() === script.targetId)?.y ||
-          0;
-        let currentCostumeIndex =
-          this._targets.find((t) => t.id.toString() === script.targetId)
-            ?.currentCostumeIndex || 0;
-        let xMax =
-          xMin +
-          (this._targets.find((t) => t.id.toString() === script.targetId)
-            ?._costumes[currentCostumeIndex].width || 0);
-        let yMax =
-          yMin +
-          (this._targets.find((t) => t.id.toString() === script.targetId)
-            ?._costumes[currentCostumeIndex].height || 0);
-        this.startScript(script);
-        console.log(`Sprite ${script.targetId} was clicked at (${x}, ${y}).`);
-        console.log(
-          `xMin: ${xMin}, yMin: ${yMin}, xMax: ${xMax}, yMax: ${yMax}`,
-        );
+      if (
+        script.trigger.type === "sprite_clicked" &&
+        script.targetId === scriptOwnerId
+      ) {
+        this.startScriptForTarget(script, clickedTarget);
       }
     }
   }
@@ -239,11 +220,25 @@ export class Runtime {
       (t) => t.id.toString() === script.targetId,
     );
     if (target) {
-      const thread = new Thread(target, script);
-      this._threads.push(thread);
+      this.startScriptForTarget(script, target);
     } else {
       console.error("Target not found for script:", script);
     }
+  }
+
+  private startScriptForTarget(script: Script, target: Sprite) {
+    const thread = new Thread(target, script);
+    this._threads.push(thread);
+  }
+
+  createClone(source: Sprite): Sprite {
+    const clone = Sprite.cloneOf(source, this._nextCloneId++);
+    this._targets.push(clone);
+    console.log(
+      `Created clone of sprite ${source.id} with new id ${clone.id}. Clone:`,
+      clone,
+    );
+    return clone;
   }
   start() {
     for (const script of this._scripts) {

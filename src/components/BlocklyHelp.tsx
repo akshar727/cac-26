@@ -147,7 +147,8 @@ function BlockHelpContent({ block }: { block: Blockly.Block }) {
     <div className="space-y-2">
       <h3 className="font-semibold">{help?.title ?? block.type}</h3>
       <p className="text-sm text-muted-foreground">
-        {help?.description ?? "Learn what this block does."}
+        {help?.description ??
+          "This block does not have a description yet. Please check back later."}
       </p>
       {help && (
         <div className="rounded-md bg-muted p-3 text-sm">

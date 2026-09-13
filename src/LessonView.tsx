@@ -455,7 +455,9 @@ function LessonView({
       );
       runtimeRef.current = runtime;
       runtime.start();
-      const canvas = document.getElementById("foregroundCanvas");
+      const canvas = document.getElementById(
+        "foregroundCanvas",
+      ) as HTMLCanvasElement;
       if (canvas === null) {
         console.error("what");
         return;
@@ -474,15 +476,15 @@ function LessonView({
       };
       const canvasClickEvent = function (event: MouseEvent) {
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
+        const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
         runtime.screenClick(x, y);
       };
       const canvasMouseMoveEvent = (event: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
         runtime.setMousePosition(
-          event.clientX - rect.left,
-          event.clientY - rect.top,
+          ((event.clientX - rect.left) / rect.width) * canvas.width,
+          ((event.clientY - rect.top) / rect.height) * canvas.height,
         );
         return {
           x: event.clientX - rect.left,
@@ -517,7 +519,10 @@ function LessonView({
           setCodeRunningState(false);
           errorCheck = true;
           window.removeEventListener("keydown", keyDownEvent);
-          //@ts-expect-error
+          window.removeEventListener("keyup", keyUpEvent);
+          window.removeEventListener("mousedown", mouseDownEvent);
+          window.removeEventListener("mouseup", mouseUpEvent);
+          window.removeEventListener("mousemove", canvasMouseMoveEvent);
           canvas.removeEventListener("click", canvasClickEvent);
           if (!(error instanceof TypeError)) {
             console.error("Error during runtime tick:", error);
@@ -530,14 +535,13 @@ function LessonView({
           console.warn("Code stopped, removing event listeners");
           window.removeEventListener("keydown", keyDownEvent);
           window.removeEventListener("keyup", keyUpEvent);
-          for (const target of runtime._targets) {
-            target.clearBubbles();
-          }
           window.removeEventListener("mousedown", mouseDownEvent);
           window.removeEventListener("mouseup", mouseUpEvent);
           window.removeEventListener("mousemove", canvasMouseMoveEvent);
-          //@ts-expect-error
           canvas.removeEventListener("click", canvasClickEvent);
+          for (const target of runtime._targets) {
+            target.clearBubbles();
+          }
         }
       }
       requestAnimationFrame(step);
