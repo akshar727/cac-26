@@ -18,6 +18,12 @@ const theme = Blockly.Theme.defineTheme("codely", {
     event_category: {
       colour: "44",
     },
+    motion_category: {
+      colour: "260",
+    },
+    visual_category: {
+      colour: "20",
+    },
     loop_category: {
       colour: "113",
     },

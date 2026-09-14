@@ -57,11 +57,11 @@ export default function ProjectSelector({
           projects.
         </h2>
       </div>
-      <div className="grid h-dvh w-full grid-cols-1 pt-48 gap-6 px-6 md:grid-cols-2 md:px-12">
+      <div className="grid mt-32 xs:mt-16 md:mt-0 h-dvh w-full grid-cols-1 pt-48 gap-6 px-6 md:grid-cols-2 md:px-12">
         <div className="flex min-w-0 w-full flex-col items-center gap-4">
           <h2 className="text-xl font-bold">My Projects</h2>
           <ScrollArea className="h-128 w-full rounded-md border">
-            <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
+            <div className="w-full grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 p-4">
               {projects.map((project) => (
                 <Card
                   className="relative flex justify-between"
@@ -169,7 +169,7 @@ export default function ProjectSelector({
         <div className="flex min-w-0 w-full flex-col items-center gap-4">
           <h2 className="text-xl font-bold">Lessons</h2>
           <ScrollArea className="h-128 w-full rounded-md border">
-            <div className="w-full grid md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4 p-4">
+            <div className="w-full grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 p-4">
               {lessons.map((project) => (
                 <Card
                   className="relative flex justify-between"

@@ -883,41 +883,35 @@ function LessonView({
       // No need to save after one of these.
       if (e.type === Blockly.Events.VAR_DELETE) {
         const variableId = (e as Blockly.Events.VarDelete).varId;
-        if (!variableId || !activeSpriteRef.current) return;
+        if (!variableId) return;
         console.log("Deleting variable:", variableId);
+
+        const updatedSprites = spritesRef.current.map((sprite) => ({
+          ...sprite,
+          variables_map: sprite.variables_map.filter(
+            (variable) => variable.id !== variableId,
+          ),
+        }));
+        spritesRef.current = updatedSprites;
+        setSprites(updatedSprites);
+        const currentActiveSprite = activeSpriteRef.current;
+        if (currentActiveSprite) {
+          activeSpriteRef.current =
+            updatedSprites.find(
+              (sprite) =>
+                sprite.id === currentActiveSprite.id &&
+                "isBackdrop" in sprite === "isBackdrop" in currentActiveSprite,
+            ) || currentActiveSprite;
+        }
 
         void (async () => {
           try {
-            const currentSprite = activeSpriteRef.current!;
-            if (lessonId !== null) {
-              const updatedSprites = lessonSpritesRef.current.map((sprite) =>
-                sprite.id === currentSprite.id
-                  ? {
-                      ...sprite,
-                      variables_map: sprite.variables_map.filter(
-                        (variable) => variable.id !== variableId,
-                      ),
-                    }
-                  : sprite,
-              );
-              lessonSpritesRef.current = updatedSprites;
-              setSprites(updatedSprites);
-              const updatedActiveSprite = updatedSprites.find(
-                (sprite) => sprite.id === currentSprite.id,
-              );
-              if (updatedActiveSprite) {
-                activeSpriteRef.current = updatedActiveSprite;
-                setActiveSprite(updatedActiveSprite);
-              }
-              reconcileLessonProgress();
-            } else {
-              await new DatabaseManager().deleteVariableFromSprite(
-                currentSprite.id,
-                variableId,
-                "isBackdrop" in currentSprite && currentSprite.isBackdrop,
-              );
-              await importDatabaseData();
-            }
+            await new DatabaseManager().deleteVariableFromProject(
+              activeSpriteRef.current!.project_id,
+              variableId,
+            );
+
+            await importDatabaseData();
           } catch (error) {
             console.error("Error deleting variable:", error);
           }
@@ -952,7 +946,7 @@ function LessonView({
         originalCallback: (value: string | null) => void,
       ) => {
         function createNewVariable(name: string | null, isGlobal: boolean) {
-          if (!name || !activeSpriteRef.current) {
+          if (!name) {
             return;
           }
           if (!Blockly.getMainWorkspace()) {
@@ -968,48 +962,65 @@ function LessonView({
                 (
                   Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
                 ).refreshToolboxSelection();
-                const currentSprite = activeSpriteRef.current;
-                if (!currentSprite) return;
-                if (lessonId !== null) {
-                  const updatedSprites = lessonSpritesRef.current.map(
-                    (sprite) =>
-                      sprite.id === currentSprite.id
-                        ? {
-                            ...sprite,
-                            variables_map: [
-                              ...sprite.variables_map,
-                              {
-                                id: variable.getId(),
-                                name: variable.getName(),
-                                isGlobal,
-                              },
-                            ],
-                          }
-                        : sprite,
-                  );
-                  lessonSpritesRef.current = updatedSprites;
-                  setSprites(updatedSprites);
-                  activeSpriteRef.current =
-                    updatedSprites.find(
-                      (sprite) => sprite.id === currentSprite.id,
-                    ) ?? currentSprite;
-                  setActiveSprite(activeSpriteRef.current);
-                  reconcileLessonProgress();
-                } else {
-                  await new DatabaseManager().addVariableToSprite(
-                    currentSprite.id,
-                    variable.getId(),
-                    variable.getName(),
-                    isGlobal,
-                    "isBackdrop" in currentSprite && currentSprite.isBackdrop,
-                  );
-                  await importDatabaseData();
-                }
+                await new DatabaseManager().addVariableToSprite(
+                  "isBackdrop" in activeSpriteRef.current!
+                    ? -activeSpriteRef.current!.id
+                    : activeSpriteRef.current!.id,
+                  variable.getId(),
+                  variable.getName(),
+                  isGlobal,
+                  "isBackdrop" in activeSpriteRef.current! &&
+                    (activeSpriteRef.current!.isBackdrop as boolean),
+                );
+                await importDatabaseData();
               } finally {
                 Blockly.Events.enable();
               }
             })();
           }
+        }
+        async function renameVariable(newName: string) {
+          console.log("Renaming variable to:", newName);
+          const variablesInWorkspace = Blockly.getMainWorkspace()
+            ?.getVariableMap()
+            ?.getAllVariables();
+          if (!activeSpriteRef.current) {
+            return;
+          }
+
+          originalCallback(newName);
+          const variable = variablesInWorkspace?.find(
+            (v) => v.getName() === newName,
+          );
+          if (!variable) {
+            return; // really shouldnt happen, but just in case
+          }
+          console.log("Variables in workspace:", variablesInWorkspace);
+          console.log("Renaming variable:", "to new name:", newName);
+          const activeSprite = activeSpriteRef.current;
+          const renamedSprites = spritesRef.current.map((sprite) => ({
+            ...sprite,
+            variables_map: sprite.variables_map.map((storedVariable) =>
+              storedVariable.id === variable.getId()
+                ? { ...storedVariable, name: newName }
+                : storedVariable,
+            ),
+          }));
+          spritesRef.current = renamedSprites;
+          setSprites(renamedSprites);
+          activeSpriteRef.current =
+            renamedSprites.find(
+              (sprite) =>
+                sprite.id === activeSprite.id &&
+                "isBackdrop" in sprite === "isBackdrop" in activeSprite,
+            ) || activeSprite;
+
+          await new DatabaseManager().renameVariableInProject(
+            activeSprite.project_id,
+            variable.getId(),
+            newName,
+          );
+          saveCurrentWorkspaceToDatabase();
         }
 
         if (message === "New variable name:") {
@@ -1026,7 +1037,7 @@ function LessonView({
             detail: {
               message: message,
               defaultValue: defaultValue,
-              callback: originalCallback,
+              callback: renameVariable,
             },
           });
           window.dispatchEvent(promptEvent);
@@ -1034,6 +1045,17 @@ function LessonView({
           console.log("Prompt message:", message);
           return undefined;
         }
+      },
+    );
+    Blockly.dialog.setConfirm(
+      (message: string, callback: (result: boolean) => void) => {
+        const promptEvent = new CustomEvent("blockly-prompt", {
+          detail: {
+            message: message,
+            callback: callback,
+          },
+        });
+        window.dispatchEvent(promptEvent);
       },
     );
   }

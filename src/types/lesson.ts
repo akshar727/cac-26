@@ -430,7 +430,7 @@ export const costumeLesson = createLesson(
   5,
   "Animate Costumes",
   "Learn that one sprite can have more than one costume.",
-  "This lesson will teach you how to animate a sprite by changing its costumes. You will use blocks from the Events and Screen categories to create the animation.",
+  "This lesson will teach you how to animate a sprite by changing its costumes. You will use blocks from the Events, Visual, and Screen categories to create the animation.",
   [
     whenStartedBlock,
     "screen_next_costume",
@@ -510,7 +510,7 @@ export const appearanceLesson = createLesson(
   6,
   "Show, Hide, and Resize",
   "Learn to change whether a sprite is visible and how large it is.",
-  "This lesson will teach you how to change whether a sprite is visible and how large it is. You will use blocks from the Events and Screen categories to create the visibility and size changes.",
+  "This lesson will teach you how to change whether a sprite is visible and how large it is. You will use blocks from the Events, Screen, and Visual categories to create the visibility and size changes.",
   [
     whenStartedBlock,
     "screen_show",
@@ -779,7 +779,7 @@ export const broadcastLesson = createLesson(
   9,
   "Send a Message",
   "Learn how sprites can work together with a broadcast.",
-  "This lesson will teach you how sprites can work together with a broadcast. You will use blocks from the Events and Screen categories to create a broadcast that triggers an action in another sprite.",
+  "This lesson will teach you how sprites can work together with a broadcast. You will use blocks from the Events, Screen, and Motion categories to create a broadcast that triggers an action in another sprite.",
   [
     whenStartedBlock,
     "events_broadcast",

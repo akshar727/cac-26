@@ -17,6 +17,323 @@ export const toolbox = {
   contents: [
     {
       kind: "category",
+      name: "Motion",
+      categorystyle: "motion_category",
+      contents: [
+        {
+          kind: "block",
+          type: "screen_set_position",
+          inputs: {
+            X: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+            Y: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_set_x",
+          inputs: {
+            X: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_set_y",
+          inputs: {
+            Y: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_change_x",
+          inputs: {
+            DX: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 10,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_change_y",
+          inputs: {
+            DY: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 10,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_glide",
+          inputs: {
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 1,
+                },
+              },
+            },
+            X: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+            Y: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_glide_preset",
+          inputs: {
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 1,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_position_x",
+        },
+        {
+          kind: "block",
+          type: "screen_position_y",
+        },
+      ],
+    },
+    {
+      kind: "category",
+      name: "Visual",
+      categorystyle: "visual_category",
+      contents: [
+        {
+          kind: "block",
+          type: "screen_rotate_clockwise",
+          inputs: {
+            DEGREES: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 15,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_rotate_counterclockwise",
+          inputs: {
+            DEGREES: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 15,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_set_rotation",
+          inputs: {
+            DEGREES: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 0,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_next_costume",
+        },
+        {
+          kind: "block",
+          type: "screen_set_costume",
+        },
+        {
+          kind: "block",
+          type: "screen_show",
+        },
+        {
+          kind: "block",
+          type: "screen_hide",
+        },
+        {
+          kind: "block",
+          type: "screen_set_size",
+          inputs: {
+            SIZE_SET: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 100,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_change_size",
+          inputs: {
+            SIZE_CHANGE: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 10,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_rotation",
+        },
+        {
+          kind: "block",
+          type: "screen_sprite_size",
+        },
+      ],
+    },
+    {
+      kind: "category",
+      name: "Screen",
+      categorystyle: "screen_category",
+      contents: [
+        {
+          kind: "block",
+          type: "screen_say",
+          inputs: {
+            MESSAGE: {
+              shadow: {
+                type: "text",
+                fields: {
+                  TEXT: "Hello!",
+                },
+              },
+            },
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 2,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_think",
+          inputs: {
+            MESSAGE: {
+              shadow: {
+                type: "text",
+                fields: {
+                  TEXT: "Hmm...",
+                },
+              },
+            },
+            DURATION: {
+              shadow: {
+                type: "math_number",
+                fields: {
+                  NUM: 2,
+                },
+              },
+            },
+          },
+        },
+        {
+          kind: "block",
+          type: "screen_clear_speech_bubbles",
+        },
+        {
+          kind: "block",
+          type: "screen_clone",
+        },
+        {
+          kind: "block",
+          type: "screen_distance_to",
+        },
+        {
+          kind: "block",
+          type: "screen_height",
+        },
+        {
+          kind: "block",
+          type: "screen_width",
+        },
+        {
+          kind: "block",
+          type: "screen_mouse_x",
+        },
+        {
+          kind: "block",
+          type: "screen_mouse_y",
+        },
+      ],
+    },
+    {
+      kind: "category",
       name: "Logic",
       categorystyle: "logic_category",
       contents: [
@@ -141,6 +458,33 @@ export const toolbox = {
     },
     {
       kind: "category",
+      name: "Events",
+      categorystyle: "event_category",
+      contents: [
+        {
+          kind: "block",
+          type: "events_when_started",
+        },
+        {
+          kind: "block",
+          type: "events_when_key_pressed",
+        },
+        {
+          kind: "block",
+          type: "events_when_sprite_clicked",
+        },
+        {
+          kind: "block",
+          type: "events_when_broadcast_received",
+        },
+        {
+          kind: "block",
+          type: "events_broadcast",
+        },
+      ],
+    },
+    {
+      kind: "category",
       name: "Math",
       categorystyle: "math_category",
       contents: [
@@ -247,7 +591,7 @@ export const toolbox = {
               shadow: {
                 type: "math_number",
                 fields: {
-                  NUM: 3.14159,
+                  NUM: 1.4142,
                 },
               },
             },
@@ -647,336 +991,6 @@ export const toolbox = {
     //     },
     //   ],
     // },
-    {
-      kind: "category",
-      name: "Events",
-      categorystyle: "event_category",
-      contents: [
-        {
-          kind: "block",
-          type: "events_when_started",
-        },
-        {
-          kind: "block",
-          type: "events_when_key_pressed",
-        },
-        {
-          kind: "block",
-          type: "events_when_sprite_clicked",
-        },
-        {
-          kind: "block",
-          type: "events_when_broadcast_received",
-        },
-        {
-          kind: "block",
-          type: "events_broadcast",
-        },
-      ],
-    },
-    {
-      kind: "category",
-      name: "Screen",
-      categorystyle: "screen_category",
-      contents: [
-        {
-          kind: "block",
-          type: "screen_set_position",
-          inputs: {
-            X: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 0,
-                },
-              },
-            },
-            Y: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 0,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_set_x",
-          inputs: {
-            X: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 0,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_set_y",
-          inputs: {
-            Y: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 0,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_change_x",
-          inputs: {
-            DX: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 10,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_change_y",
-          inputs: {
-            DY: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 10,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_rotate_clockwise",
-          inputs: {
-            DEGREES: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 15,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_rotate_counterclockwise",
-          inputs: {
-            DEGREES: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 15,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_set_rotation",
-          inputs: {
-            DEGREES: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 0,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_next_costume",
-        },
-        {
-          kind: "block",
-          type: "screen_set_costume",
-        },
-        {
-          kind: "block",
-          type: "screen_show",
-        },
-        {
-          kind: "block",
-          type: "screen_hide",
-        },
-        {
-          kind: "block",
-          type: "screen_set_size",
-          inputs: {
-            SIZE_SET: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 100,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_change_size",
-          inputs: {
-            SIZE_CHANGE: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 10,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_glide",
-          inputs: {
-            DURATION: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 1,
-                },
-              },
-            },
-            X: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 0,
-                },
-              },
-            },
-            Y: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 0,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_glide_preset",
-          inputs: {
-            DURATION: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 1,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_say",
-          inputs: {
-            MESSAGE: {
-              shadow: {
-                type: "text",
-                fields: {
-                  TEXT: "Hello!",
-                },
-              },
-            },
-            DURATION: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 2,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_think",
-          inputs: {
-            MESSAGE: {
-              shadow: {
-                type: "text",
-                fields: {
-                  TEXT: "Hmm...",
-                },
-              },
-            },
-            DURATION: {
-              shadow: {
-                type: "math_number",
-                fields: {
-                  NUM: 2,
-                },
-              },
-            },
-          },
-        },
-        {
-          kind: "block",
-          type: "screen_clear_speech_bubbles",
-        },
-        {
-          kind: "block",
-          type: "screen_clone",
-        },
-        {
-          kind: "block",
-          type: "screen_distance_to",
-        },
-        {
-          kind: "block",
-          type: "screen_position_x",
-        },
-        {
-          kind: "block",
-          type: "screen_position_y",
-        },
-        {
-          kind: "block",
-          type: "screen_rotation",
-        },
-        {
-          kind: "block",
-          type: "screen_height",
-        },
-        {
-          kind: "block",
-          type: "screen_width",
-        },
-        {
-          kind: "block",
-          type: "screen_sprite_size",
-        },
-        {
-          kind: "block",
-          type: "screen_mouse_x",
-        },
-        {
-          kind: "block",
-          type: "screen_mouse_y",
-        },
-      ],
-    },
     {
       kind: "sep",
     },

@@ -589,13 +589,29 @@ function CodeEditor({
         if (!variableId) return;
         console.log("Deleting variable:", variableId);
 
+        const updatedSprites = spritesRef.current.map((sprite) => ({
+          ...sprite,
+          variables_map: sprite.variables_map.filter(
+            (variable) => variable.id !== variableId,
+          ),
+        }));
+        spritesRef.current = updatedSprites;
+        setSprites(updatedSprites);
+        const currentActiveSprite = activeSpriteRef.current;
+        if (currentActiveSprite) {
+          activeSpriteRef.current =
+            updatedSprites.find(
+              (sprite) =>
+                sprite.id === currentActiveSprite.id &&
+                "isBackdrop" in sprite === "isBackdrop" in currentActiveSprite,
+            ) || currentActiveSprite;
+        }
+
         void (async () => {
           try {
-            await new DatabaseManager().deleteVariableFromSprite(
-              activeSpriteRef.current!.id,
+            await new DatabaseManager().deleteVariableFromProject(
+              activeSpriteRef.current!.project_id,
               variableId,
-              "isBackdrop" in activeSpriteRef.current! &&
-                (activeSpriteRef.current!.isBackdrop as boolean),
             );
 
             await importDatabaseData();
@@ -646,7 +662,9 @@ function CodeEditor({
                   Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
                 ).refreshToolboxSelection();
                 await new DatabaseManager().addVariableToSprite(
-                  activeSpriteRef.current!.id,
+                  "isBackdrop" in activeSpriteRef.current!
+                    ? -activeSpriteRef.current!.id
+                    : activeSpriteRef.current!.id,
                   variable.getId(),
                   variable.getName(),
                   isGlobal,
@@ -659,6 +677,49 @@ function CodeEditor({
               }
             })();
           }
+        }
+        async function renameVariable(newName: string) {
+          console.log("Renaming variable to:", newName);
+          const variablesInWorkspace = Blockly.getMainWorkspace()
+            ?.getVariableMap()
+            ?.getAllVariables();
+          if (!activeSpriteRef.current) {
+            return;
+          }
+
+          originalCallback(newName);
+          const variable = variablesInWorkspace?.find(
+            (v) => v.getName() === newName,
+          );
+          if (!variable) {
+            return; // really shouldnt happen, but just in case
+          }
+          console.log("Variables in workspace:", variablesInWorkspace);
+          console.log("Renaming variable:", "to new name:", newName);
+          const activeSprite = activeSpriteRef.current;
+          const renamedSprites = spritesRef.current.map((sprite) => ({
+            ...sprite,
+            variables_map: sprite.variables_map.map((storedVariable) =>
+              storedVariable.id === variable.getId()
+                ? { ...storedVariable, name: newName }
+                : storedVariable,
+            ),
+          }));
+          spritesRef.current = renamedSprites;
+          setSprites(renamedSprites);
+          activeSpriteRef.current =
+            renamedSprites.find(
+              (sprite) =>
+                sprite.id === activeSprite.id &&
+                "isBackdrop" in sprite === "isBackdrop" in activeSprite,
+            ) || activeSprite;
+
+          await new DatabaseManager().renameVariableInProject(
+            activeSprite.project_id,
+            variable.getId(),
+            newName,
+          );
+          saveCurrentWorkspaceToDatabase();
         }
 
         if (message === "New variable name:") {
@@ -675,7 +736,7 @@ function CodeEditor({
             detail: {
               message: message,
               defaultValue: defaultValue,
-              callback: originalCallback,
+              callback: renameVariable,
             },
           });
           window.dispatchEvent(promptEvent);
@@ -683,6 +744,17 @@ function CodeEditor({
           console.log("Prompt message:", message);
           return undefined;
         }
+      },
+    );
+    Blockly.dialog.setConfirm(
+      (message: string, callback: (result: boolean) => void) => {
+        const promptEvent = new CustomEvent("blockly-prompt", {
+          detail: {
+            message: message,
+            callback: callback,
+          },
+        });
+        window.dispatchEvent(promptEvent);
       },
     );
   }

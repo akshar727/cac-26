@@ -31,7 +31,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 260,
     inputsInline: true,
   },
   {
@@ -49,7 +49,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 260,
     inputsInline: true,
   },
   {
@@ -67,7 +67,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 260,
     inputsInline: true,
   },
   {
@@ -94,7 +94,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     output: "Number",
     tooltip: "Returns the X position of the sprite",
     extensions: ["parent_tooltip_when_inline"],
-    colour: 310,
+    colour: 260,
   },
   {
     type: "screen_position_y",
@@ -102,7 +102,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     output: "Number",
     tooltip: "Returns the Y position of the sprite",
     extensions: ["parent_tooltip_when_inline"],
-    colour: 310,
+    colour: 260,
   },
   {
     type: "screen_change_x",
@@ -117,7 +117,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 260,
     inputsInline: true,
   },
   {
@@ -133,7 +133,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 260,
     inputsInline: true,
   },
   {
@@ -149,7 +149,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -165,7 +165,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -181,7 +181,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -190,7 +190,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     output: "Number",
     tooltip: "Returns the rotation of the sprite",
     extensions: ["parent_tooltip_when_inline"],
-    colour: 310,
+    colour: 10,
   },
   {
     type: "screen_next_costume",
@@ -198,7 +198,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     tooltip: "Sets the costume of the current sprite to the next costume",
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -207,7 +207,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     tooltip: "Shows the current sprite",
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -216,7 +216,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     tooltip: "Hides the current sprite",
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -232,7 +232,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -248,7 +248,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
   },
   {
@@ -322,7 +322,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 10,
     inputsInline: true,
     extensions: ["costume_dropdown_extension"],
   },
@@ -405,7 +405,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 260,
     inputsInline: true,
   },
   {
@@ -444,7 +444,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     ],
     previousStatement: null,
     nextStatement: null,
-    colour: 310,
+    colour: 260,
     extensions: [
       "parent_tooltip_when_inline",
       "glide_preset_dropdown_extension",
@@ -472,7 +472,7 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
     output: "Number",
     tooltip: "Returns the size of the sprite",
     extensions: ["parent_tooltip_when_inline"],
-    colour: 310,
+    colour: 10,
   },
   {
     type: "logic_key_down",

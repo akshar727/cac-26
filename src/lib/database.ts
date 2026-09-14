@@ -342,6 +342,35 @@ export class DatabaseManager {
     });
   }
 
+  async renameVariableInProject(
+    projectId: number,
+    variableId: string,
+    variableName: string,
+  ): Promise<void> {
+    const db = await Database.load(`sqlite:${this.projectFileName}`);
+    for (const table of ["sprites", "backdrops"] as const) {
+      const rows = await db.select<{ id: number; variables_map: string }[]>(
+        `SELECT id, variables_map FROM ${table} WHERE project_id = ?`,
+        [projectId],
+      );
+      for (const row of rows) {
+        const variablesMap = JSON.parse(row.variables_map || "[]");
+        const renamedVariables = variablesMap.map(
+          (variable: { id: string; name: string }) =>
+            variable.id === variableId
+              ? { ...variable, name: variableName }
+              : variable,
+        );
+        if (JSON.stringify(renamedVariables) !== JSON.stringify(variablesMap)) {
+          await db.execute(
+            `UPDATE ${table} SET variables_map = ? WHERE id = ?`,
+            [JSON.stringify(renamedVariables), row.id],
+          );
+        }
+      }
+    }
+  }
+
   updateSpriteName(
     spriteId: number,
     name: string,
@@ -422,6 +451,31 @@ export class DatabaseManager {
         reject(error);
       }
     });
+  }
+
+  async deleteVariableFromProject(
+    projectId: number,
+    variableId: string,
+  ): Promise<void> {
+    const db = await Database.load(`sqlite:${this.projectFileName}`);
+    for (const table of ["sprites", "backdrops"] as const) {
+      const rows = await db.select<{ id: number; variables_map: string }[]>(
+        `SELECT id, variables_map FROM ${table} WHERE project_id = ?`,
+        [projectId],
+      );
+      for (const row of rows) {
+        const variablesMap = JSON.parse(row.variables_map || "[]");
+        const remainingVariables = variablesMap.filter(
+          (variable: { id: string }) => variable.id !== variableId,
+        );
+        if (remainingVariables.length !== variablesMap.length) {
+          await db.execute(
+            `UPDATE ${table} SET variables_map = ? WHERE id = ?`,
+            [JSON.stringify(remainingVariables), row.id],
+          );
+        }
+      }
+    }
   }
 
   deleteProject(projectId: number): Promise<void> {

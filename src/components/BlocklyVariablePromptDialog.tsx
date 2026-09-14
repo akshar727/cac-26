@@ -55,12 +55,24 @@ export function BlocklyVariablePromptDialog() {
         <DialogHeader>
           <DialogTitle>{config?.message}</DialogTitle>
         </DialogHeader>
-        <Label htmlFor="variableName">Variable Name</Label>
-        <Input
-          value={userInput}
-          id="variableName"
-          onChange={(e) => setUserInput(e.target.value)}
-        ></Input>
+        {(config?.message?.startsWith("New variable name:") ||
+          config?.message?.startsWith("Rename all")) && (
+          <>
+            <Label htmlFor="variableName">Variable Name</Label>
+            <Input
+              value={userInput}
+              id="variableName"
+              onChange={(e) => setUserInput(e.target.value)}
+            ></Input>
+          </>
+        )}
+        {config?.message?.startsWith("Delete") &&
+          config?.message?.includes("variable") && (
+            <p>
+              Are you sure you want to delete this variable? This action cannot
+              be undone.
+            </p>
+          )}
         {config?.message?.startsWith("New variable name") && (
           <RadioGroup
             value={scope}
@@ -101,14 +113,24 @@ export function BlocklyVariablePromptDialog() {
             onClick={() => {
               if (config?.message?.startsWith("New variable name")) {
                 config?.callback(userInput, scope === "global");
+              } else if (
+                config?.message?.startsWith("Delete") &&
+                config?.message?.includes("variable")
+              ) {
+                //@ts-ignore
+                config?.callback(true);
               } else {
+                console.log("userInput", userInput);
                 //@ts-ignore
                 config?.callback(userInput);
               }
               setIsOpen(false);
             }}
+            variant={
+              config?.message?.startsWith("Delete") ? "destructive" : "default"
+            }
           >
-            Ok
+            {config?.message?.startsWith("Delete") ? "Delete Variable" : "Ok"}
           </Button>
         </DialogFooter>
       </DialogContent>
