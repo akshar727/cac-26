@@ -70,9 +70,9 @@ export class DatabaseManager {
   }
 
   async getLessons(): Promise<Lesson[]> {
-    const db = await Database.load(`sqlite:${this.lessonsFileName}`);
-    const rows = await db.select<LessonRow[]>(`SELECT * FROM lessons`);
-    return rows.length > 0 ? rows.map(parseLessonRow) : builtInLessons;
+    // const db = await Database.load(`sqlite:${this.lessonsFileName}`);
+    // const rows = await db.select<LessonRow[]>(`SELECT * FROM lessons`);
+    return builtInLessons;
   }
 
   async getLesson(lessonId: number): Promise<Lesson> {

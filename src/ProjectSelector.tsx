@@ -52,8 +52,9 @@ export default function ProjectSelector({
       <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
         <h1 className="text-2xl">Welcome to Codely!</h1>
         <h2 className="text-lg">
-          Select a project or create a new one to get started. Or, open lessons
-          to learn how to use Codely and create your own projects.
+          Choose an existing project or start a new one to begin. You can also
+          open the lessons to learn how to use Codely and build your own
+          projects.
         </h2>
       </div>
       <div className="grid h-dvh w-full grid-cols-1 pt-48 gap-6 px-6 md:grid-cols-2 md:px-12">
