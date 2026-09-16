@@ -576,7 +576,6 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
       {
         type: "input_value",
         name: "MESSAGE",
-        check: "String",
       },
       {
         type: "input_value",
@@ -599,7 +598,6 @@ export const blocks = Blockly.common.createBlockDefinitionsFromJsonArray([
       {
         type: "input_value",
         name: "MESSAGE",
-        check: "String",
       },
       {
         type: "input_value",

@@ -20,7 +20,7 @@ import {
 } from "./components/ui/dialog";
 import { Label } from "./components/ui/label";
 import { Input } from "./components/ui/input";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { ScrollArea } from "./components/ui/scroll-area";
 import { Lesson } from "./types/lesson";
 
@@ -123,6 +123,7 @@ export default function ProjectSelector({
             <DialogTrigger
               render={
                 <Button className="w-fit" size="lg">
+                  <Plus />
                   Create New Project
                 </Button>
               }

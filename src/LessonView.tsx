@@ -18,7 +18,7 @@ import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
-import { Undo2 } from "lucide-react";
+import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./types/lesson";
 import theme from "./blocks/theme";
@@ -1229,6 +1229,7 @@ function LessonView({
                   }}
                   disabled={codeRunningState === true}
                 >
+                  <Play />
                   Run Code
                 </Button>
                 <Button
@@ -1237,6 +1238,7 @@ function LessonView({
                   }}
                   disabled={codeRunningState === false}
                 >
+                  <Square />
                   Stop Code
                 </Button>
               </CardFooter>
