@@ -11,16 +11,17 @@ import { useRef } from "react";
 import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-converter";
 import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { appDataDir } from "@tauri-apps/api/path";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { mkdir, writeFile } from "@tauri-apps/plugin-fs";
 import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
-import { Play, Square, Undo2 } from "lucide-react";
+import { Camera, Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
-import { Lesson } from "./types/lesson";
+import { Lesson } from "./lib/lesson";
 import theme from "./blocks/theme";
 
 function LessonView({
@@ -556,7 +557,43 @@ function LessonView({
     runtimeRef.current?.stopAll();
   };
 
-  function saveCurrentWorkspaceToDatabase() {
+  const saveThumbnail = async () => {
+    if (lessonId === null) return;
+
+    const canvas = document.getElementById(
+      "foregroundCanvas",
+    ) as HTMLCanvasElement;
+    const bgCanvas = document.getElementById(
+      "backgroundCanvas",
+    ) as HTMLCanvasElement;
+    if (!canvas || !bgCanvas) return;
+
+    const combinedCanvas = document.createElement("canvas");
+    combinedCanvas.width = canvas.width;
+    combinedCanvas.height = canvas.height;
+    const context = combinedCanvas.getContext("2d");
+    context?.drawImage(bgCanvas, 0, 0);
+    context?.drawImage(canvas, 0, 0);
+
+    try {
+      const appDir = await appDataDir();
+      const lessonDir = await join(appDir, `lesson_${lessonId}`);
+      await mkdir(lessonDir, { recursive: true });
+      const filePath = await join(lessonDir, "thumbnail.png");
+      const base64Data = combinedCanvas.toDataURL("image/png").split(",")[1];
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let index = 0; index < binaryString.length; index++) {
+        bytes[index] = binaryString.charCodeAt(index);
+      }
+      await writeFile(filePath, bytes);
+      console.log(`Lesson thumbnail saved to: ${filePath}`);
+    } catch (error) {
+      console.error("Failed to save lesson thumbnail:", error);
+    }
+  };
+
+  function saveCurrentWorkspace() {
     if (!Blockly.getMainWorkspace()) {
       return;
     }
@@ -893,6 +930,7 @@ function LessonView({
           ),
         }));
         spritesRef.current = updatedSprites;
+        lessonSpritesRef.current = updatedSprites;
         setSprites(updatedSprites);
         const currentActiveSprite = activeSpriteRef.current;
         if (currentActiveSprite) {
@@ -904,21 +942,22 @@ function LessonView({
             ) || currentActiveSprite;
         }
 
-        void (async () => {
-          try {
-            await new DatabaseManager().deleteVariableFromProject(
-              activeSpriteRef.current!.project_id,
-              variableId,
-            );
-
-            await importDatabaseData();
-          } catch (error) {
-            console.error("Error deleting variable:", error);
-          }
-        })();
+        if (lessonId === null) {
+          void (async () => {
+            try {
+              await new DatabaseManager().deleteVariableFromProject(
+                activeSpriteRef.current!.project_id,
+                variableId,
+              );
+              await importDatabaseData();
+            } catch (error) {
+              console.error("Error deleting variable:", error);
+            }
+          })();
+        }
       }
       if (e.isUiEvent) return;
-      saveCurrentWorkspaceToDatabase();
+      saveCurrentWorkspace();
       if (lessonId !== null && e.type !== Blockly.Events.BLOCK_CREATE) {
         // random bug that exists when this runs on block_create so its not necessary to check then
         reconcileLessonProgress();
@@ -962,17 +1001,48 @@ function LessonView({
                 (
                   Blockly.getMainWorkspace() as Blockly.WorkspaceSvg
                 ).refreshToolboxSelection();
-                await new DatabaseManager().addVariableToSprite(
-                  "isBackdrop" in activeSpriteRef.current!
-                    ? -activeSpriteRef.current!.id
-                    : activeSpriteRef.current!.id,
-                  variable.getId(),
-                  variable.getName(),
-                  isGlobal,
-                  "isBackdrop" in activeSpriteRef.current! &&
-                    (activeSpriteRef.current!.isBackdrop as boolean),
-                );
-                await importDatabaseData();
+                const currentSprite = activeSpriteRef.current;
+                if (!currentSprite) return;
+                const updatedSprites = spritesRef.current.map((sprite) => {
+                  const belongsToSprite =
+                    sprite.id === currentSprite.id || isGlobal;
+                  if (!belongsToSprite) return sprite;
+                  return {
+                    ...sprite,
+                    variables_map: [
+                      ...sprite.variables_map,
+                      {
+                        id: variable.getId(),
+                        name: variable.getName(),
+                        isGlobal,
+                      },
+                    ],
+                  };
+                });
+                spritesRef.current = updatedSprites;
+                lessonSpritesRef.current = updatedSprites;
+                setSprites(updatedSprites);
+                activeSpriteRef.current =
+                  updatedSprites.find(
+                    (sprite) =>
+                      sprite.id === currentSprite.id &&
+                      "isBackdrop" in sprite === "isBackdrop" in currentSprite,
+                  ) ?? currentSprite;
+                if (lessonId === null) {
+                  await new DatabaseManager().addVariableToSprite(
+                    "isBackdrop" in currentSprite
+                      ? -currentSprite.id
+                      : currentSprite.id,
+                    variable.getId(),
+                    variable.getName(),
+                    isGlobal,
+                    "isBackdrop" in currentSprite &&
+                      (currentSprite.isBackdrop as boolean),
+                  );
+                  await importDatabaseData();
+                }
+                saveCurrentWorkspace();
+                reconcileLessonProgress();
               } finally {
                 Blockly.Events.enable();
               }
@@ -1007,6 +1077,7 @@ function LessonView({
             ),
           }));
           spritesRef.current = renamedSprites;
+          lessonSpritesRef.current = renamedSprites;
           setSprites(renamedSprites);
           activeSpriteRef.current =
             renamedSprites.find(
@@ -1015,12 +1086,15 @@ function LessonView({
                 "isBackdrop" in sprite === "isBackdrop" in activeSprite,
             ) || activeSprite;
 
-          await new DatabaseManager().renameVariableInProject(
-            activeSprite.project_id,
-            variable.getId(),
-            newName,
-          );
-          saveCurrentWorkspaceToDatabase();
+          if (lessonId === null) {
+            await new DatabaseManager().renameVariableInProject(
+              activeSprite.project_id,
+              variable.getId(),
+              newName,
+            );
+          }
+          saveCurrentWorkspace();
+          reconcileLessonProgress();
         }
 
         if (message === "New variable name:") {
@@ -1113,7 +1187,7 @@ function LessonView({
                 Blockly.svgResize(workspace as Blockly.WorkspaceSvg);
               }, 100);
             } else {
-              saveCurrentWorkspaceToDatabase();
+              saveCurrentWorkspace();
               if (value === "screen") {
                 setTimeout(() => {
                   renderBasePositions();
@@ -1125,12 +1199,21 @@ function LessonView({
         }}
         className="flex min-h-0 w-full flex-1 flex-col"
       >
-        <TabsList>
+        <TabsList className="*:hover:cursor-pointer">
           <TabsTrigger value="blocks">Code</TabsTrigger>
           <TabsTrigger value="costumes">
             {(activeSprite?.id || 1) < 0 ? "Backdrops" : "Costumes"}
           </TabsTrigger>
-          <TabsTrigger value="screen">Screen</TabsTrigger>
+          <TabsTrigger
+            value="screen"
+            className={
+              lessonRef.current?.instructions[currentStep]?.includes("Screen")
+                ? "not-data-active:bg-primary not-data-active:text-primary-foreground not-data-active:hover:text-primary-foreground"
+                : ""
+            }
+          >
+            Screen
+          </TabsTrigger>
         </TabsList>
         <TabsContent
           value="blocks"
@@ -1240,6 +1323,10 @@ function LessonView({
                 >
                   <Square />
                   Stop Code
+                </Button>
+                <Button onClick={saveThumbnail} variant="outline">
+                  <Camera />
+                  Save Thumbnail
                 </Button>
               </CardFooter>
             </Card>

@@ -1,8 +1,12 @@
 "use client";
 import React from "react";
 import { DatabaseManager } from "./lib/database";
+import { appDataDir, join, resolveResource } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { exists } from "@tauri-apps/plugin-fs";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -20,9 +24,25 @@ import {
 } from "./components/ui/dialog";
 import { Label } from "./components/ui/label";
 import { Input } from "./components/ui/input";
-import { Plus, X } from "lucide-react";
+import {
+  ArrowRight,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  TextAlignStart,
+  Trash2,
+} from "lucide-react";
 import { ScrollArea } from "./components/ui/scroll-area";
-import { Lesson } from "./types/lesson";
+import { Skeleton } from "./components/ui/skeleton";
+import { Lesson } from "./lib/lesson";
+import { cn } from "cn";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./components/ui/dropdown-menu";
 
 export default function ProjectSelector({
   onProjectSelect,
@@ -35,6 +55,44 @@ export default function ProjectSelector({
     { id: number; name: string; description: string }[]
   >([]);
   const [lessons, setLessons] = React.useState<Lesson[]>([]);
+  const [projectThumbnails, setProjectThumbnails] = React.useState<
+    Record<number, string>
+  >({});
+  const [lessonThumbnails, setLessonThumbnails] = React.useState<
+    Record<number, string>
+  >({});
+  const [renameProject, setRenameProject] = React.useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [renameValue, setRenameValue] = React.useState("");
+  const [descriptionProject, setDescriptionProject] = React.useState<{
+    id: number;
+    description: string;
+  } | null>(null);
+  const [descriptionValue, setDescriptionValue] = React.useState("");
+  const [deleteProject, setDeleteProject] = React.useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+
+  const refreshProjects = async () => {
+    setProjects(await new DatabaseManager().getProjects());
+  };
+
+  const openRenameDialog = (project: { id: number; name: string }) => {
+    setRenameProject(project);
+    setRenameValue(project.name);
+  };
+
+  const openDescriptionDialog = (project: {
+    id: number;
+    description: string;
+  }) => {
+    setDescriptionProject(project);
+    setDescriptionValue(project.description);
+  };
+
   React.useEffect(() => {
     const fetchProjects = async () => {
       const projects = await new DatabaseManager().getProjects();
@@ -47,6 +105,63 @@ export default function ProjectSelector({
     fetchProjects();
     fetchLessons();
   }, []);
+
+  React.useEffect(() => {
+    console.log("Loading thumbnails for projects and lessons...");
+    const loadThumbnails = async () => {
+      const appDir = await appDataDir();
+      const loadProjectThumbnail = async (folder: string) => {
+        const thumbnailPath = await join(appDir, folder, "thumbnail.png");
+        return (await exists(thumbnailPath))
+          ? convertFileSrc(thumbnailPath) + "?v=" + Date.now()
+          : null;
+      };
+
+      const loadLessonThumbnail = async (lessonId: number) => {
+        const thumbnailpath = await resolveResource(
+          `lesson_assets/thumbnails/lesson_${lessonId}.png`,
+        );
+        return convertFileSrc(thumbnailpath);
+      };
+
+      const [projectEntries, lessonEntries] = await Promise.all([
+        Promise.all(
+          projects.map(
+            async (project) =>
+              [
+                project.id,
+                await loadProjectThumbnail(`proj_${project.id}`),
+              ] as const,
+          ),
+        ),
+        Promise.all(
+          lessons.map(
+            async (lesson) =>
+              [lesson.id, await loadLessonThumbnail(lesson.id)] as const,
+          ),
+        ),
+      ]);
+
+      setProjectThumbnails(
+        Object.fromEntries(
+          projectEntries.filter(
+            (entry): entry is [number, string] => entry[1] !== null,
+          ),
+        ),
+      );
+      setLessonThumbnails(
+        Object.fromEntries(
+          lessonEntries.filter(
+            (entry): entry is [number, string] => entry[1] !== null,
+          ),
+        ),
+      );
+    };
+
+    if (projects.length > 0 || lessons.length > 0) {
+      loadThumbnails();
+    }
+  }, [projects, lessons]);
   return (
     <>
       <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
@@ -67,42 +182,57 @@ export default function ProjectSelector({
                   className="relative flex justify-between"
                   key={project.id}
                 >
-                  {projects.length > 1 && (
-                    <Dialog>
-                      <DialogTrigger
-                        nativeButton={false}
-                        render={
-                          <div className="absolute hover:cursor-pointer rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 top-0 right-0 flex justify-end m-2 p-1">
-                            <X className="w-4 h-4"></X>
-                          </div>
-                        }
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="absolute hover:bg-gray-200 top-2 right-2 z-10"
+                          aria-label={`Actions for ${project.name}`}
+                        />
+                      }
+                    >
+                      <MoreHorizontal />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-48 p-1 whitespace-nowrap"
+                      align="start"
+                    >
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem
+                          onClick={() => openRenameDialog(project)}
+                        >
+                          <Pencil />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openDescriptionDialog(project)}
+                        >
+                          <TextAlignStart />
+                          Change description
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteProject(project)}
+                        >
+                          <Trash2 />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <div className="h-24 border-b border-t w-full overflow-hidden rounded-t-lg bg-muted">
+                    {projectThumbnails[project.id] ? (
+                      <img
+                        src={projectThumbnails[project.id]}
+                        alt={`${project.name} thumbnail`}
+                        className="h-full w-full object-cover"
                       />
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Delete this project?</DialogTitle>
-                        </DialogHeader>
-                        This is a permanent action and cannot be undone. All
-                        sprites, backdrops, and other data associated with this
-                        project will be lost.
-                        <DialogFooter className="bg-white">
-                          <DialogClose
-                            render={
-                              <Button
-                                variant="destructive"
-                                onClick={async () => {
-                                  const dbManager = new DatabaseManager();
-                                  await dbManager.deleteProject(project.id);
-                                  setProjects(await dbManager.getProjects());
-                                }}
-                              >
-                                Delete Project
-                              </Button>
-                            }
-                          />
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  )}
+                    ) : (
+                      <Skeleton className="h-full w-full rounded-none" />
+                    )}
+                  </div>
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
                     <CardDescription>{project.description}</CardDescription>
@@ -113,6 +243,7 @@ export default function ProjectSelector({
                       onClick={() => onProjectSelect(project.id)}
                     >
                       Open Project
+                      <ArrowRight />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -176,16 +307,42 @@ export default function ProjectSelector({
                   className="relative flex justify-between"
                   key={project.id}
                 >
+                  <div className="h-24 border-b border-t w-full overflow-hidden rounded-t-lg bg-muted">
+                    {lessonThumbnails[project.id] ? (
+                      <img
+                        src={lessonThumbnails[project.id]}
+                        alt={`${project.name} thumbnail`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Skeleton className="h-full w-full rounded-none" />
+                    )}
+                  </div>
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
                     <CardDescription>{project.description}</CardDescription>
                   </CardHeader>
+                  <CardContent>
+                    Difficulty:{" "}
+                    <span
+                      className={cn("font-bold", {
+                        "text-green-500": project.difficulty === "beginner",
+                        "text-yellow-500":
+                          project.difficulty === "intermediate",
+                        "text-red-500": project.difficulty === "advanced",
+                      })}
+                    >
+                      {project.difficulty.charAt(0).toUpperCase() +
+                        project.difficulty.slice(1)}
+                    </span>
+                  </CardContent>
                   <CardFooter className="flex justify-center bg-white">
                     <Button
                       variant="secondary"
                       onClick={() => onLessonSelect(project.id)}
                     >
-                      Open Lesson
+                      Start Lesson
+                      <ArrowRight />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -194,6 +351,109 @@ export default function ProjectSelector({
           </ScrollArea>
         </div>
       </div>
+      <Dialog
+        open={renameProject !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameProject(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename project</DialogTitle>
+          </DialogHeader>
+          <Label htmlFor="rename-project">Project Name</Label>
+          <Input
+            id="rename-project"
+            value={renameValue}
+            onChange={(event) => setRenameValue(event.target.value)}
+            autoFocus
+          />
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button
+              disabled={!renameValue.trim() || !renameProject}
+              onClick={async () => {
+                if (!renameProject || !renameValue.trim()) return;
+                await new DatabaseManager().updateProjectName(
+                  renameProject.id,
+                  renameValue.trim(),
+                );
+                await refreshProjects();
+                setRenameProject(null);
+              }}
+            >
+              Rename Project
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={descriptionProject !== null}
+        onOpenChange={(open) => {
+          if (!open) setDescriptionProject(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change project description</DialogTitle>
+          </DialogHeader>
+          <Label htmlFor="project-description-edit">Project Description</Label>
+          <Input
+            id="project-description-edit"
+            value={descriptionValue}
+            onChange={(event) => setDescriptionValue(event.target.value)}
+            autoFocus
+          />
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button
+              onClick={async () => {
+                if (!descriptionProject) return;
+                await new DatabaseManager().updateProjectDescription(
+                  descriptionProject.id,
+                  descriptionValue,
+                );
+                await refreshProjects();
+                setDescriptionProject(null);
+              }}
+            >
+              Save Description
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={deleteProject !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteProject(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this project?</DialogTitle>
+          </DialogHeader>
+          This is a permanent action and cannot be undone. All sprites,
+          backdrops, and other data associated with this project will be lost.
+          <DialogFooter className="bg-white">
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <DialogClose
+              render={
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!deleteProject) return;
+                    await new DatabaseManager().deleteProject(deleteProject.id);
+                    await refreshProjects();
+                    setDeleteProject(null);
+                  }}
+                >
+                  Delete Project
+                </Button>
+              }
+            />
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

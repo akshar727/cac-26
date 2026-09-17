@@ -21,9 +21,17 @@ import { FieldGroup } from "./ui/field";
 import { Label } from "./ui/label";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Skeleton } from "./ui/skeleton";
-import { PlusIcon, X } from "lucide-react";
+import { Copy, MoreHorizontal, PlusIcon, SquarePen, Trash } from "lucide-react";
 import { openImage } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface SpriteSelectorProps {
   sprites: (DatabaseSprite | DatabaseBackdrop)[];
@@ -60,6 +68,15 @@ export default function SpriteAndBackdropSelector({
   importDatabaseData,
   isLesson = false,
 }: SpriteSelectorProps) {
+  const [renameSprite, setRenameSprite] = useState<DatabaseSprite | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteSprite, setDeleteSprite] = useState<DatabaseSprite | null>(null);
+
+  const openRenameDialog = (sprite: DatabaseSprite) => {
+    setRenameSprite(sprite);
+    setRenameValue(sprite.name);
+  };
+
   return (
     <>
       <Card className="flex-2 justify-between">
@@ -95,42 +112,56 @@ export default function SpriteAndBackdropSelector({
                       }}
                       key={sprite.id}
                     >
-                      <Dialog>
-                        {!isLesson && (
-                          <DialogTrigger
-                            nativeButton={false}
+                      {!isLesson && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
                             render={
-                              <div className="absolute hover:cursor-pointer rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 top-0 right-0 flex justify-end m-2 p-1">
-                                <X className="w-4 h-4"></X>
-                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="absolute hover:bg-gray-200 top-2 right-2 z-10"
+                                aria-label={`Actions for ${sprite.name}`}
+                                onClick={(event) => event.stopPropagation()}
+                              />
                             }
-                          ></DialogTrigger>
-                        )}
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Delete this sprite?</DialogTitle>
-                          </DialogHeader>
-                          This is a permanent action and cannot be undone. All
-                          costumes, variables, and code associated with this
-                          sprite will be lost.
-                          <DialogFooter className="bg-white">
-                            <DialogClose
-                              render={
-                                <Button
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    const dbManager = new DatabaseManager();
-                                    await dbManager.deleteSprite(sprite.id);
-                                    importDatabaseData();
-                                  }}
-                                >
-                                  Delete Sprite
-                                </Button>
-                              }
-                            ></DialogClose>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                          >
+                            <MoreHorizontal />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            className="w-36 p-1"
+                            align="start"
+                          >
+                            <DropdownMenuGroup>
+                              <DropdownMenuItem
+                                onClick={() => openRenameDialog(sprite)}
+                              >
+                                <SquarePen />
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  await new DatabaseManager().duplicateSprite(
+                                    sprite.id,
+                                    sprite.project_id,
+                                    appDataDirRef.current || "",
+                                  );
+                                  await importDatabaseData();
+                                }}
+                              >
+                                <Copy />
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteSprite(sprite)}
+                              >
+                                <Trash />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                       <CardContent className="flex flex-col items-center gap-2">
                         {sprite.image_paths.length === 0 ? (
                           <Skeleton className="w-16 h-16" />
@@ -160,59 +191,6 @@ export default function SpriteAndBackdropSelector({
           )}
         </CardContent>
         <CardFooter className="flex bg-white flex-col gap-1 justify-center">
-          <div className="flex flex-row gap-2 py-4">
-            <Label htmlFor="spriteDialog">Sprite:</Label>
-            <Tooltip>
-              <TooltipTrigger>
-                <Input
-                  id="spriteDialog"
-                  key={activeSprite?.id}
-                  type="text"
-                  disabled={isLesson || activeSprite === null}
-                  defaultValue={activeSprite?.name}
-                  placeholder="Enter sprite name"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  onFocus={(e) => {
-                    e.target.select();
-                  }}
-                  onBlur={async (e) => {
-                    if (isLesson || !activeSprite) {
-                      return;
-                    }
-                    const newName = e.target.value;
-                    if (newName === activeSprite.name) {
-                      return;
-                    }
-                    await new DatabaseManager().updateSpriteName(
-                      "isBackdrop" in activeSprite &&
-                        (activeSprite.isBackdrop as boolean)
-                        ? -activeSprite.id
-                        : activeSprite.id,
-                      newName,
-                      "isBackdrop" in activeSprite &&
-                        (activeSprite.isBackdrop as boolean),
-                    );
-                    importDatabaseData();
-                    setActiveSprite({
-                      ...activeSprite,
-                      name: newName,
-                    });
-                    activeSpriteRef.current = {
-                      ...activeSprite,
-                      name: newName,
-                    };
-                  }}
-                />
-              </TooltipTrigger>
-              <TooltipContent className={activeSprite === null ? "" : "hidden"}>
-                <p>Select a sprite to edit its name.</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
           {!isLesson && (
             <Dialog
               open={spriteDialogOpen}
@@ -359,6 +337,79 @@ export default function SpriteAndBackdropSelector({
           )}
         </CardFooter>
       </Card>
+      <Dialog
+        open={renameSprite !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameSprite(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename sprite</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this sprite.
+            </DialogDescription>
+          </DialogHeader>
+          <Field>
+            <Label htmlFor="renameSprite">Sprite name</Label>
+            <Input
+              id="renameSprite"
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+              autoFocus
+            />
+          </Field>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <Button
+              disabled={!renameValue.trim() || !renameSprite}
+              onClick={async () => {
+                if (!renameSprite || !renameValue.trim()) return;
+                await new DatabaseManager().updateSpriteName(
+                  renameSprite.id,
+                  renameValue.trim(),
+                  false,
+                );
+                await importDatabaseData();
+                setRenameSprite(null);
+              }}
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={deleteSprite !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSprite(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this sprite?</DialogTitle>
+          </DialogHeader>
+          This is a permanent action and cannot be undone. All costumes,
+          variables, and code associated with this sprite will be lost.
+          <DialogFooter className="bg-white">
+            <DialogClose
+              render={
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!deleteSprite) return;
+                    await new DatabaseManager().deleteSprite(deleteSprite.id);
+                    await importDatabaseData();
+                    setDeleteSprite(null);
+                  }}
+                >
+                  Delete Sprite
+                </Button>
+              }
+            />
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Card className="flex-1 justify-between">
         <CardContent className="flex flex-col gap-2">
           <CardTitle>Backdrops</CardTitle>

@@ -2,6 +2,7 @@ export type Lesson = {
   id: number;
   name: string;
   description: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
   longDescription: string;
   allowedBlocks: string[] | string[][];
   instructions: string[];
@@ -72,6 +73,7 @@ function createLesson(
   longDescription: string,
   allowedBlocks: string[] | string[][],
   instructions: string[],
+  difficulty: "beginner" | "intermediate" | "advanced",
   successMetrics: any[],
   sprites: Lesson["baseState"]["sprites"],
   broadcasts: { id: number; name: string }[] = [],
@@ -84,6 +86,7 @@ function createLesson(
     allowedBlocks,
     instructions,
     successMetrics,
+    difficulty,
     baseState: lessonBaseState(sprites, broadcasts),
   };
 }
@@ -125,9 +128,10 @@ export const moveLesson = createLesson(
   [
     "Let's make the sprite move when the start button is pressed. Drag a 'When Started' block from the Events category.",
     "Drag a 'change x by' block from the Motion category. Connect it under the 'When Started' block.",
-    'Go to the "Screen" tab and press "Run Code" to see the sprite move from the center!',
+    'Go to the Screen tab and press "Run Code" to see the sprite move from the center!',
     "Great job! The sprite moved. You have completed this lesson.",
   ],
+  "beginner",
   [
     {
       check: "exists",
@@ -171,9 +175,10 @@ export const positionLesson = createLesson(
     "Now drag a 'set position x y' block and connect it under the when started block.",
     "Set the x value to 600 and the y value to 200. This will place the sprite in the lower right corner of the screen.",
     "Add a 'rotate ↻' block below the set position block. This will rotate the sprite clockwise by a default of 15 degrees.",
-    `Go to the "Screen" tab and press Run Code.`,
+    `Go to the Screen tab and press Run Code.`,
     "Congratulations! You have completed the lesson.",
   ],
+  "beginner",
   [
     {
       check: "exists",
@@ -240,6 +245,7 @@ export const loopLesson = createLesson(
     "Go to the Screen tab and press Run Code.",
     "Well done! You have completed the lesson.",
   ],
+  "beginner",
   [
     {
       check: "exists",
@@ -310,6 +316,7 @@ export const decisionLesson = createLesson(
     "Go to the Screen tab and press Run Code.",
     "Great job! You have completed the lesson. Hover the mouse pointer over the sprite to see it glide to a random position.",
   ],
+  "intermediate",
   [
     {
       check: "exists",
@@ -402,6 +409,7 @@ export const textLesson = createLesson(
     "Go to the Screen tab and press Run Code to see both bubbles show one after another.",
     "Congratulations! You have completed the lesson.",
   ],
+  "beginner",
   [
     {
       check: "exists",
@@ -449,6 +457,7 @@ export const costumeLesson = createLesson(
     "Go to the Screen tab and press Run Code to see the costume change twice.",
     "Congratulations! You have completed the lesson.",
   ],
+  "intermediate",
   [
     { check: "exists", blockType: whenStartedBlock },
     {
@@ -529,6 +538,7 @@ export const appearanceLesson = createLesson(
     "Go to the Screen tab and press Run Code to watch the sprite change.",
     "Congratulations! You have completed the lesson. Try adjusting the size to see how the sprite changes.",
   ],
+  "intermediate",
   [
     {
       check: "exists",
@@ -607,6 +617,7 @@ export const localVariableLesson = createLesson(
     "Go to the Screen tab and press Run Code.",
     "Congratulations! You have completed the lesson. Sprites can only read and use their own local variables.",
   ],
+  "intermediate",
   [
     { check: "variable", name: "score", spriteId: 1, global: false },
     { check: "exists", blockType: whenStartedBlock },
@@ -729,6 +740,7 @@ export const globalVariableLesson = createLesson(
     "Go to the Screen tab and press Run Code to see that both sprites can read and use the xpos variable.",
     "Congratulations! You have completed the lesson. Global variables can be read and used by all sprites, while local variables can only be read and used by the sprite that created them.",
   ],
+  "advanced",
   [
     { check: "variable", name: "xpos", spriteId: 1, global: true },
     {
@@ -797,6 +809,7 @@ export const broadcastLesson = createLesson(
     "Go to the Screen tab and press Run Code.",
     "Congratulations! You have completed the lesson. Sprites can communicate with each other using broadcasts and coordinate actions.",
   ],
+  "advanced",
   [
     { check: "broadcast", name: "start dance" },
     {
@@ -838,6 +851,11 @@ export const broadcastLesson = createLesson(
   ],
   [],
 );
+const difficultyWeight = {
+  beginner: 0,
+  intermediate: 1,
+  advanced: 2,
+};
 
 export const builtInLessons: Lesson[] = [
   moveLesson,
@@ -850,4 +868,6 @@ export const builtInLessons: Lesson[] = [
   localVariableLesson,
   globalVariableLesson,
   broadcastLesson,
-];
+].sort(
+  (a, b) => difficultyWeight[a.difficulty] - difficultyWeight[b.difficulty],
+);

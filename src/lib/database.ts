@@ -6,38 +6,13 @@ import {
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
 import { BaseDirectory, resolveResource } from "@tauri-apps/api/path";
-import { exists, mkdir, remove } from "@tauri-apps/plugin-fs";
-import { Lesson, builtInLessons } from "@/types/lesson";
+import { copyFile, exists, mkdir, remove } from "@tauri-apps/plugin-fs";
+import { Lesson, builtInLessons } from "@/lib/lesson";
 
 let creationLock = false;
 
-type LessonRow = {
-  id: number;
-  name: string;
-  description: string;
-  longDescription: string;
-  allowed_blocks: string;
-  instructions: string;
-  success_metrics: string;
-  base_state: string;
-};
-
-function parseLessonRow(row: LessonRow): Lesson {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    longDescription: row.longDescription,
-    allowedBlocks: JSON.parse(row.allowed_blocks),
-    instructions: JSON.parse(row.instructions),
-    successMetrics: JSON.parse(row.success_metrics),
-    baseState: JSON.parse(row.base_state),
-  };
-}
-
 export class DatabaseManager {
   private projectFileName = "codely.db";
-  private lessonsFileName = "lessons.db";
 
   getProjects(): Promise<DatabaseProject[]> {
     return new Promise(async (resolve, reject) => {
@@ -186,6 +161,25 @@ export class DatabaseManager {
         reject(error);
       }
     });
+  }
+
+  async updateProjectName(projectId: number, name: string): Promise<void> {
+    const db = await Database.load(`sqlite:${this.projectFileName}`);
+    await db.execute(`UPDATE projects SET name = ? WHERE id = ?`, [
+      name,
+      projectId,
+    ]);
+  }
+
+  async updateProjectDescription(
+    projectId: number,
+    description: string,
+  ): Promise<void> {
+    const db = await Database.load(`sqlite:${this.projectFileName}`);
+    await db.execute(`UPDATE projects SET description = ? WHERE id = ?`, [
+      description,
+      projectId,
+    ]);
   }
 
   async getSpritesForProject(projectId: number): Promise<DatabaseSprite[]> {
@@ -388,6 +382,68 @@ export class DatabaseManager {
         reject(error);
       }
     });
+  }
+
+  async duplicateSprite(
+    spriteId: number,
+    projectId: number,
+    appDataDir: string,
+  ): Promise<void> {
+    const db = await Database.load(`sqlite:${this.projectFileName}`);
+    const sprites = await db.select<DatabaseSprite[]>(
+      `SELECT * FROM sprites WHERE id = ?`,
+      [spriteId],
+    );
+    if (sprites.length === 0) {
+      throw new Error(`Sprite ${spriteId} was not found`);
+    }
+
+    const sprite = sprites[0];
+    const imagePaths = JSON.parse(sprite.image_paths as unknown as string);
+    const duplicateId = Date.now();
+    const duplicatedImagePaths = await Promise.all(
+      imagePaths.map(
+        async (
+          image: {
+            costumeName: string;
+            loadablePath: string;
+            truePath: string | null;
+          },
+          imageIndex: number,
+        ) => {
+          if (!image.truePath) return image;
+          const fileName = image.truePath.split("/").pop();
+          if (!fileName) return image;
+          const dotIndex = fileName.lastIndexOf(".");
+          const extension = dotIndex >= 0 ? fileName.slice(dotIndex) : "";
+          const baseName =
+            dotIndex >= 0 ? fileName.slice(0, dotIndex) : fileName;
+          const duplicateFileName = `${baseName}-copy-${duplicateId}-${imageIndex}${extension}`;
+          const duplicatePath = `proj_${projectId}/${duplicateFileName}`;
+          await copyFile(image.truePath, duplicatePath, {
+            fromPathBaseDir: BaseDirectory.AppLocalData,
+            toPathBaseDir: BaseDirectory.AppLocalData,
+          });
+          return {
+            ...image,
+            loadablePath: convertFileSrc(`${appDataDir}/${duplicatePath}`),
+            truePath: duplicatePath,
+          };
+        },
+      ),
+    );
+
+    await db.execute(
+      `INSERT INTO sprites (name, project_id, blocks_json, image_paths, variables_map)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        `${sprite.name} copy`,
+        sprite.project_id,
+        sprite.blocks_json,
+        JSON.stringify(duplicatedImagePaths),
+        sprite.variables_map,
+      ],
+    );
   }
 
   deleteCostume(

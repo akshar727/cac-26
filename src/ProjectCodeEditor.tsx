@@ -1,5 +1,6 @@
 import "./App.css";
 import * as React from "react";
+import { writeFile } from "@tauri-apps/plugin-fs";
 import * as Blockly from "blockly";
 import { blocks } from "./blocks/blocks";
 import { toolbox } from "./toolbox";
@@ -11,7 +12,7 @@ import { useRef } from "react";
 import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-converter";
 import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { appDataDir } from "@tauri-apps/api/path";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
@@ -158,6 +159,45 @@ function CodeEditor({
       await new DatabaseManager().getProjectBroadcastMessages(projects[0].id);
     broadcastMessagesRef.current = broadcastMessages as [string, string][];
   }
+
+  const saveThumbnail = async () => {
+    const canvas = document.getElementById(
+      "foregroundCanvas",
+    ) as HTMLCanvasElement;
+    const bgCanvas = document.getElementById(
+      "backgroundCanvas",
+    ) as HTMLCanvasElement;
+    const combinedCanvas = document.createElement("canvas");
+    combinedCanvas.width = canvas.width;
+    combinedCanvas.height = canvas.height;
+    const ctx = combinedCanvas.getContext("2d");
+    ctx?.drawImage(bgCanvas, 0, 0);
+    ctx?.drawImage(canvas, 0, 0);
+    const finalUrl = combinedCanvas.toDataURL("image/png");
+    try {
+      // Extract the base64 string part"
+      const base64Data = finalUrl.split(",")[1];
+
+      // Decode the base64 string into binary data
+      const binaryString = atob(base64Data);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const appDir = await appDataDir();
+
+      const filePath = await join(appDir, `proj_${projectId}`, "thumbnail.png");
+
+      await writeFile(filePath, bytes);
+
+      console.log(`Thumbnail saved to: ${filePath}`);
+    } catch (error) {
+      console.error("Failed to save thumbnail:", error);
+    }
+  };
 
   const runCode = () => {
     if (!Blockly.getMainWorkspace()) return;
@@ -330,8 +370,10 @@ function CodeEditor({
   }
   function renderBasePositions() {
     if (sprites.length === 0) return;
-    const runtime = new Runtime(sprites, () => runtime.render());
-    runtime.render();
+    const runtime = new Runtime(sprites, () => {
+      runtime.render();
+      saveThumbnail();
+    });
   }
 
   async function setupWorkspace() {
