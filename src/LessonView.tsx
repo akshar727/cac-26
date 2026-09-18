@@ -1324,10 +1324,10 @@ function LessonView({
                   <Square />
                   Stop Code
                 </Button>
-                <Button onClick={saveThumbnail} variant="outline">
+                {/* <Button onClick={saveThumbnail} variant="outline">
                   <Camera />
                   Save Thumbnail
-                </Button>
+                </Button> */}
               </CardFooter>
             </Card>
           </div>

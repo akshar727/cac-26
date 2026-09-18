@@ -58,6 +58,7 @@ export default function ProjectSelector({
   const [projectThumbnails, setProjectThumbnails] = React.useState<
     Record<number, string>
   >({});
+  const [projectNameError, setProjectNameError] = React.useState(false);
   const [lessonThumbnails, setLessonThumbnails] = React.useState<
     Record<number, string>
   >({});
@@ -212,17 +213,19 @@ export default function ProjectSelector({
                           <TextAlignStart />
                           Change description
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteProject(project)}
-                        >
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
+                        {projects.length > 1 && (
+                          <DropdownMenuItem
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleteProject(project)}
+                          >
+                            <Trash2 />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <div className="h-24 border-b border-t w-full overflow-hidden rounded-t-lg bg-muted">
+                  <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
                     {projectThumbnails[project.id] ? (
                       <img
                         src={projectThumbnails[project.id]}
@@ -235,7 +238,9 @@ export default function ProjectSelector({
                   </div>
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
-                    <CardDescription>{project.description}</CardDescription>
+                    <CardDescription>
+                      {project.description || "No description"}
+                    </CardDescription>
                   </CardHeader>
                   <CardFooter className="flex justify-center bg-white">
                     <Button
@@ -263,8 +268,30 @@ export default function ProjectSelector({
               <DialogHeader>
                 <DialogTitle>Create New Project</DialogTitle>
               </DialogHeader>
-              <Label htmlFor="project-name">Project Name</Label>
-              <Input id="project-name" placeholder="Enter project name" />
+              <Label htmlFor="project-name">
+                <div>
+                  Project Name <span className="text-destructive">*</span>
+                </div>
+              </Label>
+              <div>
+                <Input
+                  onChange={(e) => {
+                    if (e.target.value.length > 0) setProjectNameError(false);
+                    else if (e.target.value.length === 0)
+                      setProjectNameError(true);
+                  }}
+                  defaultValue={"New Project"}
+                  id="project-name"
+                  placeholder="Enter project name"
+                />
+                <p
+                  className={cn(
+                    projectNameError ? "mt-1 text-destructive" : "hidden",
+                  )}
+                >
+                  This field is required.
+                </p>
+              </div>
               <Label htmlFor="project-description">Project Description</Label>
               <Input
                 id="project-description"
@@ -281,8 +308,8 @@ export default function ProjectSelector({
                     ) as HTMLInputElement;
                     const name = nameInput.value;
                     const description = descriptionInput.value;
-                    if (!name || !description) {
-                      alert("Please fill in all fields.");
+                    if (!name) {
+                      setProjectNameError(true);
                       return;
                     }
                     const dbManager = new DatabaseManager();
@@ -307,7 +334,7 @@ export default function ProjectSelector({
                   className="relative flex justify-between"
                   key={project.id}
                 >
-                  <div className="h-24 border-b border-t w-full overflow-hidden rounded-t-lg bg-muted">
+                  <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
                     {lessonThumbnails[project.id] ? (
                       <img
                         src={lessonThumbnails[project.id]}
@@ -320,7 +347,9 @@ export default function ProjectSelector({
                   </div>
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
-                    <CardDescription>{project.description}</CardDescription>
+                    <CardDescription>
+                      {project.description || "No description"}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     Difficulty:{" "}
