@@ -232,7 +232,7 @@ export const blockHelp: Record<string, BlockHelp> = {
   screen_set_y: {
     title: "Set Y Position",
     description: "Sets the sprite's vertical position.",
-    simpleExplanation: "A larger Y moves the sprite lower on the screen.",
+    simpleExplanation: "A larger Y moves the sprite higher on the screen.",
     example: "set y position 50",
   },
   logic_wait: {

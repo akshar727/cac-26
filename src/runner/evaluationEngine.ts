@@ -29,7 +29,11 @@ export class EvaluationEngine {
       throw new InvalidFieldError(
         `Condition is undefined or null: ${JSON.stringify(condition)}`,
       );
-      return false;
+    }
+    if (!processingThread) {
+      throw new NoProcessingThreadError(
+        `Processing thread is undefined or null in evaluateCondition: ${JSON.stringify(processingThread)}`,
+      );
     }
     switch (condition.type) {
       case "logic_compare": {
@@ -173,12 +177,12 @@ export class EvaluationEngine {
   ): number | string | boolean | null {
     if (!field) {
       throw new InvalidFieldError(
-        `Field is undefined or null: ${JSON.stringify(field)}`,
+        `Field is undefined or null in evaluateValue: ${field}`,
       );
     }
     if (!processingThread) {
       throw new NoProcessingThreadError(
-        `Processing thread is undefined or null: ${JSON.stringify(processingThread)}`,
+        `Processing thread is undefined or null in evaluateValue: ${JSON.stringify(processingThread)}`,
       );
     }
     if (field.type === "math_number") {
@@ -196,13 +200,20 @@ export class EvaluationEngine {
             case "MULTIPLY":
               return left * right;
             case "DIVIDE":
+              if (right === 0) {
+                console.error(
+                  `Division by zero with values ${left} and ${right}`,
+                );
+                throw new Error(
+                  `Division by zero in ${left} and ${right}`,
+                );
+              }
               return left / right;
             case "POWER":
               return Math.pow(left, right);
             default:
-              throw new Error(
-                //@ts-ignore
-                `Unknown operator: ${field.operator}. ${JSON.stringify(field)}`,
+              throw new InvalidFieldError(
+                `Unknown operator on field: ${field}.`,
               );
               break;
           }
@@ -217,10 +228,34 @@ export class EvaluationEngine {
             case "ABS":
               return Math.abs(input);
             case "ROOT":
+              if (input < 0) {
+                console.error(
+                  `Cannot compute square root of negative number for value ${input}`,
+                );
+                throw new Error(
+                  `Cannot compute square root of negative number for value ${input}`,
+                );
+              }
               return Math.sqrt(input);
             case "LN":
+              if (input <= 0) {
+                console.error(
+                  `Cannot compute natural logarithm for value ${input} because it is not a positive number`,
+                );
+                throw new Error(
+                  `Cannot compute natural logarithm for value ${input} because it is not a positive number`,
+                );
+              }
               return Math.log(input);
             case "LOG10":
+              if (input <= 0) {
+                console.error(
+                  `Cannot compute base-10 logarithm for value ${input} because it is not a positive number`,
+                );
+                throw new Error(
+                  `Cannot compute base-10 logarithm for value ${input} because it is not a positive number`,
+                );
+              }
               return Math.log10(input);
             case "EXP":
               return Math.exp(input);
@@ -240,8 +275,24 @@ export class EvaluationEngine {
             case "TAN":
               return Math.tan(trigInput);
             case "ASIN":
+              if (trigInput < -1 || trigInput > 1) {
+                console.error(
+                  `Cannot compute arcsine of value ${trigInput}`,
+                );
+                throw new Error(
+                  `Cannot compute arcsine of value ${trigInput}`,
+                );
+              }
               return Math.asin(trigInput);
             case "ACOS":
+              if (trigInput < -1 || trigInput > 1) {
+                console.error(
+                  `Cannot compute arccosine of value ${trigInput}`,
+                );
+                throw new Error(
+                  `Cannot compute arccosine of value ${trigInput}`,
+                );
+              }
               return Math.acos(trigInput);
             case "ATAN":
               return Math.atan(trigInput);
@@ -285,11 +336,27 @@ export class EvaluationEngine {
             processingThread,
           ) as number;
 
+          if (divisor === 0) {
+            console.error(
+              `Division by zero for dividend ${dividend} and divisor ${divisor}`,
+            );
+            throw new Error(
+              `Division by zero for dividend ${dividend} and divisor ${divisor}`,
+            );
+          }
           return dividend % divisor;
         case "math_constrain":
           const value = this.evaluate(field.value, processingThread) as number;
           const low = this.evaluate(field.low, processingThread) as number;
           const high = this.evaluate(field.high, processingThread) as number;
+          if (low > high) {
+            console.error(
+              `Invalid constraint values: low ${low} is greater than high ${high}`,
+            );
+            throw new Error(
+              `Invalid constraint values: low ${low} is greater than high ${high}`,
+            );
+          }
           return Math.min(Math.max(value, low), high);
         case "math_random_int":
           const from = this.evaluate(field.from, processingThread) as number;
@@ -359,6 +426,11 @@ export class EvaluationEngine {
             }
           }
           if (variableValue === undefined) {
+            console.error(
+              `Variable "${variableName}" is not defined in the current context. Available variables: ${Array.from(
+                processingThread.target.variables.keys(),
+              ).join(", ")}`,
+            );
             throw new ReferenceError(
               `Variable "${variableName}" is not defined in the current context. ${JSON.stringify(processingThread.target)}. Available variables: ${Array.from(
                 processingThread.target.variables.keys(),
@@ -389,7 +461,7 @@ export class EvaluationEngine {
         case "text_length": {
           if (!field.value) {
             throw new InvalidFieldError(
-              `Field value is undefined or null in text_length: ${JSON.stringify(
+              `Field value is undefined or null in text length: ${JSON.stringify(
                 field,
               )}`,
             );
@@ -400,7 +472,7 @@ export class EvaluationEngine {
         case "text_count": {
           if (!field.text || !field.subtext) {
             throw new InvalidFieldError(
-              `Field text or substring is undefined or null in text_count: ${JSON.stringify(
+              `Field text or substring is undefined or null in text count: ${JSON.stringify(
                 field,
               )}`,
             );
@@ -410,7 +482,7 @@ export class EvaluationEngine {
           const substringValue = this.evaluate(field.subtext, processingThread);
           if (textValue === null || substringValue === null) {
             throw new InvalidFieldError(
-              "Cannot count occurrences in null text or substring values in text_count",
+              "Cannot count occurrences in null text or substring values in text count",
             );
           }
           const textStr = textValue.toString();
@@ -453,7 +525,7 @@ export class EvaluationEngine {
             );
             if (!targetSprite) {
               throw new Error(
-                `Target sprite not found for screen_distance_to: ${field.target}`,
+                `Target sprite not found for screen distance to: ${field.target}`,
               );
             }
             const dx = processingThread.target.x - targetSprite.x;
@@ -478,7 +550,7 @@ export class EvaluationEngine {
             default:
               throw new InvalidFieldError(
                 //@ts-ignore
-                `Unknown operator: ${field.operator}. ${JSON.stringify(field)}`,
+                `Invalid operator for math round to: ${field.operator}`,
               );
           }
         }
@@ -497,9 +569,7 @@ export class EvaluationEngine {
 
   private evaluateText(field: Text, processingThread: Thread): string {
     if (!field) {
-      throw new InvalidFieldError(
-        `Field is undefined or null: ${JSON.stringify(field)}`,
-      );
+      throw new InvalidFieldError(`Field is undefined or null: ${field}`);
     }
     if (!processingThread) {
       throw new NoProcessingThreadError(
@@ -674,27 +744,30 @@ export class EvaluationEngine {
     field: Value | Condition | Text,
     processingThread: Thread,
   ): number | string | boolean | null {
-    if (!field) {
-      throw new InvalidFieldError(
-        `Field is undefined or null: ${JSON.stringify(field)}`,
-      );
-    }
-    if (typeof field === "object" && "type" in field && field !== null) {
-      if (valueTypes.includes(field.type as ValueType)) {
-        return this.evaluateValue(field as Value, processingThread);
-      } else if (conditionTypes.includes(field.type as ConditionType)) {
-        return this.evaluateCondition(field as Condition, processingThread);
-      } else if (textTypes.includes(field.type as TextType)) {
-        return this.evaluateText(field as Text, processingThread);
+    try {
+      if (!field) {
+        throw new InvalidFieldError(`Field is undefined or null: ${field}`);
+      }
+      if (typeof field === "object" && "type" in field && field !== null) {
+        if (valueTypes.includes(field.type as ValueType)) {
+          return this.evaluateValue(field as Value, processingThread);
+        } else if (conditionTypes.includes(field.type as ConditionType)) {
+          return this.evaluateCondition(field as Condition, processingThread);
+        } else if (textTypes.includes(field.type as TextType)) {
+          return this.evaluateText(field as Text, processingThread);
+        } else {
+          throw new InvalidFieldError(
+            `Unknown field type: ${field.type}. ${JSON.stringify(field)}`,
+          );
+        }
       } else {
         throw new InvalidFieldError(
-          `Unknown field type: ${field.type}. ${JSON.stringify(field)}`,
+          "Invalid field value: " + JSON.stringify(field),
         );
       }
-    } else {
-      throw new InvalidFieldError(
-        "Invalid field value: " + JSON.stringify(field),
-      );
+    } catch (error) {
+      this._runtime.setRuntimeError(error, "Evaluation error");
+      throw error;
     }
   }
 }

@@ -29,6 +29,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Settings2,
   TextAlignStart,
   Trash2,
 } from "lucide-react";
@@ -47,9 +48,13 @@ import {
 export default function ProjectSelector({
   onProjectSelect,
   onLessonSelect,
+  pastelTheme,
+  onPastelThemeChange,
 }: {
   onProjectSelect: (id: number) => void;
   onLessonSelect: (id: number) => void;
+  pastelTheme: boolean;
+  onPastelThemeChange: (enabled: boolean) => void;
 }) {
   const [projects, setProjects] = React.useState<
     { id: number; name: string; description: string }[]
@@ -166,12 +171,25 @@ export default function ProjectSelector({
   return (
     <>
       <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute right-0 top-0 translate-x-full"
+          aria-label="Toggle sensory-safe pastel colors"
+          title="Toggle sensory-safe pastel colors"
+          onClick={() => onPastelThemeChange(!pastelTheme)}
+        >
+          <Settings2 />
+        </Button>
         <h1 className="text-2xl">Welcome to Codely!</h1>
         <h2 className="text-lg">
           Choose an existing project or start a new one to begin. You can also
           open the lessons to learn how to use Codely and build your own
           projects.
         </h2>
+        <p className="mt-2 text-sm font-normal text-muted-foreground">
+          {pastelTheme ? "Sensory-Safe / Pastel colors on" : "Bright colors on"}
+        </p>
       </div>
       <div className="grid mt-32 xs:mt-16 md:mt-0 h-dvh w-full grid-cols-1 pt-48 gap-6 px-6 md:grid-cols-2 md:px-12">
         <div className="flex min-w-0 w-full flex-col items-center gap-4">

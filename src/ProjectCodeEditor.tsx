@@ -21,14 +21,17 @@ import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
-import theme from "./blocks/theme";
+import { getBlocklyTheme } from "./blocks/theme";
+import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 
 function CodeEditor({
   projectId,
   cb,
+  pastelTheme,
 }: {
   projectId: number | null;
   cb: () => void;
+  pastelTheme: boolean;
 }) {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
     null,
@@ -51,7 +54,9 @@ function CodeEditor({
   const [spriteDialogOpen, setSpriteDialogOpen] = React.useState(false);
   const _appDataDir = React.useRef<string | null>(null);
   const codeRunning = React.useRef(false);
+  const runtimeRef = React.useRef<Runtime | null>(null);
   const [codeRunningState, setCodeRunningState] = React.useState(false);
+  const [runtimeError, setRuntimeError] = React.useState<string | null>(null);
   const broadcastMessagesRef = useRef<[string, string][]>([]);
   const spritesRef = useRef(sprites);
 
@@ -204,8 +209,11 @@ function CodeEditor({
     Blockly.Events.disable();
     try {
       setCodeRunningState(true);
+      setRuntimeError(null);
       codeRunning.current = true;
       const runtime = new Runtime(sprites, () => runtime.render());
+      runtimeRef.current = runtime;
+      runtime.setErrorHandler((message) => setRuntimeError(message));
       runtime.start();
       const canvas = document.getElementById(
         "foregroundCanvas",
@@ -275,6 +283,10 @@ function CodeEditor({
           window.removeEventListener("mouseup", mouseUpEvent);
           window.removeEventListener("mousemove", canvasMouseMoveEvent);
           canvas.removeEventListener("click", canvasClickEvent);
+          const runtimeErrorMessage =
+            runtime._lastError ||
+            (error instanceof Error ? error.message : String(error));
+          setRuntimeError(runtimeErrorMessage);
           if (!(error instanceof TypeError)) {
             console.error("Error during runtime tick:", error);
           }
@@ -304,6 +316,9 @@ function CodeEditor({
 
   const stopCode = () => {
     codeRunning.current = false;
+    runtimeRef.current?.clearError();
+    setRuntimeError(null);
+    runtimeRef.current?.stopAll();
   };
 
   function saveCurrentWorkspaceToDatabase() {
@@ -619,7 +634,7 @@ function CodeEditor({
         scaleSpeed: 1.2,
         pinch: true,
       },
-      theme: theme,
+      theme: getBlocklyTheme(pastelTheme),
       renderer: "zelos",
     });
     setWorkspace(ws);
@@ -972,6 +987,11 @@ function CodeEditor({
       </Button>
       <BlocklyVariablePromptDialog />
       <BroadcastPromptDialog />
+      <RuntimeErrorDialog
+        open={runtimeError !== null}
+        message={runtimeError}
+        onClose={() => setRuntimeError(null)}
+      />
     </main>
   );
 }

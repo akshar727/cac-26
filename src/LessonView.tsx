@@ -11,25 +11,28 @@ import { useRef } from "react";
 import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-converter";
 import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { appDataDir, join } from "@tauri-apps/api/path";
-import { mkdir, writeFile } from "@tauri-apps/plugin-fs";
+import { appDataDir } from "@tauri-apps/api/path";
 import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
-import { Camera, Play, Square, Undo2 } from "lucide-react";
+import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./lib/lesson";
-import theme from "./blocks/theme";
+import { getBlocklyTheme } from "./blocks/theme";
+import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
+import confetti from "canvas-confetti";
 
 function LessonView({
   lessonId,
   cb,
+  pastelTheme,
 }: {
   lessonId: number | null;
   cb: () => void;
+  pastelTheme: boolean;
 }) {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
     null,
@@ -61,8 +64,10 @@ function LessonView({
   const codeRunning = React.useRef(false);
   const runtimeRef = React.useRef<Runtime | null>(null);
   const [codeRunningState, setCodeRunningState] = React.useState(false);
+  const [runtimeError, setRuntimeError] = React.useState<string | null>(null);
   const broadcastMessagesRef = useRef<[string, string][]>([]);
   const spritesRef = useRef(sprites);
+  const completionCelebratedRef = useRef(false);
 
   React.useEffect(() => {
     codeRunning.current = codeRunningState;
@@ -83,6 +88,21 @@ function LessonView({
 
   React.useEffect(() => {
     currentStepRef.current = currentStep;
+    if (
+      lesson &&
+      currentStep >= lesson.successMetrics.length &&
+      !completionCelebratedRef.current
+    ) {
+      completionCelebratedRef.current = true;
+      void confetti({
+        particleCount: 90,
+        spread: 55,
+        startVelocity: 28,
+        ticks: 180,
+        scalar: 0.8,
+        origin: { y: 0.65 },
+      });
+    }
     if (workspace && lesson) {
       workspace.updateToolbox(createLessonToolbox(lesson, currentStep));
     }
@@ -91,6 +111,7 @@ function LessonView({
   React.useEffect(() => {
     setCurrentStep(0);
     currentStepRef.current = 0;
+    completionCelebratedRef.current = false;
   }, [lessonId]);
 
   function createLessonToolbox(currentLesson: Lesson, step: number) {
@@ -442,6 +463,7 @@ function LessonView({
     Blockly.Events.disable();
     try {
       setCodeRunningState(true);
+      setRuntimeError(null);
       codeRunning.current = true;
       const workspace = Blockly.getMainWorkspace();
       const currentBlocks = workspace
@@ -455,6 +477,7 @@ function LessonView({
       const runtime = new Runtime(runtimeSprites, () =>
         runtimeRef.current?.render(),
       );
+      runtime.setErrorHandler((message) => setRuntimeError(message));
       runtimeRef.current = runtime;
       runtime.start();
       const canvas = document.getElementById(
@@ -526,6 +549,10 @@ function LessonView({
           window.removeEventListener("mouseup", mouseUpEvent);
           window.removeEventListener("mousemove", canvasMouseMoveEvent);
           canvas.removeEventListener("click", canvasClickEvent);
+          const runtimeErrorMessage =
+            runtime._lastError ||
+            (error instanceof Error ? error.message : String(error));
+          setRuntimeError(runtimeErrorMessage);
           if (!(error instanceof TypeError)) {
             console.error("Error during runtime tick:", error);
           }
@@ -554,43 +581,9 @@ function LessonView({
 
   const stopCode = () => {
     codeRunning.current = false;
+    runtimeRef.current?.clearError();
+    setRuntimeError(null);
     runtimeRef.current?.stopAll();
-  };
-
-  const saveThumbnail = async () => {
-    if (lessonId === null) return;
-
-    const canvas = document.getElementById(
-      "foregroundCanvas",
-    ) as HTMLCanvasElement;
-    const bgCanvas = document.getElementById(
-      "backgroundCanvas",
-    ) as HTMLCanvasElement;
-    if (!canvas || !bgCanvas) return;
-
-    const combinedCanvas = document.createElement("canvas");
-    combinedCanvas.width = canvas.width;
-    combinedCanvas.height = canvas.height;
-    const context = combinedCanvas.getContext("2d");
-    context?.drawImage(bgCanvas, 0, 0);
-    context?.drawImage(canvas, 0, 0);
-
-    try {
-      const appDir = await appDataDir();
-      const lessonDir = await join(appDir, `lesson_${lessonId}`);
-      await mkdir(lessonDir, { recursive: true });
-      const filePath = await join(lessonDir, "thumbnail.png");
-      const base64Data = combinedCanvas.toDataURL("image/png").split(",")[1];
-      const binaryString = atob(base64Data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let index = 0; index < binaryString.length; index++) {
-        bytes[index] = binaryString.charCodeAt(index);
-      }
-      await writeFile(filePath, bytes);
-      console.log(`Lesson thumbnail saved to: ${filePath}`);
-    } catch (error) {
-      console.error("Failed to save lesson thumbnail:", error);
-    }
   };
 
   function saveCurrentWorkspace() {
@@ -911,7 +904,7 @@ function LessonView({
         scaleSpeed: 1.2,
         pinch: true,
       },
-      theme: theme,
+      theme: getBlocklyTheme(pastelTheme),
       renderer: "zelos",
     });
     setWorkspace(ws);
@@ -1164,6 +1157,38 @@ function LessonView({
               </p>
             </div>
           </div>
+          <div className="mt-3 flex items-center gap-3">
+            <div
+              className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"
+              role="progressbar"
+              aria-valuenow={Math.round(
+                (Math.min(currentStep, lesson.successMetrics.length) /
+                  lesson.successMetrics.length) *
+                  100,
+              )}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                className="h-full rounded-full bg-emerald-400 transition-[width] duration-300"
+                style={{
+                  width: `${Math.round(
+                    (Math.min(currentStep, lesson.successMetrics.length) /
+                      lesson.successMetrics.length) *
+                      100,
+                  )}%`,
+                }}
+              />
+            </div>
+            <span className="shrink-0 text-sm font-semibold text-muted-foreground">
+              {Math.round(
+                (Math.min(currentStep, lesson.successMetrics.length) /
+                  lesson.successMetrics.length) *
+                  100,
+              )}
+              % complete
+            </span>
+          </div>
           <p className=" text-sm">
             {lesson.instructions[currentStep] ?? "Lesson complete."}
           </p>
@@ -1324,10 +1349,6 @@ function LessonView({
                   <Square />
                   Stop Code
                 </Button>
-                {/* <Button onClick={saveThumbnail} variant="outline">
-                  <Camera />
-                  Save Thumbnail
-                </Button> */}
               </CardFooter>
             </Card>
           </div>
@@ -1346,6 +1367,11 @@ function LessonView({
       </Button>
       <BlocklyVariablePromptDialog />
       <BroadcastPromptDialog />
+      <RuntimeErrorDialog
+        open={runtimeError !== null}
+        message={runtimeError}
+        onClose={() => setRuntimeError(null)}
+      />
     </main>
   );
 }

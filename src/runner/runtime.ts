@@ -20,6 +20,9 @@ export class Runtime {
   _mouseY: number = 1000;
   _nextCloneId = 1;
   _renderer: Renderer;
+  _lastError: string | null = null;
+  private _errorHandler?: (message: string) => void;
+
   constructor(
     sprites: (DatabaseSprite | DatabaseBackdrop)[],
     onImageLoaded?: () => void,
@@ -191,6 +194,27 @@ export class Runtime {
         this.startScriptForTarget(script, clickedTarget);
       }
     }
+  }
+
+  setErrorHandler(handler: (message: string) => void) {
+    this._errorHandler = handler;
+  }
+
+  clearError() {
+    this._lastError = null;
+  }
+
+  setRuntimeError(error: unknown, context?: string) {
+    const formattedError =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : JSON.stringify(error, null, 2) || "Unknown runtime error";
+
+    const message = context ? `${context}: ${formattedError}` : formattedError;
+    this._lastError = message;
+    this._errorHandler?.(message);
   }
 
   tick(deltaTime: number, currentTime: number) {

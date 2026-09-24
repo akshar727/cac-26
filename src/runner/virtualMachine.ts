@@ -12,7 +12,7 @@ import {
 import { IntermediateBlock } from "../types/intermediateBlock";
 import { EvaluationEngine } from "./evaluationEngine";
 import { Procedure } from "@/types/field";
-import { ImproperVariableError } from "@/types/errors";
+import { ImproperVariableError, InvalidFieldError } from "@/types/errors";
 
 export class VirtualMachine {
   _evaluator: EvaluationEngine;
@@ -22,291 +22,234 @@ export class VirtualMachine {
     this._runtime = r;
   }
   step(thread: Thread, currentTime: number, deltaTime: number) {
-    if (thread.status === "waiting") {
-      if (currentTime < thread.waitUntil) {
-        return;
-      }
-
-      thread.status = "running";
-    }
-    if (
-      (thread.target.sayText || thread.target.thinkText) &&
-      thread.blockedBySprite
-    ) {
-      // Handle say or think text rendering
-      if (currentTime < thread.target.bubbleUntil) {
-        return;
-      }
-      thread.target.clearBubbles();
-      for (const otherThread of this._runtime._threads) {
-        if (otherThread.target.id === thread.target.id) {
-          otherThread.blockedBySprite = false;
+    try {
+      if (thread.status === "waiting") {
+        if (currentTime < thread.waitUntil) {
+          return;
         }
+
+        thread.status = "running";
       }
-      thread.blockedBySprite = false;
-      thread.status = "running"; // Ensure the thread continues running after clearing bubbles
-    }
-
-    const MAX_OPERATIONS = 1000;
-    let operations = 0;
-
-    while (thread.status === "running" && operations < MAX_OPERATIONS) {
-      operations++;
       if (
-        thread.executionStack.length === 0 &&
-        thread.count >= thread.script.blocks.length
+        (thread.target.sayText || thread.target.thinkText) &&
+        thread.blockedBySprite
       ) {
-        thread.status = "done";
-        // console.log(
-        //   "Thread completed for target:",
-        //   thread.target,
-        //   thread,
-        //   "program counter:",
-        //   thread.count,
-        //   "Active threads:",
-        //   this._runtime._threads,
-        // );
-        return;
+        // Handle say or think text rendering
+        if (currentTime < thread.target.bubbleUntil) {
+          return;
+        }
+        thread.target.clearBubbles();
+        for (const otherThread of this._runtime._threads) {
+          if (otherThread.target.id === thread.target.id) {
+            otherThread.blockedBySprite = false;
+          }
+        }
+        thread.blockedBySprite = false;
+        thread.status = "running"; // Ensure the thread continues running after clearing bubbles
       }
-      let foreverRuntimeYield = false;
 
-      let blockToExecute = null;
+      const MAX_OPERATIONS = 1000;
+      let operations = 0;
 
-      if (thread.executionStack.length > 0) {
-        const currentFrame = thread.currentFrame();
-        if (currentFrame) {
-          if (
-            currentFrame.isComplete() &&
-            !(currentFrame instanceof GlideFrame)
-          ) {
-            if (currentFrame instanceof ForFrame) {
-              currentFrame._currentValue += currentFrame._stepValue;
-              console.warn(
-                "Current value after increment:",
-                currentFrame._currentValue,
-              );
-              if (
-                (currentFrame._stepValue > 0 &&
-                  currentFrame._currentValue <= currentFrame._endValue) ||
-                (currentFrame._stepValue < 0 &&
-                  currentFrame._currentValue >= currentFrame._endValue)
-              ) {
-                currentFrame._position = 0;
-                currentFrame._finished = false;
-              } else {
-                console.warn("Current value:", currentFrame._currentValue);
-                thread.popFrame(); // so that the next block is selected
-                if (thread.executionStack.length === 0) {
-                  blockToExecute = null; // so that we dont execute the next block in the body of the RepeatWhile frame after it has completed
-                  thread.count++;
-                } else {
-                  thread.currentFrame()!._position++;
-                  blockToExecute =
-                    thread.currentFrame()?._body[
-                      thread.currentFrame()!._position
-                    ];
-                  while (
-                    blockToExecute === undefined &&
-                    thread.executionStack.length > 0
-                  ) {
-                    thread.popFrame();
-                    console.warn(
-                      "Popped frame from stack, current stack length:",
-                      thread.executionStack.length,
-                    );
-                    if (thread.executionStack.length === 0) {
-                      blockToExecute = null;
-                      thread.count++;
-                      break;
-                    } else {
-                      thread.currentFrame()!._position++;
-                      blockToExecute =
-                        thread.currentFrame()?._body[
-                          thread.currentFrame()!._position
-                        ];
-                    }
-                  }
-                  console.log("Next block to execute:", blockToExecute);
-                }
-                if (thread.target.id === 6) {
-                  // console.log(
-                  //   "Marking For frame complete after reaching end of body for target 6",
-                  // );
-                }
-              }
-            } else {
-              // console.log(
-              //   "Current frame is complete, popping frame from stack for target:",
-              //   thread.target.id,
-              // );
-              thread.popFrame();
-              if (thread.executionStack.length === 0) {
-                thread.count++;
-              }
-              continue;
-            }
-          }
+      while (thread.status === "running" && operations < MAX_OPERATIONS) {
+        operations++;
+        if (
+          thread.executionStack.length === 0 &&
+          thread.count >= thread.script.blocks.length
+        ) {
+          thread.status = "done";
+          return;
+        }
+        let foreverRuntimeYield = false;
 
-          // console.log(
-          //   "Current frame",
-          //   JSON.parse(JSON.stringify(currentFrame)),
-          // );
-          if (currentFrame instanceof GlideFrame) {
-            if (currentFrame._cancelled) {
-              thread.popFrame();
-              if (thread.executionStack.length === 0) {
-                thread.count++;
-              }
-              continue;
-            }
-            currentFrame.updateElapsedTime(currentTime);
-            const position = currentFrame.getPosition();
-            thread.target.x = position.x;
-            thread.target.y = position.y;
-            if (currentFrame.isComplete()) {
-              thread.target.x = currentFrame._targetX;
-              thread.target.y = currentFrame._targetY;
-              thread.popFrame();
-              if (thread.executionStack.length === 0) {
-                thread.count++;
-              }
-            }
-            return;
-          }
-          blockToExecute = currentFrame._body[currentFrame._position];
-          // console.log("Block to execute in current frame:", blockToExecute);
-          currentFrame._position++;
-          if (currentFrame._position === currentFrame._body.length) {
-            if (currentFrame instanceof RepeatFrame) {
-              currentFrame.incrementCount();
-              if (currentFrame.hasMoreIterations()) {
-                currentFrame._position = 0;
-              } else {
-                currentFrame.markComplete();
-                if (thread.target.id === 6) {
-                  // console.log(
-                  //   "Marking Repeat frame complete after reaching end of body for target 6",
-                  // );
-                }
-              }
-            } else if (currentFrame instanceof IfFrame) {
-              currentFrame.markComplete();
-              // console.log(
-              //   "Marking If frame complete after reaching end of body for target:",
-              //   thread.target.id,
-              // );
-            } else if (currentFrame instanceof ProcedureFrameNoReturn) {
-              // console.log(
-              //   "Marking Procedure frame complete after reaching end of body for procedure:",
-              //   currentFrame._procedure.name,
-              // );
-              currentFrame.markComplete();
-            } else if (currentFrame instanceof RepeatWhileUntilFrame) {
-              let conditionResult = this._evaluator.evaluate(
-                currentFrame._condition,
-                thread,
-              ) as boolean;
-              if (
-                (conditionResult && currentFrame._mode === "WHILE") ||
-                (!conditionResult && currentFrame._mode === "UNTIL")
-              ) {
-                currentFrame._position = 0;
-              } else {
-                thread.popFrame(); // so that the next block is selected
-                if (thread.executionStack.length === 0) {
-                  blockToExecute = null; // so that we dont execute the next block in the body of the RepeatWhile frame after it has completed
-                  thread.count++;
-                } else {
-                  thread.currentFrame()!._position++;
-                  blockToExecute =
-                    thread.currentFrame()?._body[
-                      thread.currentFrame()!._position
-                    ];
-                  while (
-                    blockToExecute === undefined &&
-                    thread.executionStack.length > 0
-                  ) {
-                    thread.popFrame();
-                    console.warn(
-                      "Popped frame from stack, current stack length:",
-                      thread.executionStack.length,
-                    );
-                    if (thread.executionStack.length === 0) {
-                      blockToExecute = null;
-                      thread.count++;
-                      break;
-                    } else {
-                      thread.currentFrame()!._position++;
-                      blockToExecute =
-                        thread.currentFrame()?._body[
-                          thread.currentFrame()!._position
-                        ];
-                    }
-                  }
-                }
+        let blockToExecute = null;
+
+        if (thread.executionStack.length > 0) {
+          const currentFrame = thread.currentFrame();
+          if (currentFrame) {
+            if (
+              currentFrame.isComplete() &&
+              !(currentFrame instanceof GlideFrame)
+            ) {
+              if (currentFrame instanceof ForFrame) {
+                currentFrame._currentValue += currentFrame._stepValue;
                 console.warn(
-                  "Marking RepeatWhile frame complete after condition evaluated to false for target:",
-                  thread.target.id,
+                  "Current value after increment:",
+                  currentFrame._currentValue,
                 );
+                if (
+                  (currentFrame._stepValue > 0 &&
+                    currentFrame._currentValue <= currentFrame._endValue) ||
+                  (currentFrame._stepValue < 0 &&
+                    currentFrame._currentValue >= currentFrame._endValue)
+                ) {
+                  currentFrame._position = 0;
+                  currentFrame._finished = false;
+                } else {
+                  console.warn("Current value:", currentFrame._currentValue);
+                  thread.popFrame();
+                  if (thread.executionStack.length === 0) {
+                    blockToExecute = null;
+                    thread.count++;
+                  } else {
+                    thread.currentFrame()!._position++;
+                    blockToExecute =
+                      thread.currentFrame()?._body[
+                        thread.currentFrame()!._position
+                      ];
+                    while (
+                      blockToExecute === undefined &&
+                      thread.executionStack.length > 0
+                    ) {
+                      thread.popFrame();
+                      console.warn(
+                        "Popped frame from stack, current stack length:",
+                        thread.executionStack.length,
+                      );
+                      if (thread.executionStack.length === 0) {
+                        blockToExecute = null;
+                        thread.count++;
+                        break;
+                      } else {
+                        thread.currentFrame()!._position++;
+                        blockToExecute =
+                          thread.currentFrame()?._body[
+                            thread.currentFrame()!._position
+                          ];
+                      }
+                    }
+                    console.log("Next block to execute:", blockToExecute);
+                  }
+                }
+              } else {
+                thread.popFrame();
+                if (thread.executionStack.length === 0) {
+                  thread.count++;
+                }
+                continue;
               }
-            } else if (currentFrame instanceof ForFrame) {
-              thread.currentFrame()?.markComplete();
-              console.warn(
-                "Marking For frame complete after reaching end of body for target:",
-                thread.target.id,
-              );
-            } else if (currentFrame instanceof ForeverFrame) {
-              foreverRuntimeYield = true;
-              thread.currentFrame()!._position = 0; // reset position to the start of the body
+            }
+
+            if (currentFrame instanceof GlideFrame) {
+              if (currentFrame._cancelled) {
+                thread.popFrame();
+                if (thread.executionStack.length === 0) {
+                  thread.count++;
+                }
+                continue;
+              }
+              currentFrame.updateElapsedTime(currentTime);
+              const position = currentFrame.getPosition();
+              thread.target.x = position.x;
+              thread.target.y = position.y;
+              if (currentFrame.isComplete()) {
+                thread.target.x = currentFrame._targetX;
+                thread.target.y = currentFrame._targetY;
+                thread.popFrame();
+                if (thread.executionStack.length === 0) {
+                  thread.count++;
+                }
+              }
+              return;
+            }
+            blockToExecute = currentFrame._body[currentFrame._position];
+            currentFrame._position++;
+            if (currentFrame._position === currentFrame._body.length) {
+              if (currentFrame instanceof RepeatFrame) {
+                currentFrame.incrementCount();
+                if (currentFrame.hasMoreIterations()) {
+                  currentFrame._position = 0;
+                } else {
+                  currentFrame.markComplete();
+                }
+              } else if (currentFrame instanceof IfFrame) {
+                currentFrame.markComplete();
+              } else if (currentFrame instanceof ProcedureFrameNoReturn) {
+                currentFrame.markComplete();
+              } else if (currentFrame instanceof RepeatWhileUntilFrame) {
+                let conditionResult = this._evaluator.evaluate(
+                  currentFrame._condition,
+                  thread,
+                ) as boolean;
+                if (
+                  (conditionResult && currentFrame._mode === "WHILE") ||
+                  (!conditionResult && currentFrame._mode === "UNTIL")
+                ) {
+                  currentFrame._position = 0;
+                } else {
+                  thread.popFrame();
+                  if (thread.executionStack.length === 0) {
+                    blockToExecute = null;
+                    thread.count++;
+                  } else {
+                    thread.currentFrame()!._position++;
+                    blockToExecute =
+                      thread.currentFrame()?._body[
+                        thread.currentFrame()!._position
+                      ];
+                    while (
+                      blockToExecute === undefined &&
+                      thread.executionStack.length > 0
+                    ) {
+                      thread.popFrame();
+                      if (thread.executionStack.length === 0) {
+                        blockToExecute = null;
+                        thread.count++;
+                        break;
+                      } else {
+                        thread.currentFrame()!._position++;
+                        blockToExecute =
+                          thread.currentFrame()?._body[
+                            thread.currentFrame()!._position
+                          ];
+                      }
+                    }
+                  }
+                }
+              } else if (currentFrame instanceof ForFrame) {
+                thread.currentFrame()?.markComplete();
+              } else if (currentFrame instanceof ForeverFrame) {
+                foreverRuntimeYield = true;
+                thread.currentFrame()!._position = 0;
+              }
             }
           }
         }
-      }
 
-      if (
-        thread.executionStack.length === 0 &&
-        (blockToExecute === null || blockToExecute === undefined)
-      ) {
-        blockToExecute = thread.script.blocks[thread.count];
-      }
-      if (!blockToExecute) {
-        thread.status = "done";
-        console.warn(
-          "No block to execute and stack is empty. Marking thread as done for target:",
-          thread.target.id,
-        );
-        console.warn(
-          "Thread state:",
-          thread,
-          "Current count:",
-          thread.count,
-          "Length of blocks:",
-          thread.script.blocks.length,
-          "Stack",
-          thread.executionStack,
-        );
-        return;
-      }
-      if (thread.target.id === 6) {
-        // console.log(
-        //   "Executing block of type",
-        //   blockToExecute.type,
-        //   "for target",
-        //   thread.target,
-        // );
-      }
-      this.executeBlock(blockToExecute, thread, currentTime);
+        if (
+          thread.executionStack.length === 0 &&
+          (blockToExecute === null || blockToExecute === undefined)
+        ) {
+          blockToExecute = thread.script.blocks[thread.count];
+        }
+        if (!blockToExecute) {
+          thread.status = "done";
+          return;
+        }
 
-      if (thread.executionStack.length === 0) {
-        thread.count++;
-        if (thread.target.id === 6) {
-          console.log("Thread count incremented to:", thread.count);
-          //   console.log(thread.target);
+        try {
+          this.executeBlock(blockToExecute, thread, currentTime);
+        } catch (error) {
+          this._runtime.setRuntimeError(
+            error,
+            `VirtualMachine execution error: ${blockToExecute.type}`,
+          );
+          throw error;
+        }
+
+        if (thread.executionStack.length === 0) {
+          thread.count++;
+        }
+        if (foreverRuntimeYield) {
+          return;
         }
       }
-      if (foreverRuntimeYield) {
-        return; // yield to other tasks
-      }
+    } catch (error) {
+      this._runtime.setRuntimeError(
+        error,
+        "An error occured when running your code",
+      );
+      throw error;
     }
   }
 
@@ -853,6 +796,13 @@ export class VirtualMachine {
           blockToExecute.y,
           thread,
         ) as number;
+        //@ts-ignore
+        if (isNaN(parseFloat(targetX)) || isNaN(parseFloat(targetY))) {
+          throw new InvalidFieldError(
+            `Invalid glide target coordinates: (${targetX}, ${targetY}).`,
+          );
+          return;
+        }
 
         const startTime = performance.now();
         const endTime = startTime + duration * 1000;
