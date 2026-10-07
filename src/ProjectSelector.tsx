@@ -16,16 +16,20 @@ import { Button } from "./components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTrigger,
   DialogTitle,
   DialogFooter,
   DialogClose,
 } from "./components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "./components/ui/radio-group";
 import { Label } from "./components/ui/label";
 import { Input } from "./components/ui/input";
+import { Checkbox } from "./components/ui/checkbox";
 import {
   ArrowRight,
+  Check,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -37,6 +41,7 @@ import { ScrollArea } from "./components/ui/scroll-area";
 import { Skeleton } from "./components/ui/skeleton";
 import { Lesson } from "./lib/lesson";
 import { cn } from "cn";
+import { ComfortSettings } from "./lib/settings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,11 +55,15 @@ export default function ProjectSelector({
   onLessonSelect,
   pastelTheme,
   onPastelThemeChange,
+  comfortSettings,
+  onComfortSettingsChange,
 }: {
   onProjectSelect: (id: number) => void;
   onLessonSelect: (id: number) => void;
   pastelTheme: boolean;
   onPastelThemeChange: (enabled: boolean) => void;
+  comfortSettings: ComfortSettings;
+  onComfortSettingsChange: (settings: ComfortSettings) => void;
 }) {
   const [projects, setProjects] = React.useState<
     { id: number; name: string; description: string }[]
@@ -81,6 +90,7 @@ export default function ProjectSelector({
     id: number;
     name: string;
   } | null>(null);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   const refreshProjects = async () => {
     setProjects(await new DatabaseManager().getProjects());
@@ -171,25 +181,127 @@ export default function ProjectSelector({
   return (
     <>
       <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
-        <Button
-          variant="outline"
-          size="icon"
-          className="absolute right-0 top-0 translate-x-full"
-          aria-label="Toggle sensory-safe pastel colors"
-          title="Toggle sensory-safe pastel colors"
-          onClick={() => onPastelThemeChange(!pastelTheme)}
-        >
-          <Settings2 />
-        </Button>
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogTrigger
+            render={
+              <Button
+                variant="outline"
+                className="absolute right-0 top-0 translate-x-full"
+                aria-label="Open Codely settings"
+                title="Open settings"
+              >
+                Settings
+              </Button>
+            }
+          ></DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Codely settings</DialogTitle>
+              {/* <DialogDescription>
+                Adjust the workspace colors to make coding feel more
+                comfortable.
+              </DialogDescription> */}
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Color mode</Label>
+              <RadioGroup
+                value={pastelTheme ? "pastel" : "standard"}
+                onValueChange={(value) =>
+                  onPastelThemeChange(value === "pastel")
+                }
+                aria-label="Color mode"
+              >
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3 hover:bg-muted">
+                  <RadioGroupItem value="standard" id="standard-colors" />
+                  <span>
+                    <span className="block font-medium">Standard colors</span>
+                    <span className="block text-sm text-muted-foreground">
+                      Use the regular category palette.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3 hover:bg-muted">
+                  <RadioGroupItem value="pastel" id="pastel-colors" />
+                  <span>
+                    <span className="block font-medium">
+                      Sensory-Safe / Pastel
+                    </span>
+                    <span className="block text-sm text-muted-foreground">
+                      Use softer, lower-saturation colors with comfortable dark
+                      text.
+                    </span>
+                  </span>
+                </label>
+              </RadioGroup>
+              <div className="space-y-2 border-t pt-3">
+                <Label className="text-sm font-semibold">Other settings</Label>
+                {[
+                  [
+                    "Large text",
+                    comfortSettings.textSize === "large",
+                    (value: boolean) =>
+                      onComfortSettingsChange({
+                        ...comfortSettings,
+                        textSize: value ? "large" : "normal",
+                      }),
+                  ],
+                  [
+                    "Atkinson Hyperlegible font",
+                    comfortSettings.hyperlegible,
+                    (value: boolean) =>
+                      onComfortSettingsChange({
+                        ...comfortSettings,
+                        hyperlegible: value,
+                      }),
+                  ],
+                  [
+                    "Calm mode",
+                    comfortSettings.calmMode,
+                    (value: boolean) =>
+                      onComfortSettingsChange({
+                        ...comfortSettings,
+                        calmMode: value,
+                      }),
+                  ],
+                ].map(([label, checked, onChange]) => (
+                  <label
+                    key={label as string}
+                    className="flex items-start justify-between gap-3 rounded-md border p-3"
+                  >
+                    <span>
+                      <span className="block">{label as string}</span>
+                      {label === "Calm mode" && (
+                        <span className="mt-1 block max-w-xs text-sm font-normal text-muted-foreground">
+                          Uses a gentle checkmark instead of confetti when a
+                          lesson is complete.
+                        </span>
+                      )}
+                    </span>
+                    <Checkbox
+                      checked={checked as boolean}
+                      onCheckedChange={(checkedValue) =>
+                        (onChange as (value: boolean) => void)(
+                          checkedValue === true,
+                        )
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>
+                Done
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <h1 className="text-2xl">Welcome to Codely!</h1>
         <h2 className="text-lg">
           Choose an existing project or start a new one to begin. You can also
           open the lessons to learn how to use Codely and build your own
           projects.
         </h2>
-        <p className="mt-2 text-sm font-normal text-muted-foreground">
-          {pastelTheme ? "Sensory-Safe / Pastel colors on" : "Bright colors on"}
-        </p>
       </div>
       <div className="grid mt-32 xs:mt-16 md:mt-0 h-dvh w-full grid-cols-1 pt-48 gap-6 px-6 md:grid-cols-2 md:px-12">
         <div className="flex min-w-0 w-full flex-col items-center gap-4">
@@ -276,7 +388,7 @@ export default function ProjectSelector({
           <Dialog>
             <DialogTrigger
               render={
-                <Button className="w-fit" size="lg">
+                <Button className="w-fit" variant="secondary" size="lg">
                   <Plus />
                   Create New Project
                 </Button>
@@ -364,7 +476,19 @@ export default function ProjectSelector({
                     )}
                   </div>
                   <CardHeader>
-                    <CardTitle>{project.name}</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      {Number(
+                        window.localStorage.getItem(
+                          `codely-lesson-progress-${project.id}`,
+                        ) ?? 0,
+                      ) >= project.successMetrics.length && (
+                        <Check
+                          className="size-5 text-emerald-600"
+                          aria-label="Completed"
+                        />
+                      )}
+                      {project.name}
+                    </CardTitle>
                     <CardDescription>
                       {project.description || "No description"}
                     </CardDescription>
@@ -384,10 +508,7 @@ export default function ProjectSelector({
                     </span>
                   </CardContent>
                   <CardFooter className="flex justify-center bg-white">
-                    <Button
-                      variant="secondary"
-                      onClick={() => onLessonSelect(project.id)}
-                    >
+                    <Button onClick={() => onLessonSelect(project.id)}>
                       Start Lesson
                       <ArrowRight />
                     </Button>

@@ -133,6 +133,7 @@ function SortableCostumeCard({
                 </Button>
               }
             />
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
           </DialogFooter>
         </DialogContent>
       )}

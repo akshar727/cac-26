@@ -6,6 +6,7 @@ export type Lesson = {
   longDescription: string;
   allowedBlocks: string[] | string[][];
   instructions: string[];
+  blocksToHighlight: string[][];
   successMetrics: any[];
   baseState: {
     sprites: {
@@ -73,6 +74,7 @@ function createLesson(
   longDescription: string,
   allowedBlocks: string[] | string[][],
   instructions: string[],
+  blocksToHighlight: string[][],
   difficulty: "beginner" | "intermediate" | "advanced",
   successMetrics: any[],
   sprites: Lesson["baseState"]["sprites"],
@@ -85,6 +87,7 @@ function createLesson(
     longDescription,
     allowedBlocks,
     instructions,
+    blocksToHighlight,
     successMetrics,
     difficulty,
     baseState: lessonBaseState(sprites, broadcasts),
@@ -128,9 +131,10 @@ export const moveLesson = createLesson(
   [
     "Let's make the sprite move when the start button is pressed. Drag a 'When Started' block from the Events category.",
     "Drag a 'change x by' block from the Motion category. Connect it under the 'When Started' block.",
-    'Go to the Screen tab and press "Run Code" to see the sprite move from the center!',
+    'Press "Run Code", or go to the Screen tab and press "Run Code", to see the sprite move from the center!',
     "Great job! The sprite moved. You have completed this lesson.",
   ],
+  [["events_when_started"], ["screen_change_x"], [], []],
   "beginner",
   [
     {
@@ -175,8 +179,16 @@ export const positionLesson = createLesson(
     "Now drag a 'set position x y' block and connect it under the when started block.",
     "Set the x value to 600 and the y value to 200. This will place the sprite in the lower right corner of the screen.",
     "Add a 'rotate ↻' block below the set position block. This will rotate the sprite clockwise by a default of 15 degrees.",
-    `Go to the Screen tab and press Run Code.`,
+    `Press Run Code, or go to the Screen tab and press Run Code.`,
     "Congratulations! You have completed the lesson.",
+  ],
+  [
+    ["events_when_started"],
+    ["screen_set_position"],
+    [],
+    ["screen_rotate_clockwise"],
+    [],
+    [],
   ],
   "beginner",
   [
@@ -242,8 +254,16 @@ export const loopLesson = createLesson(
     "Place a repeat block under the when started block.",
     "Place a change x block inside the repeat block.",
     "Set the repeat number to 5 inside the repeat block. This will make the sprite change its x position 5 times.",
-    "Go to the Screen tab and press Run Code.",
+    "Press Run Code, or go to the Screen tab and press Run Code.",
     "Well done! You have completed the lesson.",
+  ],
+  [
+    ["events_when_started"],
+    ["controls_repeat_ext"],
+    ["screen_change_x"],
+    ["math_number"],
+    [],
+    [],
   ],
   "beginner",
   [
@@ -313,8 +333,17 @@ export const decisionLesson = createLesson(
     "Drag an If block and connect it inside the forever block.",
     "Put a touching question into the If block. Set it to check if the sprite is touching the mouse pointer.",
     "Put a glide to mouse-pointer block inside the If block. Change the mouse-pointer to 'random position'.",
-    "Go to the Screen tab and press Run Code.",
+    "Press Run Code, or go to the Screen tab and press Run Code.",
     "Great job! You have completed the lesson. Hover the mouse pointer over the sprite to see it glide to a random position.",
+  ],
+  [
+    ["events_when_started"],
+    ["controls_forever"],
+    ["controls_if"],
+    ["logic_touching"],
+    ["screen_glide_preset"],
+    [],
+    [],
   ],
   "intermediate",
   [
@@ -406,9 +435,10 @@ export const textLesson = createLesson(
     "Drag a When Started block.",
     "Connect a say block under the When Started block. Type anything you want in the say block.",
     "Connect a think block after the say block. Type anything you want in the think block.",
-    "Go to the Screen tab and press Run Code to see both bubbles show one after another.",
+    "Press Run Code, or go to the Screen tab and press Run Code, to see both bubbles show one after another.",
     "Congratulations! You have completed the lesson.",
   ],
+  [["events_when_started"], ["screen_say"], ["screen_think"], [], []],
   "beginner",
   [
     {
@@ -454,8 +484,17 @@ export const costumeLesson = createLesson(
     "Place a next costume block inside the Repeat block.",
     "Place a wait block inside the Repeat block after the next costume block. Set the wait time to 1 second.",
     "Set the Repeat block to 2 times.",
-    "Go to the Screen tab and press Run Code to see the costume change twice.",
+    "Press Run Code, or go to the Screen tab and press Run Code, to see the costume change twice.",
     "Congratulations! You have completed the lesson.",
+  ],
+  [
+    ["events_when_started"],
+    ["controls_repeat_ext"],
+    ["screen_next_costume"],
+    ["logic_wait"],
+    ["math_number"],
+    [],
+    [],
   ],
   "intermediate",
   [
@@ -535,8 +574,16 @@ export const appearanceLesson = createLesson(
     "Connect a hide block under the When Started block.",
     "Add a wait block after the hide block. Then, connect a show block after the hide block.",
     "Connect a set size block after the show block. Set the size to 50%.",
-    "Go to the Screen tab and press Run Code to watch the sprite change.",
+    "Press Run Code, or go to the Screen tab and press Run Code, to watch the sprite change.",
     "Congratulations! You have completed the lesson. Try adjusting the size to see how the sprite changes.",
+  ],
+  [
+    ["events_when_started"],
+    ["screen_hide"],
+    ["logic_wait", "screen_show"],
+    ["screen_set_size"],
+    [],
+    [],
   ],
   "intermediate",
   [
@@ -614,8 +661,17 @@ export const localVariableLesson = createLesson(
     "Connect a set score block under the When Started block. Set score to 50.",
     "Connect a change score by block after the set score block. Set the change amount to 55.",
     "Connect a say block after the change score block. Put score in the say block.",
-    "Go to the Screen tab and press Run Code.",
+    "Press Run Code, or go to the Screen tab and press Run Code.",
     "Congratulations! You have completed the lesson. Sprites can only read and use their own local variables.",
+  ],
+  [
+    [],
+    ["events_when_started"],
+    ["variables_set"],
+    ["math_change"],
+    ["screen_say", "variables_get"],
+    [],
+    [],
   ],
   "intermediate",
   [
@@ -737,8 +793,15 @@ export const globalVariableLesson = createLesson(
     "Select the Monster sprite and create a variable named xpos. Mark the xpos variable global (all sprites).",
     "On the Monster sprite, drag a When Started block into the workspace. Drag a set xpos block under the When Started block. Set xpos to 500.",
     "On the Friend sprite, drag a When Started block into the workspace. Drag a set position y block under the When Started block. Set y to xpos.",
-    "Go to the Screen tab and press Run Code to see that both sprites can read and use the xpos variable.",
+    "Press Run Code, or go to the Screen tab and press Run Code, to see that both sprites can read and use the xpos variable.",
     "Congratulations! You have completed the lesson. Global variables can be read and used by all sprites, while local variables can only be read and used by the sprite that created them.",
+  ],
+  [
+    [],
+    ["events_when_started", "variables_set"],
+    ["events_when_started", "screen_set_y", "variables_get"],
+    [],
+    [],
   ],
   "advanced",
   [
@@ -806,8 +869,17 @@ export const broadcastLesson = createLesson(
     "Connect a broadcast block under the When Started block. Set it to broadcast start dance.",
     "On the Friend sprite, add a When I Receive block. Set it to start dance.",
     "Connect a say block under the When I Receive block.",
-    "Go to the Screen tab and press Run Code.",
+    "Press Run Code, or go to the Screen tab and press Run Code.",
     "Congratulations! You have completed the lesson. Sprites can communicate with each other using broadcasts and coordinate actions.",
+  ],
+  [
+    ["events_broadcast"],
+    ["events_when_started"],
+    ["events_broadcast"],
+    ["events_when_broadcast_received"],
+    ["screen_say"],
+    [],
+    [],
   ],
   "advanced",
   [

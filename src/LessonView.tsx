@@ -21,18 +21,42 @@ import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./lib/lesson";
-import { getBlocklyTheme } from "./blocks/theme";
+import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import confetti from "canvas-confetti";
+import { Check } from "lucide-react";
+import { ComfortSettings } from "./lib/settings";
+import { blockHelp } from "./blocks/blockHelp";
+import {
+  diagnoseLessonStep,
+  hintFor,
+  pressHint,
+  resetHints,
+  type Problem,
+  type HintState,
+} from "./lib/hints";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./components/ui/dialog";
 
 function LessonView({
   lessonId,
   cb,
   pastelTheme,
+  comfortSettings,
+  onNextLesson,
 }: {
   lessonId: number | null;
   cb: () => void;
   pastelTheme: boolean;
+  comfortSettings: ComfortSettings;
+  onNextLesson: (lessonId: number) => void;
 }) {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
     null,
@@ -68,6 +92,18 @@ function LessonView({
   const broadcastMessagesRef = useRef<[string, string][]>([]);
   const spritesRef = useRef(sprites);
   const completionCelebratedRef = useRef(false);
+  const [lessonStepHint, setLessonStepHint] = React.useState<string | null>(
+    null,
+  );
+  const [stepsOpen, setStepsOpen] = React.useState(false);
+  const [hintOpen, setHintOpen] = React.useState(false);
+  const [autoFixCommand, setAutoFixCommand] = React.useState<{
+    action: string;
+    blockType: string;
+  } | null>(null);
+  const autoFixProblemRef = React.useRef<Problem | null>(null);
+  const [hintState, setHintState] = React.useState<HintState>(resetHints(null));
+  const [activeTab, setActiveTab] = React.useState("blocks");
 
   React.useEffect(() => {
     codeRunning.current = codeRunningState;
@@ -88,31 +124,96 @@ function LessonView({
 
   React.useEffect(() => {
     currentStepRef.current = currentStep;
+    setHintState(resetHints(null));
     if (
       lesson &&
       currentStep >= lesson.successMetrics.length &&
       !completionCelebratedRef.current
     ) {
       completionCelebratedRef.current = true;
-      void confetti({
-        particleCount: 90,
-        spread: 55,
-        startVelocity: 28,
-        ticks: 180,
-        scalar: 0.8,
-        origin: { y: 0.65 },
-      });
+      if (!comfortSettings.calmMode) {
+        void confetti({
+          particleCount: 90,
+          spread: 55,
+          startVelocity: 28,
+          ticks: 180,
+          scalar: 0.8,
+          origin: { y: 0.65 },
+        });
+      }
     }
     if (workspace && lesson) {
       workspace.updateToolbox(createLessonToolbox(lesson, currentStep));
+      highlightWorkspaceBlocks(workspace, []);
+      window.requestAnimationFrame(() => {
+        highlightTargetBlock(workspace, lesson, currentStep);
+      });
     }
-  }, [currentStep, lesson, workspace]);
+  }, [currentStep, lesson, workspace, comfortSettings.calmMode]);
 
   React.useEffect(() => {
     setCurrentStep(0);
     currentStepRef.current = 0;
     completionCelebratedRef.current = false;
+    setLessonStepHint(null);
   }, [lessonId]);
+
+  function highlightTargetBlock(
+    currentWorkspace: Blockly.WorkspaceSvg,
+    currentLesson: Lesson,
+    step: number,
+    attempt = 0,
+    toolboxTypesOverride?: string[],
+  ) {
+    const flyoutWorkspaces = [
+      currentWorkspace.getFlyout()?.getWorkspace(),
+      currentWorkspace.getToolbox()?.getFlyout()?.getWorkspace(),
+    ].filter(
+      (
+        flyoutWorkspace,
+        index,
+        workspaces,
+      ): flyoutWorkspace is Blockly.WorkspaceSvg =>
+        Boolean(flyoutWorkspace) &&
+        workspaces.indexOf(flyoutWorkspace) === index,
+    );
+    if (flyoutWorkspaces.length === 0) return;
+    const targetTypes =
+      toolboxTypesOverride ?? currentLesson.blocksToHighlight[step] ?? [];
+    let targetFound = false;
+    for (const flyoutWorkspace of flyoutWorkspaces) {
+      for (const block of flyoutWorkspace.getAllBlocks(false)) {
+        const isStandalone = block.getParent() === null && !block.isShadow();
+        const isTarget = isStandalone && targetTypes.includes(block.type);
+        targetFound ||= isTarget;
+        block
+          .getSvgRoot()
+          .classList.toggle("codely-lesson-target-block", isTarget);
+      }
+    }
+    if (!targetFound && targetTypes.length > 0 && attempt < 10) {
+      window.requestAnimationFrame(() =>
+        highlightTargetBlock(
+          currentWorkspace,
+          currentLesson,
+          step,
+          attempt + 1,
+          toolboxTypesOverride,
+        ),
+      );
+    }
+  }
+
+  function highlightWorkspaceBlocks(
+    currentWorkspace: Blockly.WorkspaceSvg,
+    ids: string[],
+  ) {
+    for (const block of currentWorkspace.getAllBlocks(false)) {
+      block
+        .getSvgRoot()
+        .classList.toggle("codely-lesson-target-block", ids.includes(block.id));
+    }
+  }
 
   function createLessonToolbox(currentLesson: Lesson, step: number) {
     const allowedTypes = new Set(
@@ -299,7 +400,6 @@ function LessonView({
               block.type === "variables_get" ||
               block.type === "math_change")
           ) {
-            // Do nothing, this is a special case
             val = lessonSpritesRef.current
               .find((sprite) =>
                 sprite.variables_map.some((variable) => variable.id === val),
@@ -363,6 +463,7 @@ function LessonView({
     if (nextStep !== currentStepRef.current) {
       currentStepRef.current = nextStep;
       setCurrentStep(nextStep);
+      if (nextStep > completedCount) setLessonStepHint(null);
     }
   }
 
@@ -585,6 +686,170 @@ function LessonView({
     setRuntimeError(null);
     runtimeRef.current?.stopAll();
   };
+
+  function runFromCodeTab() {
+    setActiveTab("screen");
+    window.setTimeout(() => runCode(), 100);
+  }
+
+  function requestHint() {
+    const currentLesson = lessonRef.current;
+    if (!workspace || !currentLesson) return;
+
+    const blocks =
+      Blockly.serialization.workspaces.save(workspace).blocks?.blocks ?? [];
+    const problem = diagnoseLessonStep(
+      currentLesson,
+      currentStepRef.current,
+      blocks,
+      lessonSpritesRef.current,
+    );
+
+    if (!problem) {
+      setLessonStepHint(
+        currentLesson.instructions[currentStepRef.current] ?? null,
+      );
+      return;
+    }
+
+    const next = pressHint(hintState, problem);
+    setHintState(next);
+    if (next.level === 0) return;
+
+    const hint = hintFor(problem, next.level, blockHelp);
+    setLessonStepHint(hint.text);
+    if (hint.autoFix) {
+      setAutoFixCommand(hint.autoFix);
+      autoFixProblemRef.current = problem;
+    } else {
+      setAutoFixCommand(null);
+      autoFixProblemRef.current = null;
+    }
+    highlightWorkspaceBlocks(workspace, hint.highlightBlockIds);
+    highlightTargetBlock(
+      workspace,
+      currentLesson,
+      currentStepRef.current,
+      0,
+      hint.highlightToolboxTypes,
+    );
+  }
+
+  function autoFixProblem() {
+    if (!workspace || !autoFixCommand) return;
+    const currentLesson = lessonRef.current;
+    if (!currentLesson) return;
+    const targetStep = currentStepRef.current;
+
+    const toolboxConfig = createLessonToolbox(currentLesson, targetStep);
+    function findToolboxBlock(contents: any[], blockType: string): any | null {
+      for (const item of contents) {
+        if (item.kind === "block" && item.type === blockType) return item;
+        if (item.kind === "category") {
+          const found = findToolboxBlock(item.contents ?? [], blockType);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function applyAutoFix(
+      problem: Problem,
+      command: { action: string; blockType: string },
+    ): boolean {
+      if (!workspace) return false;
+      if (command.action === "place") {
+        const blockDefinition = findToolboxBlock(
+          toolboxConfig.contents,
+          command.blockType,
+        );
+        if (!blockDefinition) return false;
+        Blockly.serialization.blocks.append(blockDefinition, workspace, {
+          recordUndo: true,
+        });
+        workspace.cleanUp();
+        return true;
+      }
+      //@ts-ignore
+      if (command.action === "connect" && problem.blockId) {
+        //@ts-ignore
+        const block = workspace.getBlockById(problem.blockId);
+        const previousConnection = block?.previousConnection;
+        if (!block || !previousConnection || previousConnection.isConnected()) {
+          return false;
+        }
+        const blockPosition = block.getRelativeToSurfaceXY();
+        const candidate = workspace
+          .getAllBlocks(false)
+          .filter(
+            (candidateBlock) =>
+              candidateBlock.id !== block.id &&
+              candidateBlock.nextConnection &&
+              !candidateBlock.nextConnection.isConnected(),
+          )
+          .sort((left, right) => {
+            const leftPosition = left.getRelativeToSurfaceXY();
+            const rightPosition = right.getRelativeToSurfaceXY();
+            const leftDistance =
+              Math.abs(leftPosition.x - blockPosition.x) +
+              Math.abs(leftPosition.y - blockPosition.y);
+            const rightDistance =
+              Math.abs(rightPosition.x - blockPosition.x) +
+              Math.abs(rightPosition.y - blockPosition.y);
+            return leftDistance - rightDistance;
+          })[0];
+        if (!candidate?.nextConnection) return false;
+        candidate.nextConnection.connect(previousConnection);
+        return true;
+      }
+
+      if (
+        command.action === "set-field" &&
+        problem.kind === "wrong-value" &&
+        problem.blockId
+      ) {
+        const block = workspace.getBlockById(problem.blockId);
+        const field = block?.getField(problem.field);
+        if (!field) return false;
+        let value = String(problem.expected);
+        if (problem.field === "VAR") {
+          const variable = workspace
+            .getVariableMap()
+            .getAllVariables()
+            .find((candidate) => candidate.getName() === value);
+          value = variable?.getId() ?? value;
+        }
+        field.setValue(value);
+        return true;
+      }
+      return false;
+    }
+
+    Blockly.Events.setGroup("lesson-hint-auto-fix");
+    try {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const blocks =
+          Blockly.serialization.workspaces.save(workspace).blocks?.blocks ?? [];
+        const problem = diagnoseLessonStep(
+          currentLesson,
+          targetStep,
+          blocks,
+          lessonSpritesRef.current,
+        );
+        if (!problem) break;
+        const hint = hintFor(problem, 3, blockHelp);
+        if (!hint.autoFix || !applyAutoFix(problem, hint.autoFix)) break;
+        reconcileLessonProgress();
+        if (currentStepRef.current !== targetStep) break;
+      }
+    } finally {
+      Blockly.Events.setGroup(false);
+    }
+    setAutoFixCommand(null);
+    autoFixProblemRef.current = null;
+    setHintState(resetHints(null));
+    setLessonStepHint("I made the suggested change. Try the lesson again.");
+  }
 
   function saveCurrentWorkspace() {
     if (!Blockly.getMainWorkspace()) {
@@ -907,6 +1172,9 @@ function LessonView({
       theme: getBlocklyTheme(pastelTheme),
       renderer: "zelos",
     });
+    blocklyDiv.classList.toggle("codely-pastel", pastelTheme);
+    document.body.classList.toggle("codely-pastel", pastelTheme);
+    watchPastelTextContrast(blocklyDiv, pastelTheme);
     setWorkspace(ws);
     ws.addChangeListener((e: Blockly.Events.Abstract) => {
       // UI events are things like scrolling, zooming, etc.
@@ -1149,49 +1417,125 @@ function LessonView({
     <main className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 p-2 text-slate-900 dark:bg-slate-800">
       {lesson && (
         <section className="mb-1 shrink-0 rounded-lg border bg-white p-4 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-semibold">{lesson.name}</h1>
-              <p className=" text-sm text-muted-foreground">
+          <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h1 className="min-w-0 text-xl font-semibold">{lesson.name}</h1>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {currentStep >= lesson.successMetrics.length && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onNextLesson(lesson.id)}
+                    >
+                      Next lesson
+                    </Button>
+                  )}
+                  <DialogTrigger
+                    render={<Button variant="outline" size="sm" />}
+                  >
+                    See all lesson steps
+                  </DialogTrigger>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      unregisterCustomBlockExtensions();
+                      if (lessonId !== null) {
+                        window.localStorage.removeItem(
+                          `codely-lesson-progress-${lessonId}`,
+                        );
+                      }
+                      cb();
+                    }}
+                  >
+                    <Undo2 />
+                    Back to Menu
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
                 {lesson.longDescription}
               </p>
             </div>
-          </div>
-          <div className="mt-3 flex items-center gap-3">
-            <div
-              className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"
-              role="progressbar"
-              aria-valuenow={Math.round(
-                (Math.min(currentStep, lesson.successMetrics.length) /
-                  lesson.successMetrics.length) *
-                  100,
-              )}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
+            <div className="mt-3 flex items-center gap-3">
               <div
-                className="h-full rounded-full bg-emerald-400 transition-[width] duration-300"
-                style={{
-                  width: `${Math.round(
-                    (Math.min(currentStep, lesson.successMetrics.length) /
-                      lesson.successMetrics.length) *
-                      100,
-                  )}%`,
-                }}
-              />
+                className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"
+                role="progressbar"
+                aria-valuenow={Math.round(
+                  (Math.min(currentStep, lesson.successMetrics.length) /
+                    lesson.successMetrics.length) *
+                    100,
+                )}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className="h-full rounded-full bg-emerald-400 transition-[width] duration-300"
+                  style={{
+                    width: `${Math.round(
+                      (Math.min(currentStep, lesson.successMetrics.length) /
+                        lesson.successMetrics.length) *
+                        100,
+                    )}%`,
+                  }}
+                />
+              </div>
             </div>
-            <span className="shrink-0 text-sm font-semibold text-muted-foreground">
-              {Math.round(
-                (Math.min(currentStep, lesson.successMetrics.length) /
-                  lesson.successMetrics.length) *
-                  100,
+            <p
+              className={
+                comfortSettings.textSize === "large" ? "text-lg" : "text-base"
+              }
+            >
+              {lesson.instructions[currentStep] ?? "Lesson complete."}
+            </p>
+            {currentStep >= lesson.successMetrics.length &&
+              comfortSettings.calmMode && (
+                <p
+                  className="mt-2 flex items-center gap-2 font-semibold text-emerald-700"
+                  role="status"
+                >
+                  <Check className="size-5" /> Lesson complete.
+                </p>
               )}
-              % complete
-            </span>
-          </div>
-          <p className=" text-sm">
-            {lesson.instructions[currentStep] ?? "Lesson complete."}
-          </p>
+            <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{lesson.name} steps</DialogTitle>
+                <DialogDescription>
+                  Completed steps are checked. Your current step is bold.
+                </DialogDescription>
+              </DialogHeader>
+              <ol className="space-y-3">
+                {lesson.instructions
+                  .filter((instruction) => !instruction.startsWith("Congrat"))
+                  .map((instruction, index) => (
+                    <li
+                      key={`${lesson.id}-${index}`}
+                      className="flex items-start gap-2"
+                    >
+                      <Check
+                        className={
+                          index < currentStep
+                            ? "mt-0.5 size-4 text-emerald-600"
+                            : "mt-0.5 size-4 text-slate-300"
+                        }
+                      />
+                      <span
+                        className={
+                          index === currentStep
+                            ? "font-semibold"
+                            : index < currentStep
+                              ? "text-muted-foreground line-through"
+                              : ""
+                        }
+                      >
+                        {instruction}
+                      </span>
+                    </li>
+                  ))}
+              </ol>
+            </DialogContent>
+          </Dialog>
           <p className="shrink-0 text-sm font-medium text-muted-foreground">
             Step {Math.min(currentStep + 1, lesson.instructions.length)} of{" "}
             {lesson.instructions.length}
@@ -1199,8 +1543,9 @@ function LessonView({
         </section>
       )}
       <Tabs
-        defaultValue="blocks"
+        value={activeTab}
         onValueChange={(value) => {
+          setActiveTab(value);
           async function change() {
             if (value === "blocks") {
               if (lessonId === null) {
@@ -1252,6 +1597,66 @@ function LessonView({
             <div className="relative flex-5">
               <div className="h-full w-full" id="blocklyDiv"></div>
               <BlocklyHelp workspace={workspace} />
+              <div className="absolute right-3 top-3 z-10 flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={runFromCodeTab}
+                  disabled={codeRunningState === true || !workspace}
+                  className="shadow-sm"
+                >
+                  <Play />
+                  Run Code
+                </Button>
+                <Dialog open={hintOpen} onOpenChange={setHintOpen}>
+                  <DialogTrigger
+                    render={
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="shadow-sm"
+                        disabled={!workspace}
+                      />
+                    }
+                    onClick={() => {
+                      requestHint();
+                      setHintOpen(true);
+                    }}
+                  >
+                    Need a hint?
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Hint</DialogTitle>
+                      <DialogDescription>
+                        Use this suggestion to decide what to try next.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <p
+                      className="rounded-md bg-blue-50 px-3 py-3 text-blue-950"
+                      role="status"
+                    >
+                      {lessonStepHint ??
+                        "There are no hints available for this step."}
+                    </p>
+                    {autoFixCommand && (
+                      <DialogClose
+                        render={
+                          <Button
+                            variant="secondary"
+                            className="mt-3"
+                            onClick={() => {
+                              if (!workspace) return;
+                              autoFixProblem();
+                            }}
+                          >
+                            Auto-fix problem
+                          </Button>
+                        }
+                      ></DialogClose>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
             <SpriteAndBackdropSelector
               sprites={sprites}
@@ -1354,17 +1759,6 @@ function LessonView({
           </div>
         </TabsContent>
       </Tabs>
-      <Button
-        variant="secondary"
-        onClick={() => {
-          unregisterCustomBlockExtensions();
-          cb();
-        }}
-        className="absolute right-4 top-4"
-      >
-        <Undo2 />
-        Back to Menu
-      </Button>
       <BlocklyVariablePromptDialog />
       <BroadcastPromptDialog />
       <RuntimeErrorDialog

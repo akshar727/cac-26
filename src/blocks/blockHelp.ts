@@ -20,23 +20,23 @@ export const blockHelp: Record<string, BlockHelp> = {
   },
   logic_operation: {
     title: "And / Or",
-    description: "Combines two Boolean conditions.",
+    description: "Combines two Boolean (true/false) conditions.",
     simpleExplanation: "AND needs both conditions; OR needs at least one.",
     example: "left arrow key down AND touching edge",
   },
   logic_negate: {
     title: "Not",
-    description: "Reverses a Boolean value.",
+    description: "Reverses a Boolean (true/false) value.",
     simpleExplanation: "True becomes false, and false becomes true.",
   },
   logic_boolean: {
-    title: "Boolean",
-    description: "Provides a true or false value.",
+    title: "True or False",
+    description: "A Boolean is a value that can only be true or false.",
     simpleExplanation: "Use it as a condition or input to another block.",
   },
   logic_null: {
-    title: "Null",
-    description: "Provides an empty value.",
+    title: "Empty Value",
+    description: "Null means that a value is intentionally empty.",
     simpleExplanation:
       "Use it when a block needs an intentionally empty input.",
   },
@@ -126,8 +126,8 @@ export const blockHelp: Record<string, BlockHelp> = {
     simpleExplanation: "Use it when you need unpredictable fractional values.",
   },
   math_atan2: {
-    title: "Atan2",
-    description: "Calculates the angle from two coordinate values.",
+    title: "Direction Angle",
+    description: "Atan2 calculates the angle from two coordinate values.",
     simpleExplanation: "Use it to find the direction toward a point.",
   },
   text: {

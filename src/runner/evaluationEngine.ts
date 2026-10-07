@@ -204,9 +204,7 @@ export class EvaluationEngine {
                 console.error(
                   `Division by zero with values ${left} and ${right}`,
                 );
-                throw new Error(
-                  `Division by zero in ${left} and ${right}`,
-                );
+                throw new Error(`Division by zero in ${left} and ${right}`);
               }
               return left / right;
             case "POWER":
@@ -276,19 +274,13 @@ export class EvaluationEngine {
               return Math.tan(trigInput);
             case "ASIN":
               if (trigInput < -1 || trigInput > 1) {
-                console.error(
-                  `Cannot compute arcsine of value ${trigInput}`,
-                );
-                throw new Error(
-                  `Cannot compute arcsine of value ${trigInput}`,
-                );
+                console.error(`Cannot compute arcsine of value ${trigInput}`);
+                throw new Error(`Cannot compute arcsine of value ${trigInput}`);
               }
               return Math.asin(trigInput);
             case "ACOS":
               if (trigInput < -1 || trigInput > 1) {
-                console.error(
-                  `Cannot compute arccosine of value ${trigInput}`,
-                );
+                console.error(`Cannot compute arccosine of value ${trigInput}`);
                 throw new Error(
                   `Cannot compute arccosine of value ${trigInput}`,
                 );

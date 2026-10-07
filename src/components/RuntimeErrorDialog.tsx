@@ -1,4 +1,3 @@
-import * as React from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +7,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
+function friendlyMessage(message: string | null): string {
+  if (!message) return "Something unexpected happened. Let's try that again.";
+  if (message.includes("ImproperVariableError")) {
+    return "This block needs a variable. Let's make one and try again.";
+  }
+  if (message.includes("MultipleBackdropError")) {
+    return "There can only be one backdrop. Choose one backdrop and try again.";
+  }
+  return "Something in the code needs a small fix.";
+}
 
 export function RuntimeErrorDialog({
   open,
@@ -22,13 +32,13 @@ export function RuntimeErrorDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Runtime error</DialogTitle>
+          <DialogTitle>Your code stopped</DialogTitle>
           <DialogDescription>
             The code stopped because something went wrong while it was running.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive whitespace-pre-wrap">
-          {message ?? "An unknown error occurred."}
+          {friendlyMessage(message)}
         </div>
         <DialogFooter>
           <Button onClick={onClose}>Close</Button>

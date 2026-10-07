@@ -146,20 +146,28 @@ function BlockHelpContent({ block }: { block: Blockly.Block }) {
   return (
     <div className="space-y-2">
       <h3 className="font-semibold">{help?.title ?? block.type}</h3>
-      <p className="text-sm text-muted-foreground">
-        {help?.description ??
-          "This block does not have a description yet. Please check back later."}
-      </p>
       {help && (
-        <div className="rounded-md bg-muted p-3 text-sm">
-          {help.simpleExplanation}
+        <div className="space-y-2">
+          <div className="rounded-md bg-muted p-3 text-sm">
+            {help.simpleExplanation}
+          </div>
           {help.example && (
-            <>
-              <br />
-              <strong>Example: {help.example}</strong>
-            </>
+            <p className="text-sm">
+              <strong>Example:</strong> {help.example}
+            </p>
           )}
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium">
+              More technical description
+            </summary>
+            <p className="mt-1">{help.description}</p>
+          </details>
         </div>
+      )}
+      {!help && (
+        <p className="text-sm text-muted-foreground">
+          This block does not have a description yet. Try dragging it to see what it does.
+        </p>
       )}
     </div>
   );

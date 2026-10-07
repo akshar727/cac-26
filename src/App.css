@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/instrument-sans";
+@import "@fontsource/atkinson-hyperlegible";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -196,8 +197,74 @@
   }
 }
 
+.font-hyperlegible {
+  font-family: "Atkinson Hyperlegible", sans-serif;
+}
+
+.codely-large-text {
+  font-size: 1.125rem;
+}
+
+.codely-large-text .text-xs {
+  font-size: 0.9375rem !important;
+}
+
+.codely-large-text .text-sm {
+  font-size: 1rem !important;
+}
+
+.codely-large-text .text-base {
+  font-size: 1.125rem !important;
+}
+
 svg[display="none"] {
   display: none;
+}
+
+.codely-lesson-target-block {
+  animation: codely-target-block-pulse 1.4s ease-in-out infinite;
+}
+
+.codely-lesson-target-block .blocklyPath {
+  stroke: var(--color-primary) !important;
+  stroke-width: 4px !important;
+}
+
+@keyframes codely-target-block-pulse {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+body.codely-pastel .blocklySvg .blocklyText,
+body.codely-pastel .blocklySvg .blocklyDropdownText {
+  fill: #263238 !important;
+}
+
+body.codely-pastel .blocklySvg .blocklyShadow > .blocklyPath {
+  stroke: #7c8792 !important;
+  stroke-width: 1px !important;
+}
+
+body.codely-pastel .blocklySvg .blocklyShadow .blocklyText,
+body.codely-pastel .blocklySvg .blocklyShadow .blocklyDropdownText {
+  fill: #263238 !important;
+}
+
+.codely-pastel .blocklyFlyoutLabelText,
+.codely-pastel .blocklyToolboxCategoryLabel {
+  fill: #263238 !important;
+}
+
+body.codely-pastel .blocklyDropDownDiv .blocklyMenuItem,
+body.codely-pastel .blocklyDropDownDiv .blocklyMenuItemContent,
+body.codely-pastel .blocklyWidgetDiv .blocklyMenuItem,
+body.codely-pastel .blocklyWidgetDiv .blocklyMenuItemContent {
+  color: #000 !important;
 }
 @layer base {
   * {

@@ -19,10 +19,26 @@ import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
-import { Play, Square, Undo2 } from "lucide-react";
+import { Play, RotateCcw, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
-import { getBlocklyTheme } from "./blocks/theme";
+import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
+
+type RuntimeSnapshotTarget = {
+  id: number;
+  cloneSourceId: number | null;
+  x: number;
+  y: number;
+  direction: number;
+  size: number;
+  currentCostumeIndex: number;
+  variables: Record<string, number | string | boolean>;
+};
+
+type RuntimeSnapshot = {
+  time: number;
+  targets: RuntimeSnapshotTarget[];
+};
 
 function CodeEditor({
   projectId,
@@ -59,6 +75,13 @@ function CodeEditor({
   const [runtimeError, setRuntimeError] = React.useState<string | null>(null);
   const broadcastMessagesRef = useRef<[string, string][]>([]);
   const spritesRef = useRef(sprites);
+  const runtimeActiveRef = useRef(false);
+  const [runtimeSnapshots, setRuntimeSnapshots] = React.useState<
+    RuntimeSnapshot[]
+  >([]);
+  const [selectedSnapshotIndex, setSelectedSnapshotIndex] = React.useState(0);
+  const [runtimeTick, setRuntimeTick] = React.useState(0);
+  const [activeTab, setActiveTab] = React.useState("blocks");
 
   React.useEffect(() => {
     codeRunning.current = codeRunningState;
@@ -72,6 +95,60 @@ function CodeEditor({
   React.useEffect(() => {
     spritesRef.current = sprites;
   }, [sprites]);
+
+  function snapshotRuntime(runtime: Runtime, time: number): RuntimeSnapshot {
+    return {
+      time,
+      targets: runtime._targets.map((target) => ({
+        id: target.id,
+        cloneSourceId: target.cloneSourceId,
+        x: target.x,
+        y: target.y,
+        direction: target.direction,
+        size: target.size,
+        currentCostumeIndex: target.currentCostumeIndex,
+        variables: Object.fromEntries(target.variables.entries()),
+      })),
+    };
+  }
+
+  function recordRuntimeSnapshot(runtime: Runtime, time: number) {
+    const snapshot = snapshotRuntime(runtime, time);
+    setRuntimeSnapshots((previous) => {
+      const next = [...previous, snapshot].slice(-300);
+      setSelectedSnapshotIndex(next.length - 1);
+      return next;
+    });
+    setRuntimeTick((value) => value + 1);
+  }
+
+  function restoreRuntimeSnapshot(snapshot: RuntimeSnapshot) {
+    const runtime = runtimeRef.current;
+    if (!runtime) return;
+    runtimeActiveRef.current = false;
+    codeRunning.current = false;
+    setCodeRunningState(false);
+    runtime._threads = [];
+    runtime._targets = runtime._targets.filter((target) =>
+      snapshot.targets.some((savedTarget) => savedTarget.id === target.id),
+    );
+    for (const savedTarget of snapshot.targets) {
+      const target = runtime._targets.find(
+        (candidate) => candidate.id === savedTarget.id,
+      );
+      if (!target) continue;
+      target.cloneSourceId = savedTarget.cloneSourceId;
+      target.x = savedTarget.x;
+      target.y = savedTarget.y;
+      target.direction = savedTarget.direction;
+      target.size = savedTarget.size;
+      target.currentCostumeIndex = savedTarget.currentCostumeIndex;
+      target.variables = new Map(Object.entries(savedTarget.variables));
+    }
+    runtime._renderer.blit(runtime._targets);
+    setSelectedSnapshotIndex(runtimeSnapshots.indexOf(snapshot));
+    setRuntimeTick((value) => value + 1);
+  }
 
   // this effect should only add stuff into the workspace, not fetch data.
   React.useEffect(() => {
@@ -161,7 +238,9 @@ function CodeEditor({
       });
     }
     let broadcastMessages =
-      await new DatabaseManager().getProjectBroadcastMessages(projects[0].id);
+      await new DatabaseManager().getProjectBroadcastMessages(
+        projectId || projects[0].id,
+      );
     broadcastMessagesRef.current = broadcastMessages as [string, string][];
   }
 
@@ -210,11 +289,16 @@ function CodeEditor({
     try {
       setCodeRunningState(true);
       setRuntimeError(null);
+      runtimeActiveRef.current = true;
+      setRuntimeSnapshots([]);
+      setSelectedSnapshotIndex(0);
+      setRuntimeTick(0);
       codeRunning.current = true;
       const runtime = new Runtime(sprites, () => runtime.render());
       runtimeRef.current = runtime;
       runtime.setErrorHandler((message) => setRuntimeError(message));
       runtime.start();
+      recordRuntimeSnapshot(runtime, performance.now());
       const canvas = document.getElementById(
         "foregroundCanvas",
       ) as HTMLCanvasElement;
@@ -260,11 +344,12 @@ function CodeEditor({
       let prev = performance.now();
       function step() {
         const now = performance.now();
-        const deltaTime = (now - prev) / 1000; // Convert to seconds
+        const deltaTime = (now - prev) / 1000;
         prev = now;
         let errorCheck = false;
         try {
           runtime.tick(deltaTime, now);
+          recordRuntimeSnapshot(runtime, now);
           if (
             runtime._scripts.filter((r) => r.trigger.type !== "start")
               .length === 0 &&
@@ -272,6 +357,7 @@ function CodeEditor({
               !runtime._threads.some((thread) => thread.status !== "done"))
           ) {
             setCodeRunningState(false);
+            runtimeActiveRef.current = false;
             // auto stop when there are no scripts that rely on events within the program and all threads have finished
           }
         } catch (error) {
@@ -316,10 +402,16 @@ function CodeEditor({
 
   const stopCode = () => {
     codeRunning.current = false;
+    runtimeActiveRef.current = false;
     runtimeRef.current?.clearError();
     setRuntimeError(null);
     runtimeRef.current?.stopAll();
   };
+
+  function runFromCodeTab() {
+    setActiveTab("screen");
+    window.setTimeout(() => runCode(), 100);
+  }
 
   function saveCurrentWorkspaceToDatabase() {
     if (!Blockly.getMainWorkspace()) {
@@ -377,8 +469,9 @@ function CodeEditor({
           ),
         );
       }
+      const projects = await new DatabaseManager().getProjects();
       await new DatabaseManager().updateProjectBroadcastMessages(
-        1,
+        projectId ? projectId : projects[0].id,
         broadcastMessagesRef.current,
       );
     })();
@@ -637,6 +730,9 @@ function CodeEditor({
       theme: getBlocklyTheme(pastelTheme),
       renderer: "zelos",
     });
+    blocklyDiv.classList.toggle("codely-pastel", pastelTheme);
+    document.body.classList.toggle("codely-pastel", pastelTheme);
+    watchPastelTextContrast(blocklyDiv, pastelTheme);
     setWorkspace(ws);
     ws.addChangeListener((e: Blockly.Events.Abstract) => {
       // UI events are things like scrolling, zooming, etc.
@@ -836,9 +932,11 @@ function CodeEditor({
 
   return (
     <main className="p-2 bg-slate-50 dark:bg-slate-800 min-h-dvh h-dvh max-h-dvh text-slate-900">
+      {void runtimeTick}
       <Tabs
-        defaultValue="blocks"
+        value={activeTab}
         onValueChange={(value) => {
+          setActiveTab(value);
           async function change() {
             if (value === "blocks") {
               await importDatabaseData();
@@ -878,6 +976,15 @@ function CodeEditor({
             <div className="relative flex-5">
               <div className="h-full w-full" id="blocklyDiv"></div>
               <BlocklyHelp workspace={workspace} />
+              <Button
+                size="sm"
+                onClick={runFromCodeTab}
+                disabled={codeRunningState === true || !workspace}
+                className="absolute right-3 top-3 z-10 shadow-sm"
+              >
+                <Play />
+                Run Code
+              </Button>
             </div>
             <SpriteAndBackdropSelector
               sprites={sprites}
@@ -934,21 +1041,97 @@ function CodeEditor({
           >
             <Card
               id="outputPane"
-              className="flex flex-col justify-between min-w-2/5 w-full overflow-auto m-4"
+              className="m-2 flex min-h-0 w-full min-w-2/5 flex-col justify-between overflow-hidden"
             >
-              <CardContent className="relative flex w-full flex-col justify-center items-center">
-                <canvas
-                  className="border border-slate-300 rounded-lg"
-                  id="backgroundCanvas"
-                  width="800"
-                  height="600"
-                ></canvas>
-                <canvas
-                  className="absolute border border-slate-300 rounded-lg"
-                  id="foregroundCanvas"
-                  width="800"
-                  height="600"
-                ></canvas>
+              <CardContent className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-auto p-3">
+                <div className="relative aspect-4/3 w-full max-w-200 shrink-0">
+                  <canvas
+                    className="absolute inset-0 h-full w-full rounded-lg border border-slate-300"
+                    id="backgroundCanvas"
+                    width="800"
+                    height="600"
+                  ></canvas>
+                  <canvas
+                    className="absolute inset-0 h-full w-full rounded-lg border border-slate-300"
+                    id="foregroundCanvas"
+                    width="800"
+                    height="600"
+                  ></canvas>
+                </div>
+                <div className="mt-2 grid w-full max-w-200 gap-2 rounded-lg border bg-white p-2 text-sm shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <RotateCcw className="size-4 shrink-0 text-muted-foreground" />
+                      <label
+                        htmlFor="runtime-rewind"
+                        className="shrink-0 font-medium"
+                      >
+                        Timeline
+                      </label>
+                      <input
+                        id="runtime-rewind"
+                        type="range"
+                        min="0"
+                        max={Math.max(0, runtimeSnapshots.length - 1)}
+                        value={Math.min(
+                          selectedSnapshotIndex,
+                          Math.max(0, runtimeSnapshots.length - 1),
+                        )}
+                        onChange={(event) => {
+                          const index = Number(event.target.value);
+                          setSelectedSnapshotIndex(index);
+                          const snapshot = runtimeSnapshots[index];
+                          if (snapshot) restoreRuntimeSnapshot(snapshot);
+                        }}
+                        disabled={runtimeSnapshots.length < 2}
+                        className="min-w-0 flex-1"
+                      />
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {runtimeSnapshots.length} frames
+                      </span>
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold leading-none">Variables</h3>
+                    <div className="mt-1 grid max-h-20 gap-1 overflow-y-auto pr-1 sm:grid-cols-2 md:grid-cols-1">
+                      {(runtimeRef.current?._targets ?? []).map((target) => (
+                        <div
+                          key={target.id}
+                          className="rounded border bg-blue-50 border-blue-100 text-blue-950 px-2 py-1"
+                        >
+                          <div className="font-medium">
+                            {target.isBackdrop
+                              ? "Backdrop"
+                              : `Sprite ${target.id}`}
+                          </div>
+                          {Array.from(target.variables.entries()).length ===
+                          0 ? (
+                            <div className="text-muted-foreground">
+                              No variables
+                            </div>
+                          ) : (
+                            Array.from(target.variables.entries()).map(
+                              ([id, value]) => (
+                                <div
+                                  key={id}
+                                  className="flex justify-between gap-3"
+                                >
+                                  <span>
+                                    {spritesRef.current
+                                      .flatMap((sprite) => sprite.variables_map)
+                                      .find((variable) => variable.id === id)
+                                      ?.name ?? id}
+                                  </span>
+                                  <span>{String(value)}</span>
+                                </div>
+                              ),
+                            )
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
               <CardFooter className="flex justify-center gap-1 items-center">
                 <Button

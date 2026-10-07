@@ -207,7 +207,7 @@ export class Runtime {
   setRuntimeError(error: unknown, context?: string) {
     const formattedError =
       error instanceof Error
-        ? error.message
+        ? `${error.name}: ${error.message}`
         : typeof error === "string"
           ? error
           : JSON.stringify(error, null, 2) || "Unknown runtime error";

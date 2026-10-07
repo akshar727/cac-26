@@ -407,6 +407,7 @@ export default function SpriteAndBackdropSelector({
                 </Button>
               }
             />
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
           </DialogFooter>
         </DialogContent>
       </Dialog>
