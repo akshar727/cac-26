@@ -20,7 +20,7 @@ Codely is designed for young learners who are just starting to learn how to code
 
 ## Assets
 
-The sprite and backdrop artwork used in Codely is created by the Scratch Foundation and is used under CC BY-SA 2.0.
+The sprite and backdrop artwork used in Codely lessons are created by the Scratch Foundation and is used under CC BY-SA 2.0. These assets are available in the `src-tauri/lesson_assets/shared` directory.
 
 ## Development
 
