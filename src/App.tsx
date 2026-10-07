@@ -7,10 +7,10 @@ import ProjectSelector from "./ProjectSelector";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import LessonView from "./LessonView";
 import {
-  ComfortSettings,
-  loadComfortSettings,
+  AccessibilitySettings,
+  loadAccessibilitySettings,
   loadPastelTheme,
-  saveComfortSettings,
+  saveAccessibilitySettings,
   savePastelTheme,
 } from "./lib/settings";
 import { DatabaseManager } from "./lib/database";
@@ -19,16 +19,16 @@ function AppWrapper() {
   const [projectId, setProjectId] = React.useState<number | null>(null);
   const [lessonId, setLessonId] = React.useState<number | null>(null);
   const [pastelTheme, setPastelTheme] = React.useState(loadPastelTheme);
-  const [comfortSettings, setComfortSettings] =
-    React.useState<ComfortSettings>(loadComfortSettings);
+  const [accessibilitySettings, setAccessibilitySettings] =
+    React.useState<AccessibilitySettings>(loadAccessibilitySettings);
 
   const updatePastelTheme = (enabled: boolean) => {
     setPastelTheme(enabled);
     savePastelTheme(enabled);
   };
-  const updateComfortSettings = (settings: ComfortSettings) => {
-    setComfortSettings(settings);
-    saveComfortSettings(settings);
+  const updateAccessibilitySettings = (settings: AccessibilitySettings) => {
+    setAccessibilitySettings(settings);
+    saveAccessibilitySettings(settings);
   };
   const goToNextLesson = async (currentLessonId: number) => {
     const lessons = await new DatabaseManager().getLessons();
@@ -45,7 +45,7 @@ function AppWrapper() {
   return (
     <React.StrictMode>
       <div
-        className={`${comfortSettings.textSize === "large" ? "codely-large-text" : ""} ${comfortSettings.hyperlegible ? "font-hyperlegible" : ""}`}
+        className={`${accessibilitySettings.textSize === "large" ? "codely-large-text" : ""} ${accessibilitySettings.hyperlegible ? "font-hyperlegible" : ""}`}
       >
         <TooltipProvider>
           {projectId === null && lessonId === null && (
@@ -54,8 +54,8 @@ function AppWrapper() {
               onLessonSelect={(id) => setLessonId(id)}
               pastelTheme={pastelTheme}
               onPastelThemeChange={updatePastelTheme}
-              comfortSettings={comfortSettings}
-              onComfortSettingsChange={updateComfortSettings}
+              accessibilitySettings={accessibilitySettings}
+              onAccessibilitySettingsChange={updateAccessibilitySettings}
             />
           )}
           {projectId !== null && (
@@ -70,7 +70,7 @@ function AppWrapper() {
               lessonId={lessonId}
               cb={() => setLessonId(null)}
               pastelTheme={pastelTheme}
-              comfortSettings={comfortSettings}
+              accessibilitySettings={accessibilitySettings}
               onNextLesson={goToNextLesson}
             />
           )}

@@ -22,7 +22,13 @@ import { Label } from "./ui/label";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Skeleton } from "./ui/skeleton";
 import { Copy, MoreHorizontal, PlusIcon, SquarePen, Trash } from "lucide-react";
-import { openImage } from "@/lib/utils";
+import {
+  baseNameOf,
+  fileNameFromPath,
+  openImage,
+  uniqueFileName,
+} from "@/lib/utils";
+import { appLocalDataDir, join } from "@tauri-apps/api/path";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useState } from "react";
 import {
@@ -242,7 +248,9 @@ export default function SpriteAndBackdropSelector({
                         console.log("Selected file:", selectedFile);
                         if (selectedFile) {
                           if (typeof selectedFile === "string") {
-                            setSpriteImageDialogValue("[" + selectedFile + "]");
+                            setSpriteImageDialogValue(
+                              JSON.stringify([selectedFile]),
+                            );
                           } else if (Array.isArray(selectedFile)) {
                             setSpriteImageDialogValue(
                               JSON.stringify(selectedFile),
@@ -265,7 +273,7 @@ export default function SpriteAndBackdropSelector({
                                   await openImage(path);
                                 }}
                               >
-                                {path.split("/").pop()}
+                                {fileNameFromPath(path)}
                               </span>
                               {index <
                               JSON.parse(spriteImageDialogValue).length - 1
@@ -288,8 +296,9 @@ export default function SpriteAndBackdropSelector({
                       if (!spriteImageDialogValue || !spriteNameDialogValue) {
                         return;
                       }
-                      const files = JSON.parse(spriteImageDialogValue);
-                      let fileNames = [];
+                      const files: string[] = JSON.parse(spriteImageDialogValue);
+                      const savedFiles: { originalName: string; storedName: string }[] =
+                        [];
                       const projectFolderName = `proj_${projectId}`;
                       const folderExists = await exists(projectFolderName, {
                         baseDir: BaseDirectory.AppLocalData,
@@ -300,24 +309,32 @@ export default function SpriteAndBackdropSelector({
                           baseDir: BaseDirectory.AppLocalData,
                         });
                       }
+                      let fileIndex = 0;
                       for (const file of files) {
-                        const last = file.split("/").pop();
-                        if (!last) {
+                        const originalName = fileNameFromPath(file);
+                        if (!originalName) {
                           return;
                         }
-                        fileNames.push(last);
-                        await copyFile(file, `proj_${projectId}/${last}`, {
+                        // A new stored name means two pictures with the same
+                        // name can never overwrite each other.
+                        const storedName = uniqueFileName(originalName, fileIndex);
+                        fileIndex++;
+                        savedFiles.push({ originalName, storedName });
+                        await copyFile(file, `proj_${projectId}/${storedName}`, {
                           toPathBaseDir: BaseDirectory.AppLocalData,
                         });
                       }
-                      console.log("Copied files:", fileNames);
-                      let formattedFileNames = fileNames.map((name) => ({
-                        costumeName: name.split(".")[0],
-                        loadablePath: convertFileSrc(
-                          `${appDataDirRef.current}/proj_${projectId}/${name}`,
-                        ),
-                        truePath: `proj_${projectId}/${name}`,
-                      }));
+                      const baseDir =
+                        appDataDirRef.current ?? (await appLocalDataDir());
+                      const formattedFileNames = await Promise.all(
+                        savedFiles.map(async ({ originalName, storedName }) => ({
+                          costumeName: baseNameOf(originalName),
+                          loadablePath: convertFileSrc(
+                            await join(baseDir, `proj_${projectId}`, storedName),
+                          ),
+                          truePath: `proj_${projectId}/${storedName}`,
+                        })),
+                      );
                       console.log("Project ID:", projectId);
                       await new DatabaseManager().addNewSprite(
                         spriteNameDialogValue,

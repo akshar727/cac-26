@@ -40,8 +40,8 @@ import {
 import { ScrollArea } from "./components/ui/scroll-area";
 import { Skeleton } from "./components/ui/skeleton";
 import { Lesson } from "./lib/lesson";
-import { cn } from "cn";
-import { ComfortSettings } from "./lib/settings";
+import { cn } from "@/lib/utils";
+import { AccessibilitySettings, loadLessonProgress } from "./lib/settings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,15 +55,15 @@ export default function ProjectSelector({
   onLessonSelect,
   pastelTheme,
   onPastelThemeChange,
-  comfortSettings,
-  onComfortSettingsChange,
+  accessibilitySettings,
+  onAccessibilitySettingsChange,
 }: {
   onProjectSelect: (id: number) => void;
   onLessonSelect: (id: number) => void;
   pastelTheme: boolean;
   onPastelThemeChange: (enabled: boolean) => void;
-  comfortSettings: ComfortSettings;
-  onComfortSettingsChange: (settings: ComfortSettings) => void;
+  accessibilitySettings: AccessibilitySettings;
+  onAccessibilitySettingsChange: (settings: AccessibilitySettings) => void;
 }) {
   const [projects, setProjects] = React.useState<
     { id: number; name: string; description: string }[]
@@ -238,29 +238,29 @@ export default function ProjectSelector({
                 {[
                   [
                     "Large text",
-                    comfortSettings.textSize === "large",
+                    accessibilitySettings.textSize === "large",
                     (value: boolean) =>
-                      onComfortSettingsChange({
-                        ...comfortSettings,
+                      onAccessibilitySettingsChange({
+                        ...accessibilitySettings,
                         textSize: value ? "large" : "normal",
                       }),
                   ],
                   [
                     "Atkinson Hyperlegible font",
-                    comfortSettings.hyperlegible,
+                    accessibilitySettings.hyperlegible,
                     (value: boolean) =>
-                      onComfortSettingsChange({
-                        ...comfortSettings,
+                      onAccessibilitySettingsChange({
+                        ...accessibilitySettings,
                         hyperlegible: value,
                       }),
                   ],
                   [
-                    "Calm mode",
-                    comfortSettings.calmMode,
+                    "Reduced motion",
+                    accessibilitySettings.reducedMotion,
                     (value: boolean) =>
-                      onComfortSettingsChange({
-                        ...comfortSettings,
-                        calmMode: value,
+                      onAccessibilitySettingsChange({
+                        ...accessibilitySettings,
+                        reducedMotion: value,
                       }),
                   ],
                 ].map(([label, checked, onChange]) => (
@@ -270,12 +270,6 @@ export default function ProjectSelector({
                   >
                     <span>
                       <span className="block">{label as string}</span>
-                      {label === "Calm mode" && (
-                        <span className="mt-1 block max-w-xs text-sm font-normal text-muted-foreground">
-                          Uses a gentle checkmark instead of confetti when a
-                          lesson is complete.
-                        </span>
-                      )}
                     </span>
                     <Checkbox
                       checked={checked as boolean}
@@ -477,13 +471,10 @@ export default function ProjectSelector({
                   </div>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      {Number(
-                        window.localStorage.getItem(
-                          `codely-lesson-progress-${project.id}`,
-                        ) ?? 0,
-                      ) >= project.successMetrics.length && (
+                      {loadLessonProgress(project.id) >=
+                        project.successMetrics.length && (
                         <Check
-                          className="size-5 text-emerald-600"
+                          className="size-5 text-emerald-700"
                           aria-label="Completed"
                         />
                       )}
@@ -497,10 +488,9 @@ export default function ProjectSelector({
                     Difficulty:{" "}
                     <span
                       className={cn("font-bold", {
-                        "text-green-500": project.difficulty === "beginner",
-                        "text-yellow-500":
-                          project.difficulty === "intermediate",
-                        "text-red-500": project.difficulty === "advanced",
+                        "text-green-800": project.difficulty === "beginner",
+                        "text-amber-800": project.difficulty === "intermediate",
+                        "text-red-800": project.difficulty === "advanced",
                       })}
                     >
                       {project.difficulty.charAt(0).toUpperCase() +

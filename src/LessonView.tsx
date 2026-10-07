@@ -25,7 +25,7 @@ import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import confetti from "canvas-confetti";
 import { Check } from "lucide-react";
-import { ComfortSettings } from "./lib/settings";
+import { AccessibilitySettings, saveLessonProgress } from "./lib/settings";
 import { blockHelp } from "./blocks/blockHelp";
 import {
   diagnoseLessonStep,
@@ -49,13 +49,13 @@ function LessonView({
   lessonId,
   cb,
   pastelTheme,
-  comfortSettings,
+  accessibilitySettings,
   onNextLesson,
 }: {
   lessonId: number | null;
   cb: () => void;
   pastelTheme: boolean;
-  comfortSettings: ComfortSettings;
+  accessibilitySettings: AccessibilitySettings;
   onNextLesson: (lessonId: number) => void;
 }) {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
@@ -131,7 +131,7 @@ function LessonView({
       !completionCelebratedRef.current
     ) {
       completionCelebratedRef.current = true;
-      if (!comfortSettings.calmMode) {
+      if (!accessibilitySettings.reducedMotion) {
         void confetti({
           particleCount: 90,
           spread: 55,
@@ -149,7 +149,7 @@ function LessonView({
         highlightTargetBlock(workspace, lesson, currentStep);
       });
     }
-  }, [currentStep, lesson, workspace, comfortSettings.calmMode]);
+  }, [currentStep, lesson, workspace, accessibilitySettings.reducedMotion]);
 
   React.useEffect(() => {
     setCurrentStep(0);
@@ -465,6 +465,7 @@ function LessonView({
       setCurrentStep(nextStep);
       if (nextStep > completedCount) setLessonStepHint(null);
     }
+    saveLessonProgress(lessonId!, nextStep);
   }
 
   function renderBasePositions() {
@@ -626,7 +627,7 @@ function LessonView({
       let prev = performance.now();
       function step() {
         const now = performance.now();
-        const deltaTime = (now - prev) / 1000; // Convert to seconds
+        const deltaTime = (now - prev) / 1000;
         prev = now;
         let errorCheck = false;
         try {
@@ -1442,9 +1443,9 @@ function LessonView({
                     onClick={() => {
                       unregisterCustomBlockExtensions();
                       if (lessonId !== null) {
-                        window.localStorage.removeItem(
-                          `codely-lesson-progress-${lessonId}`,
-                        );
+                        // window.localStorage.removeItem(
+                        //   `codely-lesson-progress-${lessonId}`,
+                        // );
                       }
                       cb();
                     }}
@@ -1484,13 +1485,15 @@ function LessonView({
             </div>
             <p
               className={
-                comfortSettings.textSize === "large" ? "text-lg" : "text-base"
+                accessibilitySettings.textSize === "large"
+                  ? "text-lg"
+                  : "text-base"
               }
             >
               {lesson.instructions[currentStep] ?? "Lesson complete."}
             </p>
             {currentStep >= lesson.successMetrics.length &&
-              comfortSettings.calmMode && (
+              accessibilitySettings.reducedMotion && (
                 <p
                   className="mt-2 flex items-center gap-2 font-semibold text-emerald-700"
                   role="status"

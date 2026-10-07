@@ -1,35 +1,37 @@
 export const PASTEL_THEME_STORAGE_KEY = "codely-pastel-theme";
-export const COMFORT_SETTINGS_STORAGE_KEY = "codely-comfort-settings";
+export const ACCESSIBILITY_SETTINGS_STORAGE_KEY = "codely-accessibility-settings";
 
-export type ComfortSettings = {
+export type AccessibilitySettings = {
   textSize: "normal" | "large";
   hyperlegible: boolean;
-  calmMode: boolean;
+  reducedMotion: boolean;
 };
 
-export const defaultComfortSettings: ComfortSettings = {
+export const defaultAccessibilitySettings: AccessibilitySettings = {
   textSize: "normal",
   hyperlegible: false,
-  calmMode: false,
+  reducedMotion: false,
 };
 
-export function loadComfortSettings(): ComfortSettings {
-  if (typeof window === "undefined") return defaultComfortSettings;
+export function loadAccessibilitySettings(): AccessibilitySettings {
+  if (typeof window === "undefined") return defaultAccessibilitySettings;
   try {
     return {
-      ...defaultComfortSettings,
+      ...defaultAccessibilitySettings,
       ...JSON.parse(
-        window.localStorage.getItem(COMFORT_SETTINGS_STORAGE_KEY) ?? "{}",
+        window.localStorage.getItem(ACCESSIBILITY_SETTINGS_STORAGE_KEY) ?? "{}",
       ),
     };
   } catch {
-    return defaultComfortSettings;
+    return defaultAccessibilitySettings;
   }
 }
 
-export function saveComfortSettings(settings: ComfortSettings): void {
+export function saveAccessibilitySettings(
+  settings: AccessibilitySettings,
+): void {
   window.localStorage.setItem(
-    COMFORT_SETTINGS_STORAGE_KEY,
+    ACCESSIBILITY_SETTINGS_STORAGE_KEY,
     JSON.stringify(settings),
   );
 }
@@ -41,4 +43,25 @@ export function loadPastelTheme(): boolean {
 
 export function savePastelTheme(enabled: boolean): void {
   window.localStorage.setItem(PASTEL_THEME_STORAGE_KEY, String(enabled));
+}
+
+export function loadLessonProgress(lessonId: number): number {
+  try {
+    const value = Number(
+      window.localStorage.getItem(`codely-lesson-progress-${lessonId}`),
+    );
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveLessonProgress(lessonId: number, step: number): void {
+  try {
+    if (step <= loadLessonProgress(lessonId)) return;
+    window.localStorage.setItem(
+      `codely-lesson-progress-${lessonId}`,
+      String(step),
+    );
+  } catch {}
 }

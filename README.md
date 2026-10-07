@@ -18,14 +18,9 @@ Codely contains a wide-number of features to make programming more accessible to
 ## Who it's for
 Codely is designed for young learners who are just starting to learn how to code. It is also designed for students who are neurodivergent or have learning disabilities. Codely contains multiple accessibility features to help students with different learning styles and needs, including a simplified interface, a pastel color palette mode, a large text mode and the Atkinson Hyperlegible font. All of these features are designed to make it easier for students to focus on their projects and learn how to code, while avoiding the complexities of traditional programming languages and environments.
 
-
-
 ## Assets
 
-The sprite and backdrop artwork used by the app was sourced from the Scratch
-website. Scratch and its contributors retain the applicable rights to those
-assets; refer to the original Scratch asset pages and licenses for attribution
-and redistribution requirements.
+The sprite and backdrop artwork used in Codely is created by the Scratch Foundation and is used under CC BY-SA 2.0.
 
 ## Development
 

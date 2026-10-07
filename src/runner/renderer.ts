@@ -1,19 +1,17 @@
 import { Sprite } from "@/runner/sprite";
 
 export class Renderer {
-  maskCache: {
-    id: number;
-    x: number;
-    y: number;
-    rotation: number;
-    size: number;
-    mask: boolean[][];
-  }[] = [];
-
   blit(targets: Sprite[]) {
     const foregroundCanvas = document.getElementById(
       "foregroundCanvas",
-    ) as HTMLCanvasElement;
+    ) as HTMLCanvasElement | null;
+    const background = document.getElementById(
+      "backgroundCanvas",
+    ) as HTMLCanvasElement | null;
+
+    if (!foregroundCanvas || !background) {
+      return;
+    }
 
     const foregroundContext = foregroundCanvas.getContext("2d");
 
@@ -24,12 +22,7 @@ export class Renderer {
       foregroundCanvas.height,
     );
 
-    const background = document.getElementById(
-      "backgroundCanvas",
-    ) as HTMLCanvasElement;
-
     const backgroundContext = background.getContext("2d");
-
     backgroundContext?.clearRect(0, 0, background.width, background.height);
 
     for (const target of targets) {

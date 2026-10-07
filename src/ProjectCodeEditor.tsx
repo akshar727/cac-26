@@ -76,6 +76,10 @@ function CodeEditor({
   const broadcastMessagesRef = useRef<[string, string][]>([]);
   const spritesRef = useRef(sprites);
   const runtimeActiveRef = useRef(false);
+  // Each run gets a new id so an older animation loop can never keep going.
+  const runIdRef = useRef(0);
+  // Removes the keyboard and mouse listeners added by the current run.
+  const runCleanupRef = useRef<(() => void) | null>(null);
   const [runtimeSnapshots, setRuntimeSnapshots] = React.useState<
     RuntimeSnapshot[]
   >([]);
@@ -95,6 +99,17 @@ function CodeEditor({
   React.useEffect(() => {
     spritesRef.current = sprites;
   }, [sprites]);
+
+  // Stop any running code when this editor goes away.
+  React.useEffect(() => {
+    return () => {
+      codeRunning.current = false;
+      runIdRef.current += 1;
+      runCleanupRef.current?.();
+      runCleanupRef.current = null;
+      runtimeRef.current?.stopAll();
+    };
+  }, []);
 
   function snapshotRuntime(runtime: Runtime, time: number): RuntimeSnapshot {
     return {
@@ -285,28 +300,63 @@ function CodeEditor({
 
   const runCode = () => {
     if (!Blockly.getMainWorkspace()) return;
+    // End any earlier run first so loops and listeners never pile up.
+    runIdRef.current += 1;
+    runCleanupRef.current?.();
+    runCleanupRef.current = null;
+    const myRunId = runIdRef.current;
+    const canvas = document.getElementById(
+      "foregroundCanvas",
+    ) as HTMLCanvasElement | null;
+    if (canvas === null || document.getElementById("backgroundCanvas") === null) {
+      codeRunning.current = false;
+      setCodeRunningState(false);
+      setRuntimeError(
+        "The Screen tab is not ready yet. Open the Screen tab and press Run Code again.",
+      );
+      return;
+    }
     Blockly.Events.disable();
     try {
-      setCodeRunningState(true);
       setRuntimeError(null);
-      runtimeActiveRef.current = true;
       setRuntimeSnapshots([]);
       setSelectedSnapshotIndex(0);
       setRuntimeTick(0);
-      codeRunning.current = true;
-      const runtime = new Runtime(sprites, () => runtime.render());
-      runtimeRef.current = runtime;
-      runtime.setErrorHandler((message) => setRuntimeError(message));
-      runtime.start();
-      recordRuntimeSnapshot(runtime, performance.now());
-      const canvas = document.getElementById(
-        "foregroundCanvas",
-      ) as HTMLCanvasElement;
-      if (canvas === null) {
-        console.error("what");
+      let runtime: Runtime;
+      try {
+        runtime = new Runtime(sprites, () => runtime.render());
+        runtimeRef.current = runtime;
+        runtime.setErrorHandler((message) => setRuntimeError(message));
+        runtime.start();
+      } catch (error) {
+        // Always leave the Run button usable after a failed start.
+        codeRunning.current = false;
+        runtimeActiveRef.current = false;
+        setCodeRunningState(false);
+        setRuntimeError(error instanceof Error ? error.message : String(error));
         return;
       }
+      setCodeRunningState(true);
+      runtimeActiveRef.current = true;
+      codeRunning.current = true;
+      recordRuntimeSnapshot(runtime, performance.now());
+      const isTyping = (target: EventTarget | null) =>
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
       const keyDownEvent = (event: KeyboardEvent) => {
+        if (isTyping(event.target)) return;
+        // Keep arrow keys and space from scrolling the page while playing.
+        if (
+          ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(
+            event.key,
+          )
+        ) {
+          event.preventDefault();
+        }
+        // Holding a key down must not start the script again and again.
+        if (event.repeat) return;
         runtime.keyPressed(event.key);
       };
       const keyUpEvent = (event: KeyboardEvent) => {
@@ -341,8 +391,19 @@ function CodeEditor({
       canvas.addEventListener("mousemove", canvasMouseMoveEvent);
       window.addEventListener("mousedown", mouseDownEvent);
       window.addEventListener("mouseup", mouseUpEvent);
+      const cleanup = () => {
+        window.removeEventListener("keydown", keyDownEvent);
+        window.removeEventListener("keyup", keyUpEvent);
+        window.removeEventListener("mousedown", mouseDownEvent);
+        window.removeEventListener("mouseup", mouseUpEvent);
+        canvas.removeEventListener("mousemove", canvasMouseMoveEvent);
+        canvas.removeEventListener("click", canvasClickEvent);
+      };
+      runCleanupRef.current = cleanup;
       let prev = performance.now();
       function step() {
+        // A newer run or a Stop replaced this loop.
+        if (runIdRef.current !== myRunId) return;
         const now = performance.now();
         const deltaTime = (now - prev) / 1000;
         prev = now;
@@ -363,12 +424,8 @@ function CodeEditor({
         } catch (error) {
           setCodeRunningState(false);
           errorCheck = true;
-          window.removeEventListener("keydown", keyDownEvent);
-          window.removeEventListener("keyup", keyUpEvent);
-          window.removeEventListener("mousedown", mouseDownEvent);
-          window.removeEventListener("mouseup", mouseUpEvent);
-          window.removeEventListener("mousemove", canvasMouseMoveEvent);
-          canvas.removeEventListener("click", canvasClickEvent);
+          codeRunning.current = false;
+          cleanup();
           const runtimeErrorMessage =
             runtime._lastError ||
             (error instanceof Error ? error.message : String(error));
@@ -381,13 +438,8 @@ function CodeEditor({
           requestAnimationFrame(step);
         } else {
           setCodeRunningState(false);
-          console.warn("Code stopped, removing event listeners");
-          window.removeEventListener("keydown", keyDownEvent);
-          window.removeEventListener("keyup", keyUpEvent);
-          window.removeEventListener("mousedown", mouseDownEvent);
-          window.removeEventListener("mouseup", mouseUpEvent);
-          window.removeEventListener("mousemove", canvasMouseMoveEvent);
-          canvas.removeEventListener("click", canvasClickEvent);
+          cleanup();
+          if (runCleanupRef.current === cleanup) runCleanupRef.current = null;
           for (const target of runtime._targets) {
             target.clearBubbles();
           }
@@ -403,9 +455,22 @@ function CodeEditor({
   const stopCode = () => {
     codeRunning.current = false;
     runtimeActiveRef.current = false;
-    runtimeRef.current?.clearError();
+    // Invalidate the animation loop and remove this run's listeners now.
+    runIdRef.current += 1;
+    runCleanupRef.current?.();
+    runCleanupRef.current = null;
+    const runtime = runtimeRef.current;
+    runtime?.clearError();
     setRuntimeError(null);
-    runtimeRef.current?.stopAll();
+    runtime?.stopAll();
+    if (runtime) {
+      for (const target of runtime._targets) {
+        target.clearBubbles();
+      }
+      runtime._renderer.blit(runtime._targets);
+    }
+    // Always make the Run button usable again.
+    setCodeRunningState(false);
   };
 
   function runFromCodeTab() {
@@ -936,6 +1001,10 @@ function CodeEditor({
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
+          // Leaving the Screen tab ends the run so it cannot draw to a missing canvas.
+          if (value !== "screen" && codeRunning.current) {
+            stopCode();
+          }
           setActiveTab(value);
           async function change() {
             if (value === "blocks") {
@@ -1160,6 +1229,7 @@ function CodeEditor({
       <Button
         variant="secondary"
         onClick={() => {
+          stopCode();
           unregisterCustomBlockExtensions();
           cb();
         }}

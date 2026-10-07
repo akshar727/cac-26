@@ -327,24 +327,24 @@ export function hintFor(
   const glowBlock = (id?: string) => {
     if (level >= 2 && id) hint.highlightBlockIds = [id];
   };
-  const glowToolbox = (blockType: string) => {
-    if (level >= 2) hint.highlightToolboxTypes = [blockType];
+  const glowToolbox = (blockType: string, override: boolean = false) => {
+    if (level >= 2 || override) hint.highlightToolboxTypes = [blockType];
   };
 
   switch (problem.kind) {
     case "missing-block":
       hint.text =
         level === 1
-          ? "There's a block you need to add."
-          : `Add a ${name(problem.blockType)} block.`;
-      glowToolbox(problem.blockType);
+          ? `You need a ${name(problem.blockType)} block. Look for it in the toolbox.`
+          : `Add a ${name(problem.blockType)} block. It is glowing in the toolbox.`;
+      glowToolbox(problem.blockType, true);
       if (level === 3)
         hint.autoFix = { action: "place", blockType: problem.blockType };
       break;
     case "detached":
       hint.text =
         level === 1
-          ? "You have the right block. Is it snapped in?"
+          ? `Your ${name(problem.blockType)} block is not connected yet. Is it snapped in?`
           : `Snap your ${name(problem.blockType)} block under the block above it.`;
       glowBlock(problem.blockId);
       if (level === 3)
@@ -361,7 +361,7 @@ export function hintFor(
     case "empty-input":
       hint.text =
         level === 1
-          ? "One of the blocks has an empty spot."
+          ? `One of your blocks has an empty spot. It needs a ${name(problem.blockType)} block.`
           : `Put a ${name(problem.blockType)} block into the empty slot.`;
       glowBlock(problem.blockId);
       glowToolbox(problem.blockType);
@@ -369,7 +369,7 @@ export function hintFor(
     case "wrong-value":
       hint.text =
         level === 1
-          ? "Check the numbers or values in your blocks. One of them is not right."
+          ? `Check the ${displayFieldName(problem.field)} in your ${name(problem.blockType)} block. It is not quite right yet.`
           : `Change the ${displayFieldName(problem.field)} to ${displayValue(problem.expected)}. It is currently ${displayValue(problem.found)}.`;
       glowBlock(problem.blockId);
       if (level === 3)
