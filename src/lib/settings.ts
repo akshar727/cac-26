@@ -65,3 +65,16 @@ export function saveLessonProgress(lessonId: number, step: number): void {
     );
   } catch {}
 }
+
+/** Clears the saved progress (and checkmarks) for every lesson. */
+export function resetAllLessonProgress(): void {
+  try {
+    const prefix = "codely-lesson-progress-";
+    const keys: string[] = [];
+    for (let index = 0; index < window.localStorage.length; index++) {
+      const key = window.localStorage.key(index);
+      if (key && key.startsWith(prefix)) keys.push(key);
+    }
+    for (const key of keys) window.localStorage.removeItem(key);
+  } catch {}
+}

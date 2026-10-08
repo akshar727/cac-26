@@ -166,19 +166,45 @@ export const pastelBlockStyles: Record<
   },
 };
 
-export function getBlocklyTheme(pastel: boolean) {
-  if (!pastel) return theme;
-  return Blockly.Theme.defineTheme("codely-pastel", {
-    name: "codely-pastel",
-    base: theme,
+export type BlockAccessbility = {
+  textSize?: "normal" | "large";
+  hyperlegible?: boolean;
+};
+
+export function getBlocklyTheme(pastel: boolean, accessibilitySettings: BlockAccessbility = {}) {
+  const base = pastel
+    ? Blockly.Theme.defineTheme("codely-pastel", {
+        name: "codely-pastel",
+        base: theme,
+        startHats: true,
+        categoryStyles: Object.fromEntries(
+          Object.entries(pastelCategoryColours).map(([name, colour]) => [
+            name,
+            { colour },
+          ]),
+        ),
+        blockStyles: pastelBlockStyles,
+      })
+    : theme;
+
+  const large = accessibilitySettings.textSize === "large";
+  const hyperlegible = accessibilitySettings.hyperlegible === true;
+  if (!large && !hyperlegible) return base;
+
+  // Blocks are drawn by Blockly, so the page's CSS cannot change their text.
+  // The font has to be part of the Blockly theme.
+  const name = `${base.name}${large ? "-large" : ""}${hyperlegible ? "-hyperlegible" : ""}`;
+  return Blockly.Theme.defineTheme(name, {
+    name,
+    base,
     startHats: true,
-    categoryStyles: Object.fromEntries(
-      Object.entries(pastelCategoryColours).map(([name, colour]) => [
-        name,
-        { colour },
-      ]),
-    ),
-    blockStyles: pastelBlockStyles,
+    fontStyle: {
+      family: hyperlegible
+        ? '"Atkinson Hyperlegible", sans-serif'
+        : "Instrument Sans, ui-sans-serif, sans-serif, system-ui",
+      weight: "bold",
+      size: large ? 16 : 12,
+    },
   });
 }
 

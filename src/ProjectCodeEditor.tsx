@@ -22,6 +22,8 @@ import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, RotateCcw, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
+import type { AccessibilitySettings } from "./lib/settings";
+import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 
 type RuntimeSnapshotTarget = {
@@ -44,10 +46,12 @@ function CodeEditor({
   projectId,
   cb,
   pastelTheme,
+  accessibilitySettings,
 }: {
   projectId: number | null;
   cb: () => void;
   pastelTheme: boolean;
+  accessibilitySettings: AccessibilitySettings;
 }) {
   const activeSpriteRef = useRef<(DatabaseSprite | DatabaseBackdrop) | null>(
     null,
@@ -76,9 +80,7 @@ function CodeEditor({
   const broadcastMessagesRef = useRef<[string, string][]>([]);
   const spritesRef = useRef(sprites);
   const runtimeActiveRef = useRef(false);
-  // Each run gets a new id so an older animation loop can never keep going.
   const runIdRef = useRef(0);
-  // Removes the keyboard and mouse listeners added by the current run.
   const runCleanupRef = useRef<(() => void) | null>(null);
   const [runtimeSnapshots, setRuntimeSnapshots] = React.useState<
     RuntimeSnapshot[]
@@ -308,7 +310,10 @@ function CodeEditor({
     const canvas = document.getElementById(
       "foregroundCanvas",
     ) as HTMLCanvasElement | null;
-    if (canvas === null || document.getElementById("backgroundCanvas") === null) {
+    if (
+      canvas === null ||
+      document.getElementById("backgroundCanvas") === null
+    ) {
       codeRunning.current = false;
       setCodeRunningState(false);
       setRuntimeError(
@@ -558,7 +563,7 @@ function CodeEditor({
       loops.loopTypes.add("controls_forever"); //register it as a loop block so break/continue doesnt look grayed out
     }
     try {
-      Blockly.Extensions.register("costume_dropdown_extension", function () {
+      registerExtensions("costume_dropdown_extension", function () {
         //@ts-ignore
         this.getField("COSTUME").setOptions(function () {
           const options = [];
@@ -588,7 +593,7 @@ function CodeEditor({
           return options;
         });
       });
-      Blockly.Extensions.register("broadcast_dropdown_extension", function () {
+      registerExtensions("broadcast_dropdown_extension", function () {
         const field = this.getField("BROADCAST");
 
         if (!field) {
@@ -684,7 +689,7 @@ function CodeEditor({
           return newValue;
         });
       });
-      Blockly.Extensions.register("touching_dropdown_extension", function () {
+      registerExtensions("touching_dropdown_extension", function () {
         //@ts-ignore
         this.getField("TOUCHING").setOptions(function () {
           const options = [
@@ -708,51 +713,45 @@ function CodeEditor({
           return options;
         });
       });
-      Blockly.Extensions.register(
-        "glide_preset_dropdown_extension",
-        function () {
-          //@ts-ignore
-          this.getField("GLIDE_PRESET").setOptions(function () {
-            const options = [
-              ["mouse-pointer", "MOUSE_POINTER"],
-              ["random position", "RANDOM_POSITION"],
-            ];
-            for (const sprite of spritesRef.current) {
-              if (
-                sprite.id === activeSpriteRef.current?.id &&
-                !codeRunning.current
-              ) {
-                // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
-                // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
-                continue;
-              }
-              options.push([sprite.name, sprite.id.toString()]);
+      registerExtensions("glide_preset_dropdown_extension", function () {
+        //@ts-ignore
+        this.getField("GLIDE_PRESET").setOptions(function () {
+          const options = [
+            ["mouse-pointer", "MOUSE_POINTER"],
+            ["random position", "RANDOM_POSITION"],
+          ];
+          for (const sprite of spritesRef.current) {
+            if (
+              sprite.id === activeSpriteRef.current?.id &&
+              !codeRunning.current
+            ) {
+              // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
+              // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
+              continue;
             }
-            return options;
-          });
-        },
-      );
-      Blockly.Extensions.register(
-        "distance_to_dropdown_extension",
-        function () {
-          //@ts-ignore
-          this.getField("DISTANCE_TO").setOptions(function () {
-            const options = [["mouse-pointer", "MOUSE_POINTER"]];
-            for (const sprite of spritesRef.current) {
-              if (
-                sprite.id === activeSpriteRef.current?.id &&
-                !codeRunning.current
-              ) {
-                // we check coderunning because any distance block under any sprite may need the last activated sprite on the screen as a target
-                // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
-                continue;
-              }
-              options.push([sprite.name, sprite.id.toString()]);
+            options.push([sprite.name, sprite.id.toString()]);
+          }
+          return options;
+        });
+      });
+      registerExtensions("distance_to_dropdown_extension", function () {
+        //@ts-ignore
+        this.getField("DISTANCE_TO").setOptions(function () {
+          const options = [["mouse-pointer", "MOUSE_POINTER"]];
+          for (const sprite of spritesRef.current) {
+            if (
+              sprite.id === activeSpriteRef.current?.id &&
+              !codeRunning.current
+            ) {
+              // we check coderunning because any distance block under any sprite may need the last activated sprite on the screen as a target
+              // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
+              continue;
             }
-            return options;
-          });
-        },
-      );
+            options.push([sprite.name, sprite.id.toString()]);
+          }
+          return options;
+        });
+      });
     } catch (error) {
       // console.error("Error registering Blockly extensions:", error);
     }
@@ -792,7 +791,7 @@ function CodeEditor({
         scaleSpeed: 1.2,
         pinch: true,
       },
-      theme: getBlocklyTheme(pastelTheme),
+      theme: getBlocklyTheme(pastelTheme, accessibilitySettings),
       renderer: "zelos",
     });
     blocklyDiv.classList.toggle("codely-pastel", pastelTheme);
@@ -984,15 +983,7 @@ function CodeEditor({
       setWorkspace(null);
     }
 
-    for (const extensionName of [
-      "costume_dropdown_extension",
-      "broadcast_dropdown_extension",
-      "touching_dropdown_extension",
-      "glide_preset_dropdown_extension",
-      "distance_to_dropdown_extension",
-    ]) {
-      Blockly.Extensions.unregister(extensionName);
-    }
+    unregisterExtensions();
   }
 
   return (

@@ -41,7 +41,11 @@ import { ScrollArea } from "./components/ui/scroll-area";
 import { Skeleton } from "./components/ui/skeleton";
 import { Lesson } from "./lib/lesson";
 import { cn } from "@/lib/utils";
-import { AccessibilitySettings, loadLessonProgress } from "./lib/settings";
+import {
+  AccessibilitySettings,
+  loadLessonProgress,
+  resetAllLessonProgress,
+} from "./lib/settings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,6 +95,9 @@ export default function ProjectSelector({
     name: string;
   } | null>(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [confirmReset, setConfirmReset] = React.useState(false);
+  // Checkmarks are read from storage while drawing, so bumping this redraws them.
+  const [, setProgressVersion] = React.useState(0);
 
   const refreshProjects = async () => {
     setProjects(await new DatabaseManager().getProjects());
@@ -181,7 +188,13 @@ export default function ProjectSelector({
   return (
     <>
       <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
-        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <Dialog
+          open={settingsOpen}
+          onOpenChange={(open) => {
+            setSettingsOpen(open);
+            if (!open) setConfirmReset(false);
+          }}
+        >
           <DialogTrigger
             render={
               <Button
@@ -281,6 +294,51 @@ export default function ProjectSelector({
                     />
                   </label>
                 ))}
+              </div>
+              <div className="space-y-2 border-t pt-3">
+                <Label className="text-sm font-semibold">Lesson progress</Label>
+                {confirmReset ? (
+                  <div className="space-y-3 rounded-md border p-3" role="status">
+                    <p className="text-sm">
+                      This removes the checkmarks from all of your lessons. Your
+                      projects will not change. Do you want to start the lessons
+                      over?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          resetAllLessonProgress();
+                          setProgressVersion((version) => version + 1);
+                          setConfirmReset(false);
+                        }}
+                      >
+                        Yes, reset my progress
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmReset(false)}
+                      >
+                        No, keep my progress
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                    <span className="text-sm">
+                      Remove the checkmarks from finished lessons.
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmReset(true)}
+                    >
+                      Reset lesson progress
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>

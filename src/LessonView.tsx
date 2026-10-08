@@ -22,6 +22,7 @@ import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./lib/lesson";
 import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
+import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import confetti from "canvas-confetti";
 import { Check } from "lucide-react";
@@ -125,6 +126,10 @@ function LessonView({
   React.useEffect(() => {
     currentStepRef.current = currentStep;
     setHintState(resetHints(null));
+    // Remember the furthest step so the lesson list can show a checkmark.
+    if (lesson && lessonId !== null) {
+      saveLessonProgress(lessonId, currentStep);
+    }
     if (
       lesson &&
       currentStep >= lesson.successMetrics.length &&
@@ -941,7 +946,7 @@ function LessonView({
       loops.loopTypes.add("controls_forever"); //register it as a loop block so break/continue doesnt look grayed out
     }
     try {
-      Blockly.Extensions.register("costume_dropdown_extension", function () {
+      registerExtensions("costume_dropdown_extension", function () {
         // @ts-ignore
         this.getField("COSTUME").setOptions(function () {
           const options = [];
@@ -971,7 +976,7 @@ function LessonView({
           return options;
         });
       });
-      Blockly.Extensions.register("broadcast_dropdown_extension", function () {
+      registerExtensions("broadcast_dropdown_extension", function () {
         const field = this.getField("BROADCAST");
 
         if (!field) {
@@ -1068,7 +1073,7 @@ function LessonView({
           return newValue;
         });
       });
-      Blockly.Extensions.register("touching_dropdown_extension", function () {
+      registerExtensions("touching_dropdown_extension", function () {
         //@ts-ignore
         this.getField("TOUCHING").setOptions(function () {
           const options = [
@@ -1092,51 +1097,45 @@ function LessonView({
           return options;
         });
       });
-      Blockly.Extensions.register(
-        "glide_preset_dropdown_extension",
-        function () {
-          //@ts-ignore
-          this.getField("GLIDE_PRESET").setOptions(function () {
-            const options = [
-              ["mouse-pointer", "MOUSE_POINTER"],
-              ["random position", "RANDOM_POSITION"],
-            ];
-            for (const sprite of spritesRef.current) {
-              if (
-                sprite.id === activeSpriteRef.current?.id &&
-                !codeRunning.current
-              ) {
-                // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
-                // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
-                continue;
-              }
-              options.push([sprite.name, sprite.id.toString()]);
+      registerExtensions("glide_preset_dropdown_extension", function () {
+        //@ts-ignore
+        this.getField("GLIDE_PRESET").setOptions(function () {
+          const options = [
+            ["mouse-pointer", "MOUSE_POINTER"],
+            ["random position", "RANDOM_POSITION"],
+          ];
+          for (const sprite of spritesRef.current) {
+            if (
+              sprite.id === activeSpriteRef.current?.id &&
+              !codeRunning.current
+            ) {
+              // we check coderunning because any glide block under any sprite may need the last activated sprite on the screen as a target
+              // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
+              continue;
             }
-            return options;
-          });
-        },
-      );
-      Blockly.Extensions.register(
-        "distance_to_dropdown_extension",
-        function () {
-          //@ts-ignore
-          this.getField("DISTANCE_TO").setOptions(function () {
-            const options = [["mouse-pointer", "MOUSE_POINTER"]];
-            for (const sprite of spritesRef.current) {
-              if (
-                sprite.id === activeSpriteRef.current?.id &&
-                !codeRunning.current
-              ) {
-                // we check coderunning because any distance block under any sprite may need the last activated sprite on the screen as a target
-                // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
-                continue;
-              }
-              options.push([sprite.name, sprite.id.toString()]);
+            options.push([sprite.name, sprite.id.toString()]);
+          }
+          return options;
+        });
+      });
+      registerExtensions("distance_to_dropdown_extension", function () {
+        //@ts-ignore
+        this.getField("DISTANCE_TO").setOptions(function () {
+          const options = [["mouse-pointer", "MOUSE_POINTER"]];
+          for (const sprite of spritesRef.current) {
+            if (
+              sprite.id === activeSpriteRef.current?.id &&
+              !codeRunning.current
+            ) {
+              // we check coderunning because any distance block under any sprite may need the last activated sprite on the screen as a target
+              // if we continue and dont add it to the list, there is a runtime error becuase blockly will reset the field
+              continue;
             }
-            return options;
-          });
-        },
-      );
+            options.push([sprite.name, sprite.id.toString()]);
+          }
+          return options;
+        });
+      });
     } catch (error) {
       // it doesn't matter
     }
@@ -1170,7 +1169,7 @@ function LessonView({
         scaleSpeed: 1.2,
         pinch: true,
       },
-      theme: getBlocklyTheme(pastelTheme),
+      theme: getBlocklyTheme(pastelTheme, accessibilitySettings),
       renderer: "zelos",
     });
     blocklyDiv.classList.toggle("codely-pastel", pastelTheme);
@@ -1403,15 +1402,7 @@ function LessonView({
       setWorkspace(null);
     }
 
-    for (const extensionName of [
-      "costume_dropdown_extension",
-      "broadcast_dropdown_extension",
-      "touching_dropdown_extension",
-      "glide_preset_dropdown_extension",
-      "distance_to_dropdown_extension",
-    ]) {
-      Blockly.Extensions.unregister(extensionName);
-    }
+    unregisterExtensions();
   }
 
   return (
@@ -1427,7 +1418,13 @@ function LessonView({
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => onNextLesson(lesson.id)}
+                      onClick={() => {
+                        // Clean up this lesson before the next one opens, so
+                        // dropdowns never carry over.
+                        stopCode();
+                        unregisterCustomBlockExtensions();
+                        onNextLesson(lesson.id);
+                      }}
                     >
                       Next lesson
                     </Button>
@@ -1441,12 +1438,8 @@ function LessonView({
                     variant="secondary"
                     size="sm"
                     onClick={() => {
+                      stopCode();
                       unregisterCustomBlockExtensions();
-                      if (lessonId !== null) {
-                        // window.localStorage.removeItem(
-                        //   `codely-lesson-progress-${lessonId}`,
-                        // );
-                      }
                       cb();
                     }}
                   >

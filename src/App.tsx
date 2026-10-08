@@ -63,6 +63,7 @@ function AppWrapper() {
               projectId={projectId}
               cb={() => setProjectId(null)}
               pastelTheme={pastelTheme}
+              accessibilitySettings={accessibilitySettings}
             />
           )}
           {lessonId !== null && (
