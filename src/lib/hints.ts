@@ -309,10 +309,16 @@ export type Hint = {
   text: string;
   highlightBlockIds: string[];
   highlightToolboxTypes: string[];
-  autoFix?: {
-    action: "place" | "connect" | "set-field" | "fill";
-    blockType: string;
-  };
+  autoFix?:
+    | {
+        action: "place" | "connect" | "set-field" | "fill";
+        blockType: string;
+      }
+    | {
+        action: "replace";
+        blockType: string;
+        blockTypeToReplace: string;
+      };
 };
 
 export function hintFor(

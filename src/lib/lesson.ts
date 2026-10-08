@@ -773,7 +773,7 @@ export const localVariableLesson = createLesson(
 
 export const globalVariableLesson = createLesson(
   8,
-  "Share a Score",
+  "Share a Location",
   "Learn the difference between local and global variables with two sprites.",
   "This lesson will teach you the difference between local and global variables with two sprites. You will use blocks from the Events, Variables, and Motion categories to create and manipulate a global variable that can be accessed by both sprites.",
   [
@@ -790,10 +790,10 @@ export const globalVariableLesson = createLesson(
     "text",
   ],
   [
-    "Select the Monster sprite and create a variable named xpos. Mark the xpos variable global (all sprites).",
-    "On the Monster sprite, drag a When Started block into the workspace. Drag a set xpos block under the When Started block. Set xpos to 500.",
-    "On the Friend sprite, drag a When Started block into the workspace. Drag a set position y block under the When Started block. Set y to xpos.",
-    "Press Run Code, or go to the Screen tab and press Run Code, to see that both sprites can read and use the xpos variable.",
+    "Select the Monster sprite and create a variable named ypos. Mark the ypos variable global (all sprites).",
+    "On the Monster sprite, drag a When Started block into the workspace. Drag a set ypos block under the When Started block. Set ypos to 500.",
+    "On the Friend sprite, drag a When Started block into the workspace. Drag a set position y block under the When Started block. Set y to ypos.",
+    "Press Run Code, or go to the Screen tab and press Run Code, to see that both sprites can read and use the ypos variable.",
     "Congratulations! You have completed the lesson. Global variables can be read and used by all sprites, while local variables can only be read and used by the sprite that created them.",
   ],
   [
@@ -805,14 +805,14 @@ export const globalVariableLesson = createLesson(
   ],
   "advanced",
   [
-    { check: "variable", name: "xpos", spriteId: 1, global: true },
+    { check: "variable", name: "ypos", spriteId: 1, global: true },
     {
       check: "exists",
       blockType: whenStartedBlock,
       next: {
         check: "exists",
         blockType: "variables_set",
-        fields: { VAR: "xpos" },
+        fields: { VAR: "ypos" },
         inputs: {
           VALUE: {
             check: "exists",
@@ -833,7 +833,7 @@ export const globalVariableLesson = createLesson(
           Y: {
             check: "exists",
             blockType: "variables_get",
-            fields: { VAR: "xpos" },
+            fields: { VAR: "ypos" },
           },
         },
       },

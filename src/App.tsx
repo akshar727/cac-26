@@ -1,4 +1,5 @@
 import React from "react";
+import "./App.css";
 import ReactDOM from "react-dom/client";
 import "@blockly/field-colour-hsv-sliders";
 import "@/components/CustomContinuousFlyout";
@@ -6,6 +7,8 @@ import CodeEditor from "./ProjectCodeEditor";
 import ProjectSelector from "./ProjectSelector";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import LessonView from "./LessonView";
+import "@fontsource-variable/instrument-sans";
+import "@fontsource/atkinson-hyperlegible";
 import {
   AccessibilitySettings,
   loadAccessibilitySettings,
@@ -25,6 +28,7 @@ function AppWrapper() {
   const updatePastelTheme = (enabled: boolean) => {
     setPastelTheme(enabled);
     savePastelTheme(enabled);
+    document.body.classList.toggle("codely-pastel", enabled);
   };
   const updateAccessibilitySettings = (settings: AccessibilitySettings) => {
     setAccessibilitySettings(settings);
@@ -42,6 +46,10 @@ function AppWrapper() {
       window.setTimeout(() => setLessonId(nextLesson.id), 0);
     }
   };
+  React.useEffect(() => {
+    document.body.classList.toggle("codely-pastel", pastelTheme);
+  }, [pastelTheme]);
+
   return (
     <React.StrictMode>
       <div

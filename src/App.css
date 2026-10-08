@@ -1,9 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
-@import "@fontsource-variable/instrument-sans";
-@import "@fontsource/atkinson-hyperlegible";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -288,4 +285,106 @@ body.codely-pastel .blocklyWidgetDiv .blocklyMenuItemContent {
   html {
     @apply font-sans;
   }
+}
+
+body.codely-pastel {
+  --background: oklch(0.985 0.015 285);
+  --foreground: oklch(0.25 0.035 285);
+
+  --card: oklch(0.995 0.012 285);
+  --card-foreground: oklch(0.25 0.035 285);
+
+  --popover: oklch(0.995 0.012 285);
+  --popover-foreground: oklch(0.25 0.035 285);
+
+  /* Soft lavender / periwinkle */
+  --primary: #d9d4f3;
+  --primary-foreground: oklch(52.047% 0.0256 299.711);
+
+  /* Lavender */
+  --secondary: oklch(0.93 0.045 290);
+  --secondary-foreground: oklch(0.4 0.09 285);
+
+  /* Very soft gray-lavender */
+  --muted: oklch(0.95 0.018 280);
+  --muted-foreground: oklch(0.52 0.035 280);
+
+  /* Powder blue */
+  --accent: oklch(0.92 0.055 235);
+  --accent-foreground: oklch(0.25 0.055 250);
+
+  /* Soft coral */
+  --destructive: oklch(0.72 0.13 25);
+  --destructive-foreground: oklch(0.25 0.045 25);
+
+  /* Soft lavender-gray */
+  --border: oklch(0.88 0.025 280);
+  --input: oklch(0.88 0.025 280);
+  --ring: oklch(0.72 0.1 280);
+
+  /* Pastel chart palette */
+  --chart-1: oklch(0.75 0.12 275); /* lavender */
+  --chart-2: oklch(0.78 0.11 220); /* blue */
+  --chart-3: oklch(0.8 0.11 160); /* mint */
+  --chart-4: oklch(0.82 0.12 80); /* yellow */
+  --chart-5: oklch(0.78 0.12 345); /* pink */
+
+  /* Slightly tinted sidebar */
+  --sidebar: oklch(0.965 0.025 285);
+  --sidebar-foreground: oklch(0.25 0.035 285);
+
+  --sidebar-primary: oklch(0.72 0.13 280);
+  --sidebar-primary-foreground: oklch(0.22 0.045 280);
+
+  --sidebar-accent: oklch(0.925 0.045 235);
+  --sidebar-accent-foreground: oklch(0.25 0.055 250);
+
+  --sidebar-border: oklch(0.88 0.025 280);
+  --sidebar-ring: oklch(0.72 0.1 280);
+
+  /* Keep typography identical */
+  --font-sans: Instrument Sans, ui-sans-serif, sans-serif, system-ui;
+
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+
+  /* Slightly softer / friendlier corners */
+  --radius: 0.625rem;
+
+  /* Softer shadows */
+  --shadow-x: 0;
+  --shadow-y: 1px;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.07;
+  --shadow-color: oklch(0.35 0.04 280);
+
+  --shadow-2xs: 0 1px 3px 0px oklch(0.35 0.04 280 / 0.035);
+
+  --shadow-xs: 0 1px 3px 0px oklch(0.35 0.04 280 / 0.035);
+
+  --shadow-sm:
+    0 1px 3px 0px oklch(0.35 0.04 280 / 0.07),
+    0 1px 2px -1px oklch(0.35 0.04 280 / 0.06);
+
+  --shadow:
+    0 1px 3px 0px oklch(0.35 0.04 280 / 0.07),
+    0 1px 2px -1px oklch(0.35 0.04 280 / 0.06);
+
+  --shadow-md:
+    0 1px 3px 0px oklch(0.35 0.04 280 / 0.07),
+    0 2px 4px -1px oklch(0.35 0.04 280 / 0.06);
+
+  --shadow-lg:
+    0 1px 3px 0px oklch(0.35 0.04 280 / 0.07),
+    0 4px 6px -1px oklch(0.35 0.04 280 / 0.06);
+
+  --shadow-xl:
+    0 1px 3px 0px oklch(0.35 0.04 280 / 0.07),
+    0 8px 10px -1px oklch(0.35 0.04 280 / 0.06);
+
+  --shadow-2xl: 0 1px 3px 0px oklch(0.35 0.04 280 / 0.12);
 }

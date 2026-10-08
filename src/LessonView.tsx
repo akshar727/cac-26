@@ -1,4 +1,3 @@
-import "./App.css";
 import * as React from "react";
 import * as Blockly from "blockly";
 import { blocks } from "./blocks/blocks";
@@ -21,10 +20,7 @@ import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./lib/lesson";
-import {
-  getBlocklyTheme,
-  watchPastelTextContrast,
-} from "./blocks/theme";
+import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import confetti from "canvas-confetti";
@@ -837,11 +833,35 @@ function LessonView({
       command: { action: string; blockType: string },
     ): boolean {
       if (!workspace) return false;
+      const currentMetric = currentLesson!.successMetrics[targetStep];
+      if (
+        activeSpriteRef.current &&
+        currentMetric.spriteId !== undefined &&
+        activeSpriteRef.current.id !== currentMetric.spriteId
+      ) {
+        const targetSprite = lessonSpritesRef.current.find(
+          (sprite) => sprite.id === currentMetric.spriteId,
+        );
+        if (targetSprite) {
+          setActiveSprite(targetSprite);
+          return false; // wait for the workspace to update before applying the fix
+        }
+      }
+      console.log("Problem auto-fix command:", command);
       if (command.action === "place") {
-        const blockDefinition = findToolboxBlock(
+        let blockDefinition = findToolboxBlock(
           toolboxConfig.contents,
           command.blockType,
         );
+        if (
+          command.blockType === "variables_get" ||
+          command.blockType === "variables_set"
+        ) {
+          blockDefinition = {
+            kind: "block",
+            type: command.blockType,
+          };
+        }
         if (!blockDefinition) return false;
         Blockly.serialization.blocks.append(blockDefinition, workspace, {
           recordUndo: true,
@@ -864,11 +884,10 @@ function LessonView({
           { recordUndo: true },
         );
         const output = created.outputConnection;
-        if (!output || !connection.checkType(output)) {
+        if (!output || !connection.connect(output)) {
           created.dispose(false);
           return false;
         }
-        connection.connect(output);
         return true;
       }
       //@ts-ignore

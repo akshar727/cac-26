@@ -1,4 +1,3 @@
-import "./App.css";
 import * as React from "react";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import * as Blockly from "blockly";
