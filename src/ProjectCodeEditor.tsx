@@ -12,7 +12,8 @@ import { useRef } from "react";
 import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-converter";
 import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { appDataDir, join } from "@tauri-apps/api/path";
+import { appLocalDataDir, join } from "@tauri-apps/api/path";
+import { Slider } from "@/components/ui/slider";
 import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
@@ -21,10 +22,14 @@ import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, RotateCcw, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
-import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
+import {
+  getBlocklyTheme,
+  watchPastelTextContrast,
+} from "./blocks/theme";
 import type { AccessibilitySettings } from "./lib/settings";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
+import { Label } from "./components/ui/label";
 
 type RuntimeSnapshotTarget = {
   id: number;
@@ -82,9 +87,9 @@ function CodeEditor({
   const runtimeActiveRef = useRef(false);
   const runIdRef = useRef(0);
   const runCleanupRef = useRef<(() => void) | null>(null);
-  const [runtimeSnapshots, setRuntimeSnapshots] = React.useState<
-    RuntimeSnapshot[]
-  >([]);
+  const snapshotsRef = useRef<RuntimeSnapshot[]>([]);
+  const snapshotFrameRef = useRef(0);
+  const [snapshotCount, setSnapshotCount] = React.useState(0);
   const [selectedSnapshotIndex, setSelectedSnapshotIndex] = React.useState(0);
   const [runtimeTick, setRuntimeTick] = React.useState(0);
   const [activeTab, setActiveTab] = React.useState("blocks");
@@ -102,7 +107,6 @@ function CodeEditor({
     spritesRef.current = sprites;
   }, [sprites]);
 
-  // Stop any running code when this editor goes away.
   React.useEffect(() => {
     return () => {
       codeRunning.current = false;
@@ -129,19 +133,29 @@ function CodeEditor({
     };
   }
 
-  function recordRuntimeSnapshot(runtime: Runtime, time: number) {
-    const snapshot = snapshotRuntime(runtime, time);
-    setRuntimeSnapshots((previous) => {
-      const next = [...previous, snapshot].slice(-300);
-      setSelectedSnapshotIndex(next.length - 1);
-      return next;
-    });
+  function publishSnapshotState() {
+    const length = snapshotsRef.current.length;
+    setSnapshotCount(length);
+    setSelectedSnapshotIndex(Math.max(0, length - 1));
     setRuntimeTick((value) => value + 1);
   }
 
-  function restoreRuntimeSnapshot(snapshot: RuntimeSnapshot) {
+  function recordRuntimeSnapshot(runtime: Runtime, time: number) {
+    const TIMELINE_MAX_FRAMES = 20000;
+    const TRIM_SLACK = 500;
+    const snapshots = snapshotsRef.current;
+    snapshots.push(snapshotRuntime(runtime, time));
+    if (snapshots.length > TIMELINE_MAX_FRAMES + TRIM_SLACK) {
+      snapshots.splice(0, snapshots.length - TIMELINE_MAX_FRAMES);
+    }
+    snapshotFrameRef.current += 1;
+    if (snapshotFrameRef.current % 6 === 1) publishSnapshotState();
+  }
+
+  function restoreRuntimeSnapshot(index: number) {
+    const snapshot = snapshotsRef.current[index];
     const runtime = runtimeRef.current;
-    if (!runtime) return;
+    if (!runtime || !snapshot) return;
     runtimeActiveRef.current = false;
     codeRunning.current = false;
     setCodeRunningState(false);
@@ -163,7 +177,7 @@ function CodeEditor({
       target.variables = new Map(Object.entries(savedTarget.variables));
     }
     runtime._renderer.blit(runtime._targets);
-    setSelectedSnapshotIndex(runtimeSnapshots.indexOf(snapshot));
+    setSelectedSnapshotIndex(index);
     setRuntimeTick((value) => value + 1);
   }
 
@@ -212,7 +226,7 @@ function CodeEditor({
     async function setup() {
       await importDatabaseData();
       await setupWorkspace();
-      _appDataDir.current = await appDataDir();
+      _appDataDir.current = await appLocalDataDir();
     }
     setup();
   }, []);
@@ -288,7 +302,7 @@ function CodeEditor({
         bytes[i] = binaryString.charCodeAt(i);
       }
 
-      const appDir = await appDataDir();
+      const appDir = await appLocalDataDir();
 
       const filePath = await join(appDir, `proj_${projectId}`, "thumbnail.png");
 
@@ -302,7 +316,7 @@ function CodeEditor({
 
   const runCode = () => {
     if (!Blockly.getMainWorkspace()) return;
-    // End any earlier run first so loops and listeners never pile up.
+
     runIdRef.current += 1;
     runCleanupRef.current?.();
     runCleanupRef.current = null;
@@ -324,7 +338,9 @@ function CodeEditor({
     Blockly.Events.disable();
     try {
       setRuntimeError(null);
-      setRuntimeSnapshots([]);
+      snapshotsRef.current = [];
+      snapshotFrameRef.current = 0;
+      setSnapshotCount(0);
       setSelectedSnapshotIndex(0);
       setRuntimeTick(0);
       let runtime: Runtime;
@@ -407,7 +423,7 @@ function CodeEditor({
       runCleanupRef.current = cleanup;
       let prev = performance.now();
       function step() {
-        // A newer run or a Stop replaced this loop.
+        // a newer run or a stop replaced this loop
         if (runIdRef.current !== myRunId) return;
         const now = performance.now();
         const deltaTime = (now - prev) / 1000;
@@ -445,6 +461,7 @@ function CodeEditor({
           setCodeRunningState(false);
           cleanup();
           if (runCleanupRef.current === cleanup) runCleanupRef.current = null;
+          publishSnapshotState();
           for (const target of runtime._targets) {
             target.clearBubbles();
           }
@@ -460,7 +477,6 @@ function CodeEditor({
   const stopCode = () => {
     codeRunning.current = false;
     runtimeActiveRef.current = false;
-    // Invalidate the animation loop and remove this run's listeners now.
     runIdRef.current += 1;
     runCleanupRef.current?.();
     runCleanupRef.current = null;
@@ -474,8 +490,8 @@ function CodeEditor({
       }
       runtime._renderer.blit(runtime._targets);
     }
-    // Always make the Run button usable again.
     setCodeRunningState(false);
+    publishSnapshotState();
   };
 
   function runFromCodeTab() {
@@ -1122,32 +1138,34 @@ function CodeEditor({
                   <div className="min-w-0 space-y-2">
                     <div className="flex min-w-0 items-center gap-2">
                       <RotateCcw className="size-4 shrink-0 text-muted-foreground" />
-                      <label
-                        htmlFor="runtime-rewind"
+                      <Label
+                        id="runtime-rewind-label"
                         className="shrink-0 font-medium"
                       >
                         Timeline
-                      </label>
-                      <input
-                        id="runtime-rewind"
-                        type="range"
-                        min="0"
-                        max={Math.max(0, runtimeSnapshots.length - 1)}
+                      </Label>
+                      <Slider
+                        min={0}
+                        max={Math.max(0, snapshotCount - 1)}
+                        step={1}
                         value={Math.min(
                           selectedSnapshotIndex,
-                          Math.max(0, runtimeSnapshots.length - 1),
+                          Math.max(0, snapshotCount - 1),
                         )}
-                        onChange={(event) => {
-                          const index = Number(event.target.value);
+                        onValueChange={(next) => {
+                          if (runtimeActiveRef.current) {
+                            return;
+                          }
+                          const index = Array.isArray(next) ? next[0] : next;
                           setSelectedSnapshotIndex(index);
-                          const snapshot = runtimeSnapshots[index];
-                          if (snapshot) restoreRuntimeSnapshot(snapshot);
+                          restoreRuntimeSnapshot(index);
                         }}
-                        disabled={runtimeSnapshots.length < 2}
+                        disabled={snapshotCount < 2}
+                        aria-labelledby="runtime-rewind-label"
                         className="min-w-0 flex-1"
                       />
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        {runtimeSnapshots.length} frames
+                        {snapshotCount} frames
                       </span>
                     </div>
                   </div>
@@ -1166,9 +1184,7 @@ function CodeEditor({
                           </div>
                           {Array.from(target.variables.entries()).length ===
                           0 ? (
-                            <div className="text-muted-foreground">
-                              No variables
-                            </div>
+                            <div className="text-blue-400">No variables</div>
                           ) : (
                             Array.from(target.variables.entries()).map(
                               ([id, value]) => (

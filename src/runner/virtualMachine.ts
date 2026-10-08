@@ -73,10 +73,6 @@ export class VirtualMachine {
             ) {
               if (currentFrame instanceof ForFrame) {
                 currentFrame._currentValue += currentFrame._stepValue;
-                console.warn(
-                  "Current value after increment:",
-                  currentFrame._currentValue,
-                );
                 if (
                   (currentFrame._stepValue > 0 &&
                     currentFrame._currentValue <= currentFrame._endValue) ||
@@ -86,7 +82,6 @@ export class VirtualMachine {
                   currentFrame._position = 0;
                   currentFrame._finished = false;
                 } else {
-                  console.warn("Current value:", currentFrame._currentValue);
                   thread.popFrame();
                   if (thread.executionStack.length === 0) {
                     blockToExecute = null;
@@ -102,10 +97,6 @@ export class VirtualMachine {
                       thread.executionStack.length > 0
                     ) {
                       thread.popFrame();
-                      console.warn(
-                        "Popped frame from stack, current stack length:",
-                        thread.executionStack.length,
-                      );
                       if (thread.executionStack.length === 0) {
                         blockToExecute = null;
                         thread.count++;
@@ -118,7 +109,6 @@ export class VirtualMachine {
                           ];
                       }
                     }
-                    console.log("Next block to execute:", blockToExecute);
                   }
                 }
               } else {
@@ -373,50 +363,29 @@ export class VirtualMachine {
             );
           }
         }
+        const newValue = this._evaluator.evaluate(
+          blockToExecute.value,
+          thread,
+        ) as number;
         if (filteredStack.length > 0) {
           const arg = lastProcedureFrame._arguments.find(
-            (arg) => arg.name === variableName,
+            (candidate) => candidate.name === variableName,
           );
           if (arg) {
-            arg.value = this._evaluator.evaluate(
-              blockToExecute.value,
-              thread,
-            ) as number;
+            arg.value = newValue;
             break;
           }
         }
-        for (const borrowedVariableId of thread.target.borrowedVariables.keys()) {
-          if (borrowedVariableId === variableName) {
-            const borrowedVariableValue = this._runtime._targets
-              .find(
-                (sprite) =>
-                  sprite.id ===
-                  thread.target.borrowedVariables.get(borrowedVariableId),
-              )
-              ?.variables.get(variableName);
-            if (borrowedVariableValue !== undefined) {
-              this._runtime._targets
-                .find(
-                  (sprite) =>
-                    sprite.id ===
-                    thread.target.borrowedVariables.get(borrowedVariableId),
-                )
-                ?.variables.set(
-                  variableName,
-                  this._evaluator.evaluate(
-                    blockToExecute.value,
-                    thread,
-                  ) as number,
-                );
-              break;
-            }
-          }
+        const ownerId = thread.target.borrowedVariables.get(variableName);
+        const owner =
+          ownerId === undefined
+            ? undefined
+            : this._runtime._targets.find((sprite) => sprite.id === ownerId);
+        if (owner?.variables.get(variableName) !== undefined) {
+          owner.variables.set(variableName, newValue);
+          break;
         }
-
-        thread.target.variables.set(
-          variableName,
-          this._evaluator.evaluate(blockToExecute.value, thread) as number,
-        );
+        thread.target.variables.set(variableName, newValue);
         break;
       }
 
@@ -584,10 +553,6 @@ export class VirtualMachine {
       case "controls_forever": {
         const newFrame = new ForeverFrame(blockToExecute.body);
         thread.addFrame(newFrame);
-        console.log(
-          "Added ForeverFrame to thread for sprite",
-          thread.target.id,
-        );
         break;
       }
       case "controls_flow_statements": {
@@ -625,10 +590,6 @@ export class VirtualMachine {
                 frame.incrementCount();
               } else if (frame instanceof ForFrame) {
                 frame._currentValue += frame._stepValue;
-                console.warn(
-                  "Loop was skipped to next iteration. Current value after increment:",
-                  frame._currentValue,
-                );
               }
               if (frame.hasMoreIterations()) {
                 frame._position = 0; // Reset position to the start of the loop body
@@ -806,10 +767,6 @@ export class VirtualMachine {
 
         const startTime = performance.now();
         const endTime = startTime + duration * 1000;
-        console.log(
-          `Glide from (${thread.target.x}, ${thread.target.y}) to (${targetX}, ${targetY}) over ${duration} seconds.`,
-        );
-        console.log(`Start time: ${startTime}, End time: ${endTime}`);
         this.cancelOtherGlides(thread);
         const newFrame = new GlideFrame(
           thread.target.x,
@@ -894,7 +851,6 @@ export class VirtualMachine {
           }
         }
         thread.status = "bubbling";
-        console.log(`Sprite ${thread.target.id} is saying: ${message}`);
         thread.target.markSay(message as string, duration, currentTime);
         thread.blockedBySprite = true;
         break;
@@ -917,7 +873,6 @@ export class VirtualMachine {
           }
         }
         thread.status = "bubbling";
-        console.log(`Sprite ${thread.target.id} is thinking: ${message}`);
         thread.target.markThink(message as string, duration, currentTime);
         thread.blockedBySprite = true;
         break;
@@ -932,7 +887,6 @@ export class VirtualMachine {
             otherThread.target.thinkText = "";
           }
         }
-        // console.error("Clear speech bubbles block is not yet implemented.");
         break;
       }
       default:

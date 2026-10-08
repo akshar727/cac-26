@@ -201,9 +201,6 @@ export class EvaluationEngine {
               return left * right;
             case "DIVIDE":
               if (right === 0) {
-                console.error(
-                  `Division by zero with values ${left} and ${right}`,
-                );
                 throw new Error(`Division by zero in ${left} and ${right}`);
               }
               return left / right;
@@ -227,9 +224,6 @@ export class EvaluationEngine {
               return Math.abs(input);
             case "ROOT":
               if (input < 0) {
-                console.error(
-                  `Cannot compute square root of negative number for value ${input}`,
-                );
                 throw new Error(
                   `Cannot compute square root of negative number for value ${input}`,
                 );
@@ -237,9 +231,6 @@ export class EvaluationEngine {
               return Math.sqrt(input);
             case "LN":
               if (input <= 0) {
-                console.error(
-                  `Cannot compute natural logarithm for value ${input} because it is not a positive number`,
-                );
                 throw new Error(
                   `Cannot compute natural logarithm for value ${input} because it is not a positive number`,
                 );
@@ -247,9 +238,6 @@ export class EvaluationEngine {
               return Math.log(input);
             case "LOG10":
               if (input <= 0) {
-                console.error(
-                  `Cannot compute base-10 logarithm for value ${input} because it is not a positive number`,
-                );
                 throw new Error(
                   `Cannot compute base-10 logarithm for value ${input} because it is not a positive number`,
                 );
@@ -274,13 +262,11 @@ export class EvaluationEngine {
               return Math.tan(trigInput);
             case "ASIN":
               if (trigInput < -1 || trigInput > 1) {
-                console.error(`Cannot compute arcsine of value ${trigInput}`);
                 throw new Error(`Cannot compute arcsine of value ${trigInput}`);
               }
               return Math.asin(trigInput);
             case "ACOS":
               if (trigInput < -1 || trigInput > 1) {
-                console.error(`Cannot compute arccosine of value ${trigInput}`);
                 throw new Error(
                   `Cannot compute arccosine of value ${trigInput}`,
                 );
@@ -329,9 +315,6 @@ export class EvaluationEngine {
           ) as number;
 
           if (divisor === 0) {
-            console.error(
-              `Division by zero for dividend ${dividend} and divisor ${divisor}`,
-            );
             throw new Error(
               `Division by zero for dividend ${dividend} and divisor ${divisor}`,
             );
@@ -342,9 +325,6 @@ export class EvaluationEngine {
           const low = this.evaluate(field.low, processingThread) as number;
           const high = this.evaluate(field.high, processingThread) as number;
           if (low > high) {
-            console.error(
-              `Invalid constraint values: low ${low} is greater than high ${high}`,
-            );
             throw new Error(
               `Invalid constraint values: low ${low} is greater than high ${high}`,
             );
@@ -418,13 +398,8 @@ export class EvaluationEngine {
             }
           }
           if (variableValue === undefined) {
-            console.error(
-              `Variable "${variableName}" is not defined in the current context. Available variables: ${Array.from(
-                processingThread.target.variables.keys(),
-              ).join(", ")}`,
-            );
             throw new ReferenceError(
-              `Variable "${variableName}" is not defined in the current context. ${JSON.stringify(processingThread.target)}. Available variables: ${Array.from(
+              `Variable "${variableName}" is not defined in the current context. Available variables: ${Array.from(
                 processingThread.target.variables.keys(),
               ).join(", ")}`,
             );

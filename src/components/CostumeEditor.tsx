@@ -23,7 +23,13 @@ import { FieldGroup } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Input } from "./ui/input";
-import { cn, openImage } from "@/lib/utils";
+import {
+  baseNameOf,
+  cn,
+  fileNameFromPath,
+  openImage,
+  uniqueFileName,
+} from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
 import { Plus, X } from "lucide-react";
 import { DragDropProvider } from "@dnd-kit/react";
@@ -76,7 +82,10 @@ function SortableCostumeCard({
                 <TooltipTrigger
                   render={
                     <div
-                      className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Delete costume ${costume.costumeName}`}
+                      className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
                       onClick={(event) => event.stopPropagation()}
                     >
                       <X className="w-4 h-4" />
@@ -103,21 +112,28 @@ function SortableCostumeCard({
             </TooltipContent>
           )}
         </Tooltip>
-        <CardContent className="flex relative flex-col items-center gap-2">
-          <img
-            src={costume.loadablePath}
-            alt={`Costume ${index + 1}`}
-            style={{
-              maxWidth: 64,
-              maxHeight: 64,
-              width: "auto",
-              height: "auto",
-              objectFit: "contain",
-            }}
-          />
-          <p className="text-sm text-center">{costume.costumeName}</p>
-          <ImageSpecs loadablePath={costume.loadablePath} />
-        </CardContent>
+        <button
+          type="button"
+          aria-pressed={isActive}
+          aria-label={`Select costume ${costume.costumeName}`}
+          className="w-full rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <CardContent className="flex relative flex-col items-center gap-2">
+            <img
+              src={costume.loadablePath}
+              alt=""
+              style={{
+                maxWidth: 64,
+                maxHeight: 64,
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
+            <p className="text-sm text-center">{costume.costumeName}</p>
+            <ImageSpecs loadablePath={costume.loadablePath} />
+          </CardContent>
+        </button>
       </Card>
       {!isLesson && canDelete && (
         <DialogContent>
@@ -338,11 +354,6 @@ export default function CostumeEdtior({
                       type="text"
                       id="spriteName"
                       value={spriteNameDialogValue}
-                      defaultValue={
-                        spriteImageDialogValue
-                          ? spriteImageDialogValue.split("/").pop()
-                          : ""
-                      }
                       onChange={(e) => setSpriteNameDialogValue(e.target.value)}
                       placeholder={`Enter ${(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"} name`}
                       className="border rounded px-2 py-1 w-full"
@@ -384,7 +395,7 @@ export default function CostumeEdtior({
                             await openImage(path);
                           }}
                         >
-                          {spriteImageDialogValue.split("/").pop()}
+                          {fileNameFromPath(spriteImageDialogValue)}
                         </span>
                       </p>
                     )}
@@ -401,10 +412,11 @@ export default function CostumeEdtior({
                         return;
                       }
                       const file = spriteImageDialogValue;
-                      const last = file.split("/").pop();
-                      if (!last) {
+                      const originalName = fileNameFromPath(file);
+                      if (!originalName) {
                         return;
                       }
+                      const last = uniqueFileName(originalName);
                       const projectFolderName = `proj_${projectId}`;
                       const folderExists = await exists(projectFolderName, {
                         baseDir: BaseDirectory.AppLocalData,
@@ -418,7 +430,6 @@ export default function CostumeEdtior({
                       await copyFile(file, `${projectFolderName}/${last}`, {
                         toPathBaseDir: BaseDirectory.AppLocalData,
                       });
-                      console.log("Copied file:", last);
                       if (!activeSprite) {
                         return;
                       }
@@ -431,7 +442,7 @@ export default function CostumeEdtior({
                         last,
                         appDataDir || "",
                         spriteNameDialogValue ||
-                          last.split("/").pop() ||
+                          baseNameOf(originalName) ||
                           "New Costume",
                         "isBackdrop" in activeSprite &&
                           (activeSprite.isBackdrop as boolean),

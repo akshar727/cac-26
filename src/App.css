@@ -230,6 +230,18 @@ svg[display="none"] {
   stroke-width: 4px !important;
 }
 
+.codely-reduce-motion .codely-lesson-target-block {
+  animation: none;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .codely-lesson-target-block {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 @keyframes codely-target-block-pulse {
   0%,
   100% {

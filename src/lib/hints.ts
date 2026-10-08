@@ -309,7 +309,10 @@ export type Hint = {
   text: string;
   highlightBlockIds: string[];
   highlightToolboxTypes: string[];
-  autoFix?: { action: "place" | "connect" | "set-field"; blockType: string };
+  autoFix?: {
+    action: "place" | "connect" | "set-field" | "fill";
+    blockType: string;
+  };
 };
 
 export function hintFor(
@@ -365,6 +368,8 @@ export function hintFor(
           : `Put a ${name(problem.blockType)} block into the empty slot.`;
       glowBlock(problem.blockId);
       glowToolbox(problem.blockType);
+      if (level === 3)
+        hint.autoFix = { action: "fill", blockType: problem.blockType };
       break;
     case "wrong-value":
       hint.text =

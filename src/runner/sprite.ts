@@ -1,5 +1,7 @@
 import { Procedure } from "@/types/field";
 
+const alphaMaskCache = new Map<string, boolean[][]>();
+
 export class Sprite {
   id: number = 0;
   cloneSourceId: number | null = null;
@@ -67,7 +69,12 @@ export class Sprite {
       img.crossOrigin = "anonymous";
       img.src = path.loadablePath;
       img.onload = () => {
-        this.makeAlphaMask(img, index);
+        const cached = alphaMaskCache.get(path.loadablePath);
+        if (cached) {
+          this._costumeAlphaMasks.set(index, cached);
+        } else {
+          this.makeAlphaMask(img, index, path.loadablePath);
+        }
         onImageLoaded?.();
         // console.log(
         //   `Alpha mask created for costume ${path.costumeName} of sprite ${this.id}`,
@@ -78,10 +85,7 @@ export class Sprite {
     }
     this.currentCostumeIndex = 0;
   }
-  onEdge(): boolean {
-    throw new Error("Method not implemented.");
-  }
-  makeAlphaMask(costume: HTMLImageElement, ind: number) {
+  makeAlphaMask(costume: HTMLImageElement, ind: number, cacheKey?: string) {
     const width = costume.width;
     const height = costume.height;
     const canvas = document.createElement("canvas");
@@ -102,19 +106,17 @@ export class Sprite {
       }
     }
     this._costumeAlphaMasks.set(ind, alphaMask);
+    if (cacheKey) alphaMaskCache.set(cacheKey, alphaMask);
   }
 
   markSay(text: string, duration: number, currentTime: number) {
     this.sayText = String(text);
-    console.log(`Sprite ${this.id} now marked as saying: ${text}`);
     this.bubbleUntil = currentTime + duration * 1000;
-    // console.log(this.sayText, this.bubbleUntil, currentTime, duration);
   }
 
   markThink(text: string, duration: number, currentTime: number) {
     this.thinkText = String(text);
     this.bubbleUntil = currentTime + duration * 1000;
-    // console.log(this.thinkText, this.bubbleUntil, currentTime, duration);
   }
   clearBubbles() {
     this.sayText = "";

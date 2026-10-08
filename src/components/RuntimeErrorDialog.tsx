@@ -28,6 +28,44 @@ function friendlyMessage(message: string | null): string {
   if (message.includes("InvalidFieldError")) {
     return "One of the blocks has a value it can't use. Check that each spot has a number and try again.";
   }
+  if (message.includes("Division by zero")) {
+    return "A block tried to divide by zero. Try a different number and run it again.";
+  }
+  if (
+    message.includes("square root of negative") ||
+    message.includes("logarithm") ||
+    message.includes("arcsine") ||
+    message.includes("arccosine")
+  ) {
+    return "A math block was given a number it can't use. Try a different number and run it again.";
+  }
+  if (message.includes("Invalid constraint values")) {
+    return "A block that keeps a number between two values has a low number bigger than its high number. Swap them and try again.";
+  }
+  if (message.includes("is not defined in the current context")) {
+    return "A block is using a variable that doesn't exist yet. Make the variable first, then try again.";
+  }
+  if (message.includes("Target sprite not found")) {
+    return "A block points to a sprite that isn't in this project. Pick a sprite from the block's list and try again.";
+  }
+  if (message.includes("Cannot compare null")) {
+    return "A comparison block has an empty spot. Fill it in and try again.";
+  }
+  if (
+    message.includes("Canvas element not found") ||
+    message.includes("2D context")
+  ) {
+    return "The Screen tab is not ready yet. Open the Screen tab and press Run Code again.";
+  }
+  if (message.includes("NoProcessingThreadError")) {
+    return "Your code couldn't start. Press Stop, then Run Code again.";
+  }
+  if (
+    message.includes("RangeError") ||
+    message.includes("Maximum call stack")
+  ) {
+    return "Your code kept calling itself without stopping. Check your custom blocks and try again.";
+  }
   if (
     message.includes("TypeError") ||
     message.includes("undefined") ||

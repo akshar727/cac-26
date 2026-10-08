@@ -168,24 +168,34 @@ export default function SpriteAndBackdropSelector({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
-                      <CardContent className="flex flex-col items-center gap-2">
-                        {sprite.image_paths.length === 0 ? (
-                          <Skeleton className="w-16 h-16" />
-                        ) : (
-                          <img
-                            src={sprite.image_paths[0].loadablePath}
-                            alt={sprite.name}
-                            style={{
-                              maxWidth: 64,
-                              maxHeight: 64,
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain",
-                            }}
-                          />
-                        )}
-                        <p className={`text-sm text-center`}>{sprite.name}</p>
-                      </CardContent>
+                      <button
+                        type="button"
+                        aria-pressed={
+                          activeSprite?.id === sprite.id &&
+                          !("isBackdrop" in activeSprite)
+                        }
+                        aria-label={`Select sprite ${sprite.name}`}
+                        className="w-full cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        <CardContent className="flex flex-col items-center gap-2">
+                          {sprite.image_paths.length === 0 ? (
+                            <Skeleton className="w-16 h-16" />
+                          ) : (
+                            <img
+                              src={sprite.image_paths[0].loadablePath}
+                              alt=""
+                              style={{
+                                maxWidth: 64,
+                                maxHeight: 64,
+                                width: "auto",
+                                height: "auto",
+                                objectFit: "contain",
+                              }}
+                            />
+                          )}
+                          <p className={`text-sm text-center`}>{sprite.name}</p>
+                        </CardContent>
+                      </button>
                     </Card>
                   );
                 })}
@@ -461,31 +471,38 @@ export default function SpriteAndBackdropSelector({
                       onClick={() => {
                         setActiveSprite(sprite);
                         activeSpriteRef.current = sprite;
-                        // console.log("Active sprite set to:", sprite);
-                        setTimeout(() => {
-                          // console.log(activeSprite);
-                        }, 0);
                       }}
                       key={sprite.id}
                     >
-                      <CardContent className="flex flex-col items-center gap-2">
-                        {sprite.image_paths.length === 0 ? (
-                          <Skeleton className="w-16 h-16" />
-                        ) : (
-                          <img
-                            src={sprite.image_paths[0].loadablePath}
-                            alt={sprite.name}
-                            style={{
-                              maxWidth: 64,
-                              maxHeight: 64,
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain",
-                            }}
-                          />
-                        )}
-                        <p className={`text-sm text-center`}>{sprite.name}</p>
-                      </CardContent>
+                      <button
+                        type="button"
+                        aria-pressed={
+                          activeSprite?.id === sprite.id &&
+                          "isBackdrop" in activeSprite &&
+                          activeSprite.isBackdrop === true
+                        }
+                        aria-label={`Select backdrop ${sprite.name}`}
+                        className="w-full cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        <CardContent className="flex flex-col items-center gap-2">
+                          {sprite.image_paths.length === 0 ? (
+                            <Skeleton className="w-16 h-16" />
+                          ) : (
+                            <img
+                              src={sprite.image_paths[0].loadablePath}
+                              alt=""
+                              style={{
+                                maxWidth: 64,
+                                maxHeight: 64,
+                                width: "auto",
+                                height: "auto",
+                                objectFit: "contain",
+                              }}
+                            />
+                          )}
+                          <p className={`text-sm text-center`}>{sprite.name}</p>
+                        </CardContent>
+                      </button>
                     </Card>
                   );
                 })}

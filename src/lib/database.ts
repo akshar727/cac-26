@@ -5,14 +5,35 @@ import {
 } from "@/types/database";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import Database from "@tauri-apps/plugin-sql";
-import { BaseDirectory, resolveResource } from "@tauri-apps/api/path";
+import { BaseDirectory, join, resolveResource } from "@tauri-apps/api/path";
 import { copyFile, exists, mkdir, remove } from "@tauri-apps/plugin-fs";
 import { Lesson, builtInLessons } from "@/lib/lesson";
+import { fileNameFromPath } from "./utils";
 
 let creationLock = false;
 
 export class DatabaseManager {
   private projectFileName = "codely.db";
+
+  private async removeFileIfUnused(
+    db: Database,
+    truePath: string | null | undefined,
+  ): Promise<void> {
+    if (!truePath) return;
+    const needle = JSON.stringify(truePath);
+    for (const table of ["sprites", "backdrops"] as const) {
+      const rows = await db.select<{ id: number }[]>(
+        `SELECT id FROM ${table} WHERE instr(image_paths, ?) > 0 LIMIT 1`,
+        [needle],
+      );
+      if (rows.length > 0) return;
+    }
+    try {
+      await remove(truePath, { baseDir: BaseDirectory.AppLocalData });
+    } catch {
+      return;
+    }
+  }
 
   getProjects(): Promise<DatabaseProject[]> {
     return new Promise(async (resolve, reject) => {
@@ -299,7 +320,7 @@ export class DatabaseManager {
           {
             costumeName: costumeName,
             loadablePath: convertFileSrc(
-              `${appDataDir}/proj_${projectId}/${imagePath}`,
+              await join(appDataDir, `proj_${projectId}`, imagePath),
             ),
             truePath: `proj_${projectId}/${imagePath}`,
           },
@@ -412,7 +433,7 @@ export class DatabaseManager {
           imageIndex: number,
         ) => {
           if (!image.truePath) return image;
-          const fileName = image.truePath.split("/").pop();
+          const fileName = fileNameFromPath(image.truePath);
           if (!fileName) return image;
           const dotIndex = fileName.lastIndexOf(".");
           const extension = dotIndex >= 0 ? fileName.slice(dotIndex) : "";
@@ -426,7 +447,9 @@ export class DatabaseManager {
           });
           return {
             ...image,
-            loadablePath: convertFileSrc(`${appDataDir}/${duplicatePath}`),
+            loadablePath: convertFileSrc(
+              await join(appDataDir, duplicatePath),
+            ),
             truePath: duplicatePath,
           };
         },
@@ -469,11 +492,7 @@ export class DatabaseManager {
         let truePath = currentCostumes.find(
           (c) => c.loadablePath === costumePath,
         )?.truePath;
-        if (truePath) {
-          await remove(truePath, {
-            baseDir: BaseDirectory.AppLocalData,
-          });
-        }
+        await this.removeFileIfUnused(db, truePath);
         resolve();
       } catch (error) {
         reject(error);
@@ -564,18 +583,13 @@ export class DatabaseManager {
           `SELECT image_paths from sprites WHERE id = ?`,
           [spriteId],
         );
+        await db.execute(`DELETE FROM sprites WHERE id = ?`, [spriteId]);
         if (spriteFiles.length > 0) {
           const imagePaths = JSON.parse(spriteFiles[0].image_paths);
           for (const image of imagePaths) {
-            const fileName = image.truePath;
-            if (fileName) {
-              await remove(fileName, {
-                baseDir: BaseDirectory.AppLocalData,
-              });
-            }
+            await this.removeFileIfUnused(db, image.truePath);
           }
         }
-        await db.execute(`DELETE FROM sprites WHERE id = ?`, [spriteId]);
         resolve();
       } catch (error) {
         reject(error);

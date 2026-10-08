@@ -191,8 +191,6 @@ export function getBlocklyTheme(pastel: boolean, accessibilitySettings: BlockAcc
   const hyperlegible = accessibilitySettings.hyperlegible === true;
   if (!large && !hyperlegible) return base;
 
-  // Blocks are drawn by Blockly, so the page's CSS cannot change their text.
-  // The font has to be part of the Blockly theme.
   const name = `${base.name}${large ? "-large" : ""}${hyperlegible ? "-hyperlegible" : ""}`;
   return Blockly.Theme.defineTheme(name, {
     name,
@@ -238,4 +236,48 @@ export function watchPastelTextContrast(
   return observer;
 }
 
+const LIGHT_TEXT = "#ffffff";
+const DARK_TEXT = "#111827";
+const MIN_TEXT_CONTRAST = 4.5;
+
+function parseRgb(value: string): [number, number, number] | null {
+  const parts = value.match(/\d+(\.\d+)?/g);
+  if (!parts || parts.length < 3) return null;
+  return [Number(parts[0]), Number(parts[1]), Number(parts[2])];
+}
+
+function relativeLuminance([red, green, blue]: [number, number, number]) {
+  const channel = (value: number) => {
+    const scaled = value / 255;
+    return scaled <= 0.03928
+      ? scaled / 12.92
+      : Math.pow((scaled + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue);
+}
+
+function contrastBetween(first: number, second: number) {
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function backgroundLuminance(text: SVGTextElement): number | null {
+  const fieldRect = text.parentElement?.querySelector<SVGElement>(
+    ":scope > .blocklyFieldRect",
+  );
+  const candidates: (SVGElement | null | undefined)[] = [
+    fieldRect,
+    text.closest(".blocklyDraggable")?.querySelector<SVGElement>(
+      ":scope > .blocklyPath",
+    ),
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const fill = getComputedStyle(candidate).fill;
+    const rgb = fill ? parseRgb(fill) : null;
+    if (rgb) return relativeLuminance(rgb);
+  }
+  return null;
+}
 export default theme;

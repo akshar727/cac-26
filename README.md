@@ -1,12 +1,12 @@
 # Codely
 
-Codely is a desktop coding environment for young learners. It uses visual
-programming blocks to help students create interactive projects without first
-having to learn the syntax of a text-based programming language, with extra
-features to support different learning styles and needs.
+Codely is a desktop coding environment for young learners. Students build
+interactive projects by snapping visual blocks together instead of typing code,
+and the app includes extra supports for different learning styles and needs.
 
 ## Features
 Codely contains a wide-number of features to make programming more accessible to learners, including:
+
 * A block-based programming environment that allows students to create projects without ever writing a single line of code
 * 10 detailed built-in lessons that give students a walk-through on how to use Codely and how to program their own projects
 * An intuitive project selector that allows students to create and manage multiple projects
@@ -16,29 +16,45 @@ Codely contains a wide-number of features to make programming more accessible to
 * Smart hinting system that gives students help on lessons they may be struggling with
 
 ## Who it's for
-Codely is designed for young learners who are just starting to learn how to code. It is also designed for students who are neurodivergent or have learning disabilities. Codely contains multiple accessibility features to help students with different learning styles and needs, including a simplified interface, a pastel color palette mode, a large text mode and the Atkinson Hyperlegible font. All of these features are designed to make it easier for students to focus on their projects and learn how to code, while avoiding the complexities of traditional programming languages and environments.
 
-## Assets
+Codely is designed for young learners who are just starting to code, including
+students who are neurodivergent or have learning disabilities. Accessibility
+settings include:
 
-The sprite and backdrop artwork used in Codely lessons are created by the Scratch Foundation and is used under CC BY-SA 2.0. These assets are available in the `src-tauri/lesson_assets/shared` directory.
+- A pastel color mode
+- Large text
+- the Atkinson Hyperlegible font
+- Reduced motion mode
 
-## Development
+Block text is automatically switched between light and dark so it stays
+readable on both color modes.
 
-Install dependencies and start the web development server:
+## Built with
+
+Tauri 2 (Rust), React 19, TypeScript, Blockly, Tailwind CSS 4 and shadcn/ui.
+Projects and lessons are stored locally in SQLite.
+
+## Running Codely
+
+Requirements: Node.js, Rust and Tauri. Rust targets also need to be installed. See the Tauri documentation for more information.
 
 ```bash
 npm install
-npm run dev
+npm run tauri dev
 ```
 
-Create a production web build with:
+To build the desktop app:
 
 ```bash
-npm run build
+npm run tauri -- build
 ```
 
-Tauri commands are available through the `tauri` npm script, for example:
+## Assets
 
-```bash
-npm run tauri -- dev
-```
+The sprite and backdrop artwork used in Codely lessons comes from the Scratch
+Foundation and is used under CC BY-SA 2.0. The files are in
+`src-tauri/lesson_assets/shared`.
+
+## AI use
+
+

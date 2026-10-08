@@ -45,7 +45,7 @@ function AppWrapper() {
   return (
     <React.StrictMode>
       <div
-        className={`${accessibilitySettings.textSize === "large" ? "codely-large-text" : ""} ${accessibilitySettings.hyperlegible ? "font-hyperlegible" : ""}`}
+        className={`${accessibilitySettings.textSize === "large" ? "codely-large-text" : ""} ${accessibilitySettings.hyperlegible ? "font-hyperlegible" : ""} ${accessibilitySettings.reducedMotion ? "codely-reduce-motion" : ""}`}
       >
         <TooltipProvider>
           {projectId === null && lessonId === null && (

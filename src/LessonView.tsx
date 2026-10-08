@@ -11,7 +11,7 @@ import { useRef } from "react";
 import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-converter";
 import { registerContinuousToolbox } from "@blockly/continuous-toolbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { appDataDir } from "@tauri-apps/api/path";
+import { appLocalDataDir } from "@tauri-apps/api/path";
 import { DatabaseBackdrop, DatabaseSprite } from "@/types/database";
 import { Runtime } from "@/runner/runtime";
 import { DatabaseManager } from "./lib/database";
@@ -21,7 +21,10 @@ import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./lib/lesson";
-import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
+import {
+  getBlocklyTheme,
+  watchPastelTextContrast,
+} from "./blocks/theme";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import confetti from "canvas-confetti";
@@ -105,6 +108,9 @@ function LessonView({
   const autoFixProblemRef = React.useRef<Problem | null>(null);
   const [hintState, setHintState] = React.useState<HintState>(resetHints(null));
   const [activeTab, setActiveTab] = React.useState("blocks");
+  const runtimeActiveRef = useRef(false);
+  const runIdRef = useRef(0);
+  const runCleanupRef = useRef<(() => void) | null>(null);
 
   React.useEffect(() => {
     codeRunning.current = codeRunningState;
@@ -122,6 +128,16 @@ function LessonView({
   React.useEffect(() => {
     lessonRef.current = lesson;
   }, [lesson]);
+
+  React.useEffect(() => {
+    return () => {
+      codeRunning.current = false;
+      runIdRef.current += 1;
+      runCleanupRef.current?.();
+      runCleanupRef.current = null;
+      runtimeRef.current?.stopAll();
+    };
+  }, []);
 
   React.useEffect(() => {
     currentStepRef.current = currentStep;
@@ -525,7 +541,7 @@ function LessonView({
     async function setup() {
       const loadedLesson = await importDatabaseData();
       await setupWorkspace(loadedLesson);
-      _appDataDir.current = await appDataDir();
+      _appDataDir.current = await appLocalDataDir();
     }
     setup();
   }, []);
@@ -567,6 +583,24 @@ function LessonView({
 
   const runCode = () => {
     if (!Blockly.getMainWorkspace()) return;
+    runIdRef.current += 1;
+    runCleanupRef.current?.();
+    runCleanupRef.current = null;
+    const myRunId = runIdRef.current;
+    const canvas = document.getElementById(
+      "foregroundCanvas",
+    ) as HTMLCanvasElement;
+    if (
+      canvas === null ||
+      document.getElementById("backgroundCanvas") === null
+    ) {
+      codeRunning.current = false;
+      setCodeRunningState(false);
+      setRuntimeError(
+        "The Screen tab is not ready yet. Open the Screen tab and press Run Code again.",
+      );
+      return;
+    }
     Blockly.Events.disable();
     try {
       setCodeRunningState(true);
@@ -581,20 +615,37 @@ function LessonView({
           ? { ...sprite, blocks_json: currentBlocks ?? sprite.blocks_json }
           : sprite,
       );
-      const runtime = new Runtime(runtimeSprites, () =>
-        runtimeRef.current?.render(),
-      );
-      runtime.setErrorHandler((message) => setRuntimeError(message));
-      runtimeRef.current = runtime;
-      runtime.start();
-      const canvas = document.getElementById(
-        "foregroundCanvas",
-      ) as HTMLCanvasElement;
-      if (canvas === null) {
-        console.error("what");
+      let runtime: Runtime;
+      try {
+        runtime = new Runtime(runtimeSprites, () => runtime.render());
+        runtimeRef.current = runtime;
+        runtime.setErrorHandler((message) => setRuntimeError(message));
+        runtime.start();
+      } catch (error) {
+        // Always leave the Run button usable after a failed start.
+        codeRunning.current = false;
+        runtimeActiveRef.current = false;
+        setCodeRunningState(false);
+        setRuntimeError(error instanceof Error ? error.message : String(error));
         return;
       }
+      const isTyping = (target: EventTarget | null) =>
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
       const keyDownEvent = (event: KeyboardEvent) => {
+        if (isTyping(event.target)) return;
+        // Keep arrow keys and space from scrolling the page while playing.
+        if (
+          ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(
+            event.key,
+          )
+        ) {
+          event.preventDefault();
+        }
+        // Holding a key down must not start the script again and again.
+        if (event.repeat) return;
         runtime.keyPressed(event.key);
       };
       const keyUpEvent = (event: KeyboardEvent) => {
@@ -629,15 +680,32 @@ function LessonView({
       canvas.addEventListener("mousemove", canvasMouseMoveEvent);
       window.addEventListener("mousedown", mouseDownEvent);
       window.addEventListener("mouseup", mouseUpEvent);
+      const cleanup = () => {
+        window.removeEventListener("keydown", keyDownEvent);
+        window.removeEventListener("keyup", keyUpEvent);
+        window.removeEventListener("mousedown", mouseDownEvent);
+        window.removeEventListener("mouseup", mouseUpEvent);
+        canvas.removeEventListener("mousemove", canvasMouseMoveEvent);
+        canvas.removeEventListener("click", canvasClickEvent);
+      };
+      runCleanupRef.current = cleanup;
       let prev = performance.now();
+      let frameCount = 0;
       function step() {
+        if (runIdRef.current !== myRunId) return;
         const now = performance.now();
         const deltaTime = (now - prev) / 1000;
         prev = now;
+        frameCount++;
         let errorCheck = false;
         try {
           runtime.tick(deltaTime, now);
-          if (lessonId !== null) reconcileLessonProgress();
+          if (
+            lessonId !== null &&
+            (frameCount === 1 || frameCount % 15 === 0)
+          ) {
+            reconcileLessonProgress();
+          }
           if (
             runtime._scripts.filter((r) => r.trigger.type !== "start")
               .length === 0 &&
@@ -650,12 +718,8 @@ function LessonView({
         } catch (error) {
           setCodeRunningState(false);
           errorCheck = true;
-          window.removeEventListener("keydown", keyDownEvent);
-          window.removeEventListener("keyup", keyUpEvent);
-          window.removeEventListener("mousedown", mouseDownEvent);
-          window.removeEventListener("mouseup", mouseUpEvent);
-          window.removeEventListener("mousemove", canvasMouseMoveEvent);
-          canvas.removeEventListener("click", canvasClickEvent);
+          codeRunning.current = false;
+          cleanup();
           const runtimeErrorMessage =
             runtime._lastError ||
             (error instanceof Error ? error.message : String(error));
@@ -668,16 +732,13 @@ function LessonView({
           requestAnimationFrame(step);
         } else {
           setCodeRunningState(false);
-          console.warn("Code stopped, removing event listeners");
-          window.removeEventListener("keydown", keyDownEvent);
-          window.removeEventListener("keyup", keyUpEvent);
-          window.removeEventListener("mousedown", mouseDownEvent);
-          window.removeEventListener("mouseup", mouseUpEvent);
-          window.removeEventListener("mousemove", canvasMouseMoveEvent);
-          canvas.removeEventListener("click", canvasClickEvent);
+          cleanup();
+          if (runCleanupRef.current === cleanup) runCleanupRef.current = null;
+          if (!errorCheck && lessonId !== null) reconcileLessonProgress();
           for (const target of runtime._targets) {
             target.clearBubbles();
           }
+          runtime._renderer.blit(runtime._targets);
         }
       }
       requestAnimationFrame(step);
@@ -688,9 +749,21 @@ function LessonView({
 
   const stopCode = () => {
     codeRunning.current = false;
-    runtimeRef.current?.clearError();
+    runtimeActiveRef.current = false;
+    runIdRef.current += 1;
+    runCleanupRef.current?.();
+    runCleanupRef.current = null;
+    const runtime = runtimeRef.current;
+    runtime?.clearError();
     setRuntimeError(null);
-    runtimeRef.current?.stopAll();
+    runtime?.stopAll();
+    if (runtime) {
+      for (const target of runtime._targets) {
+        target.clearBubbles();
+      }
+      runtime._renderer.blit(runtime._targets);
+    }
+    setCodeRunningState(false);
   };
 
   function runFromCodeTab() {
@@ -776,6 +849,28 @@ function LessonView({
         workspace.cleanUp();
         return true;
       }
+      if (command.action === "fill" && problem.kind === "empty-input") {
+        if (!problem.blockId) return false;
+        const parent = workspace.getBlockById(problem.blockId);
+        const connection = parent?.getInput(problem.input)?.connection;
+        if (!parent || !connection || connection.targetBlock()) return false;
+        const definition = findToolboxBlock(
+          toolboxConfig.contents,
+          command.blockType,
+        ) ?? { kind: "block", type: command.blockType };
+        const created = Blockly.serialization.blocks.append(
+          definition,
+          workspace,
+          { recordUndo: true },
+        );
+        const output = created.outputConnection;
+        if (!output || !connection.checkType(output)) {
+          created.dispose(false);
+          return false;
+        }
+        connection.connect(output);
+        return true;
+      }
       //@ts-ignore
       if (command.action === "connect" && problem.blockId) {
         //@ts-ignore
@@ -825,36 +920,61 @@ function LessonView({
             .find((candidate) => candidate.getName() === value);
           value = variable?.getId() ?? value;
         }
+        if (problem.field === "BROADCAST") {
+          if (
+            !broadcastMessagesRef.current.some(
+              ([, optionValue]) => optionValue === value,
+            )
+          ) {
+            broadcastMessagesRef.current = [
+              ...broadcastMessagesRef.current,
+              [value, value],
+            ];
+          }
+          (field as Blockly.FieldDropdown).getOptions(false);
+        }
         field.setValue(value);
-        return true;
+        return String(field.getValue()) === value;
       }
       return false;
     }
 
+    const diagnoseNow = () =>
+      diagnoseLessonStep(
+        currentLesson,
+        targetStep,
+        Blockly.serialization.workspaces.save(workspace).blocks?.blocks ?? [],
+        lessonSpritesRef.current,
+      );
+
     Blockly.Events.setGroup("lesson-hint-auto-fix");
     try {
-      for (let attempt = 0; attempt < 10; attempt++) {
-        const blocks =
-          Blockly.serialization.workspaces.save(workspace).blocks?.blocks ?? [];
-        const problem = diagnoseLessonStep(
-          currentLesson,
-          targetStep,
-          blocks,
-          lessonSpritesRef.current,
-        );
+      let lastSignature = "";
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const problem = diagnoseNow();
         if (!problem) break;
+        const signature = JSON.stringify(problem);
+        if (signature === lastSignature) break;
+        lastSignature = signature;
         const hint = hintFor(problem, 3, blockHelp);
         if (!hint.autoFix || !applyAutoFix(problem, hint.autoFix)) break;
+        saveCurrentWorkspace();
         reconcileLessonProgress();
         if (currentStepRef.current !== targetStep) break;
       }
     } finally {
       Blockly.Events.setGroup(false);
     }
+    const stepFinished = currentStepRef.current !== targetStep;
+    const remaining = stepFinished ? null : diagnoseNow();
     setAutoFixCommand(null);
     autoFixProblemRef.current = null;
     setHintState(resetHints(null));
-    setLessonStepHint("I made the suggested change. Try the lesson again.");
+    setLessonStepHint(
+      remaining
+        ? "I couldn't finish that change. Press the hint button again to see what to try next."
+        : "I made the suggested change. Try the lesson again.",
+    );
   }
 
   function saveCurrentWorkspace() {

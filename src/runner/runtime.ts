@@ -32,10 +32,6 @@ export class Runtime {
     this._renderer = new Renderer();
     for (const databaseSprite of sprites) {
       const spriteWorkspace = new Blockly.Workspace();
-      // if ("isBackdrop" in databaseSprite && databaseSprite.isBackdrop) {
-      //   continue;
-      // }
-      console.log(databaseSprite);
       for (const block of databaseSprite.blocks_json) {
         Blockly.serialization.blocks.append(block, spriteWorkspace);
       }
@@ -92,7 +88,6 @@ export class Runtime {
             //@ts-ignore
             intermediateGenerator.blockToCode(block),
           );
-          console.log("Generated procedure definition:", generated);
           sprite.procedures.set(block.getFieldValue("NAME"), {
             name: block.getFieldValue("NAME"),
             parameters: generated.parameters,
@@ -105,19 +100,12 @@ export class Runtime {
           block.type === "events_when_broadcast_received" ||
           block.type === "events_when_sprite_clicked"
         ) {
-          // console.warn(
-          //   "Found top-level event block for sprite",
-          //   sprite.id,
-          //   "of type",
-          //   block.type,
-          // );
           let outputScript = this.compileScript(sprite.id, block);
           if (outputScript) {
             this._scripts.push(outputScript);
           }
         }
       }
-      console.log(sprite);
       spriteWorkspace.dispose();
     }
   }
@@ -142,7 +130,6 @@ export class Runtime {
     script.blocks = JSON.parse(
       "[" + intermediateGenerator.blockToCode(block) + "]",
     );
-    console.log("Compiled script for sprite", spriteId, ":", script);
     return script;
   }
 
@@ -154,7 +141,6 @@ export class Runtime {
         script.trigger.type === "key_pressed" &&
         script.trigger.value === key
       ) {
-        // console.log("Starting script for key press:", script);
         this.startScript(script);
       }
     }
@@ -171,7 +157,6 @@ export class Runtime {
         script.trigger.type === "broadcast" &&
         script.trigger.value === broadcast
       ) {
-        // console.log("Starting script for broadcast:", script);
         this.startScript(script);
       }
     }
@@ -219,9 +204,6 @@ export class Runtime {
 
   tick(deltaTime: number, currentTime: number) {
     for (const thread of this._threads) {
-      // console.log(
-      //   `Thread for sprite ${thread.target.id} is in status: ${thread.status}`,
-      // );
       this._vm.step(thread, currentTime, deltaTime);
     }
     this._threads = this._threads.filter((thread) => thread.status !== "done");
@@ -258,10 +240,6 @@ export class Runtime {
   createClone(source: Sprite): Sprite {
     const clone = Sprite.cloneOf(source, this._nextCloneId++);
     this._targets.push(clone);
-    console.log(
-      `Created clone of sprite ${source.id} with new id ${clone.id}. Clone:`,
-      clone,
-    );
     return clone;
   }
   start() {

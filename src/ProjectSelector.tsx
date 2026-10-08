@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { DatabaseManager } from "./lib/database";
-import { appDataDir, join, resolveResource } from "@tauri-apps/api/path";
+import { appLocalDataDir, join, resolveResource } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import {
@@ -16,7 +16,6 @@ import { Button } from "./components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTrigger,
   DialogTitle,
@@ -132,7 +131,7 @@ export default function ProjectSelector({
   React.useEffect(() => {
     console.log("Loading thumbnails for projects and lessons...");
     const loadThumbnails = async () => {
-      const appDir = await appDataDir();
+      const appDir = await appLocalDataDir();
       const loadProjectThumbnail = async (folder: string) => {
         const thumbnailPath = await join(appDir, folder, "thumbnail.png");
         return (await exists(thumbnailPath))
@@ -298,7 +297,10 @@ export default function ProjectSelector({
               <div className="space-y-2 border-t pt-3">
                 <Label className="text-sm font-semibold">Lesson progress</Label>
                 {confirmReset ? (
-                  <div className="space-y-3 rounded-md border p-3" role="status">
+                  <div
+                    className="space-y-3 rounded-md border p-3"
+                    role="status"
+                  >
                     <p className="text-sm">
                       This removes the checkmarks from all of your lessons. Your
                       projects will not change. Do you want to start the lessons
