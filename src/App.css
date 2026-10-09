@@ -299,7 +299,7 @@ body.codely-pastel {
 
   /* Soft lavender / periwinkle */
   --primary: #d9d4f3;
-  --primary-foreground: oklch(52.047% 0.0256 299.711);
+  --primary-foreground: oklch(0.3 0.04 300);
 
   /* Lavender */
   --secondary: oklch(0.93 0.045 290);
@@ -314,7 +314,7 @@ body.codely-pastel {
   --accent-foreground: oklch(0.25 0.055 250);
 
   /* Soft coral */
-  --destructive: oklch(0.72 0.13 25);
+  --destructive: oklch(0.5 0.17 25);
   --destructive-foreground: oklch(0.25 0.045 25);
 
   /* Soft lavender-gray */

@@ -21,10 +21,7 @@ import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, RotateCcw, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
-import {
-  getBlocklyTheme,
-  watchPastelTextContrast,
-} from "./blocks/theme";
+import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
 import type { AccessibilitySettings } from "./lib/settings";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
@@ -1174,7 +1171,7 @@ function CodeEditor({
                       {(runtimeRef.current?._targets ?? []).map((target) => (
                         <div
                           key={target.id}
-                          className="rounded border bg-blue-50 border-blue-100 text-blue-950 px-2 py-1"
+                          className="rounded border bg-secondary border-primary/20 text-blue-950 px-2 py-1"
                         >
                           <div className="font-medium">
                             {target.isBackdrop
@@ -1183,7 +1180,9 @@ function CodeEditor({
                           </div>
                           {Array.from(target.variables.entries()).length ===
                           0 ? (
-                            <div className="text-blue-400">No variables</div>
+                            <div className="text-secondary-foreground">
+                              No variables
+                            </div>
                           ) : (
                             Array.from(target.variables.entries()).map(
                               ([id, value]) => (

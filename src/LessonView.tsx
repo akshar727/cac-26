@@ -1586,6 +1586,9 @@ function LessonView({
         value={activeTab}
         onValueChange={(value) => {
           setActiveTab(value);
+          if (value !== "screen" && codeRunning.current) {
+            stopCode();
+          }
           async function change() {
             if (value === "blocks") {
               if (lessonId === null) {

@@ -7,7 +7,7 @@ import type {
   SetFieldFix,
 } from "@/lib/hints";
 
-export const MAX_AUTOFIX_STEPS = 12;
+export const MAX_AUTOFIX_STEPS = 1;
 
 export type AutoFixContext = {
   workspace: Blockly.WorkspaceSvg;
