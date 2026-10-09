@@ -18,21 +18,29 @@ export type ExpectedNode = {
   spriteId?: number;
 };
 
-export type Problem =
-  | { kind: "missing-block"; blockType: string; parentId?: string }
-  | { kind: "detached"; blockType: string; blockId?: string }
-  | { kind: "wrong-block"; expected: string; found: string; blockId?: string }
-  | { kind: "empty-input"; blockType: string; input: string; blockId?: string }
+export type AttachSlot =
+  | { kind: "next"; parentId: string }
+  | { kind: "input"; parentId: string; input: string };
+
+export type Slot = { kind: "top" } | AttachSlot;
+
+type ProblemBody =
+  | { kind: "missing-block"; blockType: string; slot: Slot }
+  | { kind: "detached"; blockType: string; blockId: string; slot: AttachSlot }
+  | { kind: "wrong-block"; expected: string; found: string; blockId: string }
+  | { kind: "empty-input"; blockType: string; parentId: string; input: string }
   | {
       kind: "wrong-value";
       blockType: string;
+      blockId: string;
       field: string;
       expected: unknown;
       found: unknown;
-      blockId?: string;
     };
 
-type Result = { matched: number; problem?: Problem };
+export type Problem = ProblemBody & { spriteId?: number };
+
+type Result = { matched: number; problem?: ProblemBody };
 type VarResolver = (variableId: string) => string | undefined;
 
 export const fieldDisplayNames: Record<string, string> = {
@@ -143,16 +151,18 @@ function fieldValue(
   return raw;
 }
 
+const idOf = (node: BlockState): string => node.id ?? "";
+
 function diagnose(
   node: BlockState | undefined,
   expected: ExpectedNode | ExpectedNode[],
-  parentId: string | undefined,
+  slot: Slot,
   resolveVar?: VarResolver,
 ): Result {
   if (Array.isArray(expected)) {
     let best: Result = { matched: 0 };
     for (const alternative of expected) {
-      const result = diagnose(node, alternative, parentId, resolveVar);
+      const result = diagnose(node, alternative, slot, resolveVar);
       if (!result.problem) return result;
       if (!best.problem || result.matched > best.matched) best = result;
     }
@@ -162,11 +172,7 @@ function diagnose(
   if (!node) {
     return {
       matched: 0,
-      problem: {
-        kind: "missing-block",
-        blockType: expected.blockType,
-        parentId,
-      },
+      problem: { kind: "missing-block", blockType: expected.blockType, slot },
     };
   }
   if (node.type !== expected.blockType) {
@@ -176,7 +182,7 @@ function diagnose(
         kind: "wrong-block",
         expected: expected.blockType,
         found: node.type,
-        blockId: node.id,
+        blockId: idOf(node),
       },
     };
   }
@@ -191,10 +197,10 @@ function diagnose(
         problem: {
           kind: "wrong-value",
           blockType: node.type,
+          blockId: idOf(node),
           field: fieldName,
           expected: want,
           found: got,
-          blockId: node.id,
         },
       };
     }
@@ -202,8 +208,8 @@ function diagnose(
   }
 
   for (const [inputName, sub] of Object.entries(expected.inputs ?? {})) {
-    const slot: ConnectionState | undefined = node.inputs?.[inputName];
-    const child = slot?.block ?? slot?.shadow;
+    const connection: ConnectionState | undefined = node.inputs?.[inputName];
+    const child = connection?.block ?? connection?.shadow;
     if (!child) {
       const first = Array.isArray(sub) ? sub[0] : sub;
       return {
@@ -211,12 +217,17 @@ function diagnose(
         problem: {
           kind: "empty-input",
           blockType: first.blockType,
+          parentId: idOf(node),
           input: inputName,
-          blockId: node.id,
         },
       };
     }
-    const result = diagnose(child, sub, node.id, resolveVar);
+    const result = diagnose(
+      child,
+      sub,
+      { kind: "input", parentId: idOf(node), input: inputName },
+      resolveVar,
+    );
     matched += result.matched;
     if (result.problem) return { matched, problem: result.problem };
   }
@@ -225,7 +236,7 @@ function diagnose(
     const result = diagnose(
       node.next?.block,
       expected.next,
-      node.id,
+      { kind: "next", parentId: idOf(node) },
       resolveVar,
     );
     matched += result.matched;
@@ -250,6 +261,35 @@ function flatten(blocks: BlockState[]): BlockState[] {
   return out;
 }
 
+function attachSlotOf(
+  problem: Extract<ProblemBody, { kind: "missing-block" | "empty-input" }>,
+): AttachSlot | null {
+  if (problem.kind === "empty-input") {
+    return { kind: "input", parentId: problem.parentId, input: problem.input };
+  }
+  return problem.slot.kind === "top" ? null : problem.slot;
+}
+
+function findFreeBlock(
+  topBlocks: BlockState[],
+  blockType: string,
+  parentId: string,
+): BlockState | undefined {
+  const parentRoot = topBlocks.find((top) =>
+    flatten([top]).some((block) => block.id === parentId),
+  );
+  const candidates = topBlocks.filter(
+    (top) => top.type === blockType && top !== parentRoot,
+  );
+  if (candidates.length <= 1 || !parentRoot) return candidates[0];
+  const distance = (block: BlockState) =>
+    Math.abs((block.x ?? 0) - (parentRoot.x ?? 0)) +
+    Math.abs((block.y ?? 0) - (parentRoot.y ?? 0));
+  return candidates.reduce((closest, candidate) =>
+    distance(candidate) < distance(closest) ? candidate : closest,
+  );
+}
+
 export function diagnoseStep(
   topBlocks: BlockState[],
   expected: ExpectedNode | ExpectedNode[],
@@ -257,26 +297,29 @@ export function diagnoseStep(
 ): Problem | null {
   let best: Result | undefined;
   for (const top of topBlocks) {
-    const result = diagnose(top, expected, undefined, resolveVar);
+    const result = diagnose(top, expected, { kind: "top" }, resolveVar);
     if (!result.problem) return null;
     if (!best || result.matched > best.matched) best = result;
   }
 
   const rootType = (Array.isArray(expected) ? expected[0] : expected).blockType;
-  const problem: Problem = best?.problem ?? {
+  const problem: ProblemBody = best?.problem ?? {
     kind: "missing-block",
     blockType: rootType,
+    slot: { kind: "top" },
   };
 
-  if (problem.kind === "missing-block") {
-    const stray = flatten(topBlocks).find(
-      (block) => block.type === problem.blockType,
-    );
-    if (stray) {
+  if (problem.kind === "missing-block" || problem.kind === "empty-input") {
+    const slot = attachSlotOf(problem);
+    const stray = slot
+      ? findFreeBlock(topBlocks, problem.blockType, slot.parentId)
+      : undefined;
+    if (slot && stray) {
       return {
         kind: "detached",
         blockType: problem.blockType,
-        blockId: stray.id,
+        blockId: idOf(stray),
+        slot,
       };
     }
   }
@@ -300,25 +343,33 @@ export function diagnoseLessonStep(
       ? workspaceBlocks
       : ((sprites.find((sprite) => sprite.id === metric.spriteId)
           ?.blocks_json ?? []) as BlockState[]);
-  return diagnoseStep(blocks, metric, makeVarResolver(sprites));
+  const problem = diagnoseStep(blocks, metric, makeVarResolver(sprites));
+  return problem && { ...problem, spriteId: metric.spriteId };
 }
 
 export type HintLevel = 1 | 2 | 3;
+
+export type PlaceFix = { action: "place"; blockType: string; slot: Slot };
+export type ConnectFix = {
+  action: "connect";
+  blockId: string;
+  slot: AttachSlot;
+};
+export type SetFieldFix = {
+  action: "set-field";
+  blockId: string;
+  field: string;
+  value: string;
+};
+export type AutoFix = (PlaceFix | ConnectFix | SetFieldFix) & {
+  spriteId?: number;
+};
 
 export type Hint = {
   text: string;
   highlightBlockIds: string[];
   highlightToolboxTypes: string[];
-  autoFix?:
-    | {
-        action: "place" | "connect" | "set-field" | "fill";
-        blockType: string;
-      }
-    | {
-        action: "replace";
-        blockType: string;
-        blockTypeToReplace: string;
-      };
+  autoFix?: AutoFix;
 };
 
 export function hintFor(
@@ -339,25 +390,43 @@ export function hintFor(
   const glowToolbox = (blockType: string, override: boolean = false) => {
     if (level >= 2 || override) hint.highlightToolboxTypes = [blockType];
   };
+  const offerFix = (fix: PlaceFix | ConnectFix | SetFieldFix) => {
+    if (level === 3) hint.autoFix = { ...fix, spriteId: problem.spriteId };
+  };
 
   switch (problem.kind) {
-    case "missing-block":
+    case "missing-block": {
+      const underBlock = problem.slot.kind === "next";
       hint.text =
         level === 1
           ? `You need a ${name(problem.blockType)} block. Look for it in the toolbox.`
-          : `Add a ${name(problem.blockType)} block. It is glowing in the toolbox.`;
+          : underBlock
+            ? `Add a ${name(problem.blockType)} block under the glowing block. It is glowing in the toolbox.`
+            : `Add a ${name(problem.blockType)} block. It is glowing in the toolbox.`;
+      glowBlock(
+        problem.slot.kind === "top" ? undefined : problem.slot.parentId,
+      );
       glowToolbox(problem.blockType, true);
-      if (level === 3)
-        hint.autoFix = { action: "place", blockType: problem.blockType };
+      offerFix({
+        action: "place",
+        blockType: problem.blockType,
+        slot: problem.slot,
+      });
       break;
+    }
     case "detached":
       hint.text =
         level === 1
           ? `Your ${name(problem.blockType)} block is not connected yet. Is it snapped in?`
-          : `Snap your ${name(problem.blockType)} block under the block above it.`;
+          : problem.slot.kind === "next"
+            ? `Snap your ${name(problem.blockType)} block under the block above it.`
+            : `Snap your ${name(problem.blockType)} block into the empty spot.`;
       glowBlock(problem.blockId);
-      if (level === 3)
-        hint.autoFix = { action: "connect", blockType: problem.blockType };
+      offerFix({
+        action: "connect",
+        blockId: problem.blockId,
+        slot: problem.slot,
+      });
       break;
     case "wrong-block":
       hint.text =
@@ -372,10 +441,13 @@ export function hintFor(
         level === 1
           ? `One of your blocks has an empty spot. It needs a ${name(problem.blockType)} block.`
           : `Put a ${name(problem.blockType)} block into the empty slot.`;
-      glowBlock(problem.blockId);
+      glowBlock(problem.parentId);
       glowToolbox(problem.blockType);
-      if (level === 3)
-        hint.autoFix = { action: "fill", blockType: problem.blockType };
+      offerFix({
+        action: "place",
+        blockType: problem.blockType,
+        slot: { kind: "input", parentId: problem.parentId, input: problem.input },
+      });
       break;
     case "wrong-value":
       hint.text =
@@ -383,8 +455,12 @@ export function hintFor(
           ? `Check the ${displayFieldName(problem.field)} in your ${name(problem.blockType)} block. It is not quite right yet.`
           : `Change the ${displayFieldName(problem.field)} to ${displayValue(problem.expected)}. It is currently ${displayValue(problem.found)}.`;
       glowBlock(problem.blockId);
-      if (level === 3)
-        hint.autoFix = { action: "set-field", blockType: problem.blockType };
+      offerFix({
+        action: "set-field",
+        blockId: problem.blockId,
+        field: problem.field,
+        value: String(problem.expected),
+      });
       break;
   }
   return hint;
@@ -392,7 +468,7 @@ export function hintFor(
 
 export type HintState = { level: 0 | HintLevel; signature: string };
 
-const signatureOf = (problem: Problem | null) =>
+export const signatureOf = (problem: Problem | null) =>
   problem ? JSON.stringify(problem) : "";
 
 export function resetHints(problem: Problem | null): HintState {

@@ -32,9 +32,16 @@ import {
   hintFor,
   pressHint,
   resetHints,
+  signatureOf,
+  type AutoFix,
   type Problem,
   type HintState,
 } from "./lib/hints";
+import {
+  applyAutoFix,
+  MAX_AUTOFIX_STEPS,
+  type AutoFixContext,
+} from "./lib/autofix";
 import {
   Dialog,
   DialogClose,
@@ -97,10 +104,9 @@ function LessonView({
   );
   const [stepsOpen, setStepsOpen] = React.useState(false);
   const [hintOpen, setHintOpen] = React.useState(false);
-  const [autoFixCommand, setAutoFixCommand] = React.useState<{
-    action: string;
-    blockType: string;
-  } | null>(null);
+  const [autoFixCommand, setAutoFixCommand] = React.useState<AutoFix | null>(
+    null,
+  );
   const autoFixProblemRef = React.useRef<Problem | null>(null);
   const [hintState, setHintState] = React.useState<HintState>(resetHints(null));
   const [activeTab, setActiveTab] = React.useState("blocks");
@@ -816,147 +822,38 @@ function LessonView({
     if (!currentLesson) return;
     const targetStep = currentStepRef.current;
 
-    const toolboxConfig = createLessonToolbox(currentLesson, targetStep);
-    function findToolboxBlock(contents: any[], blockType: string): any | null {
-      for (const item of contents) {
-        if (item.kind === "block" && item.type === blockType) return item;
-        if (item.kind === "category") {
-          const found = findToolboxBlock(item.contents ?? [], blockType);
-          if (found) return found;
-        }
+    const needsSprite = autoFixCommand.spriteId;
+    if (
+      needsSprite !== undefined &&
+      activeSpriteRef.current?.id !== needsSprite
+    ) {
+      const targetSprite = lessonSpritesRef.current.find(
+        (sprite) => sprite.id === needsSprite,
+      );
+      if (targetSprite) {
+        setActiveSprite(targetSprite);
+        setAutoFixCommand(null);
+        autoFixProblemRef.current = null;
+        setHintState(resetHints(null));
+        setLessonStepHint(
+          "I opened the sprite this step is about. Press the hint button again to keep going.",
+        );
+        return;
       }
-      return null;
     }
 
-    function applyAutoFix(
-      problem: Problem,
-      command: { action: string; blockType: string },
-    ): boolean {
-      if (!workspace) return false;
-      const currentMetric = currentLesson!.successMetrics[targetStep];
-      if (
-        activeSpriteRef.current &&
-        currentMetric.spriteId !== undefined &&
-        activeSpriteRef.current.id !== currentMetric.spriteId
-      ) {
-        const targetSprite = lessonSpritesRef.current.find(
-          (sprite) => sprite.id === currentMetric.spriteId,
-        );
-        if (targetSprite) {
-          setActiveSprite(targetSprite);
-          return false; // wait for the workspace to update before applying the fix
+    const context: AutoFixContext = {
+      workspace,
+      toolboxContents: createLessonToolbox(currentLesson, targetStep).contents,
+      ensureBroadcast: (name) => {
+        if (!broadcastMessagesRef.current.some(([, value]) => value === name)) {
+          broadcastMessagesRef.current = [
+            ...broadcastMessagesRef.current,
+            [name, name],
+          ];
         }
-      }
-      console.log("Problem auto-fix command:", command);
-      if (command.action === "place") {
-        let blockDefinition = findToolboxBlock(
-          toolboxConfig.contents,
-          command.blockType,
-        );
-        if (
-          command.blockType === "variables_get" ||
-          command.blockType === "variables_set"
-        ) {
-          blockDefinition = {
-            kind: "block",
-            type: command.blockType,
-          };
-        }
-        if (!blockDefinition) return false;
-        Blockly.serialization.blocks.append(blockDefinition, workspace, {
-          recordUndo: true,
-        });
-        workspace.cleanUp();
-        return true;
-      }
-      if (command.action === "fill" && problem.kind === "empty-input") {
-        if (!problem.blockId) return false;
-        const parent = workspace.getBlockById(problem.blockId);
-        const connection = parent?.getInput(problem.input)?.connection;
-        if (!parent || !connection || connection.targetBlock()) return false;
-        const definition = findToolboxBlock(
-          toolboxConfig.contents,
-          command.blockType,
-        ) ?? { kind: "block", type: command.blockType };
-        const created = Blockly.serialization.blocks.append(
-          definition,
-          workspace,
-          { recordUndo: true },
-        );
-        const output = created.outputConnection;
-        if (!output || !connection.connect(output)) {
-          created.dispose(false);
-          return false;
-        }
-        return true;
-      }
-      //@ts-ignore
-      if (command.action === "connect" && problem.blockId) {
-        //@ts-ignore
-        const block = workspace.getBlockById(problem.blockId);
-        const previousConnection = block?.previousConnection;
-        if (!block || !previousConnection || previousConnection.isConnected()) {
-          return false;
-        }
-        const blockPosition = block.getRelativeToSurfaceXY();
-        const candidate = workspace
-          .getAllBlocks(false)
-          .filter(
-            (candidateBlock) =>
-              candidateBlock.id !== block.id &&
-              candidateBlock.nextConnection &&
-              !candidateBlock.nextConnection.isConnected(),
-          )
-          .sort((left, right) => {
-            const leftPosition = left.getRelativeToSurfaceXY();
-            const rightPosition = right.getRelativeToSurfaceXY();
-            const leftDistance =
-              Math.abs(leftPosition.x - blockPosition.x) +
-              Math.abs(leftPosition.y - blockPosition.y);
-            const rightDistance =
-              Math.abs(rightPosition.x - blockPosition.x) +
-              Math.abs(rightPosition.y - blockPosition.y);
-            return leftDistance - rightDistance;
-          })[0];
-        if (!candidate?.nextConnection) return false;
-        candidate.nextConnection.connect(previousConnection);
-        return true;
-      }
-
-      if (
-        command.action === "set-field" &&
-        problem.kind === "wrong-value" &&
-        problem.blockId
-      ) {
-        const block = workspace.getBlockById(problem.blockId);
-        const field = block?.getField(problem.field);
-        if (!field) return false;
-        let value = String(problem.expected);
-        if (problem.field === "VAR") {
-          const variable = workspace
-            .getVariableMap()
-            .getAllVariables()
-            .find((candidate) => candidate.getName() === value);
-          value = variable?.getId() ?? value;
-        }
-        if (problem.field === "BROADCAST") {
-          if (
-            !broadcastMessagesRef.current.some(
-              ([, optionValue]) => optionValue === value,
-            )
-          ) {
-            broadcastMessagesRef.current = [
-              ...broadcastMessagesRef.current,
-              [value, value],
-            ];
-          }
-          (field as Blockly.FieldDropdown).getOptions(false);
-        }
-        field.setValue(value);
-        return String(field.getValue()) === value;
-      }
-      return false;
-    }
+      },
+    };
 
     const diagnoseNow = () =>
       diagnoseLessonStep(
@@ -966,17 +863,23 @@ function LessonView({
         lessonSpritesRef.current,
       );
 
+    const hintedSignature = signatureOf(autoFixProblemRef.current);
+    let stale = false;
     Blockly.Events.setGroup("lesson-hint-auto-fix");
     try {
       let lastSignature = "";
-      for (let attempt = 0; attempt < 12; attempt++) {
+      for (let attempt = 0; attempt < MAX_AUTOFIX_STEPS; attempt++) {
         const problem = diagnoseNow();
         if (!problem) break;
-        const signature = JSON.stringify(problem);
+        const signature = signatureOf(problem);
+        if (attempt === 0 && signature !== hintedSignature) {
+          stale = true;
+          break;
+        }
         if (signature === lastSignature) break;
         lastSignature = signature;
         const hint = hintFor(problem, 3, blockHelp);
-        if (!hint.autoFix || !applyAutoFix(problem, hint.autoFix)) break;
+        if (!hint.autoFix || !applyAutoFix(hint.autoFix, context)) break;
         saveCurrentWorkspace();
         reconcileLessonProgress();
         if (currentStepRef.current !== targetStep) break;
@@ -985,14 +888,16 @@ function LessonView({
       Blockly.Events.setGroup(false);
     }
     const stepFinished = currentStepRef.current !== targetStep;
-    const remaining = stepFinished ? null : diagnoseNow();
+    const remaining = stale || stepFinished ? null : diagnoseNow();
     setAutoFixCommand(null);
     autoFixProblemRef.current = null;
     setHintState(resetHints(null));
     setLessonStepHint(
-      remaining
-        ? "I couldn't finish that change. Press the hint button again to see what to try next."
-        : "I made the suggested change. Try the lesson again.",
+      stale
+        ? "Your blocks changed after that hint. Press the hint button again for a new one."
+        : remaining
+          ? "I couldn't finish that change. Press the hint button again to see what to try next."
+          : "I made the suggested change. Try the lesson again.",
     );
   }
 
