@@ -47,41 +47,40 @@ export default function BroadcastPromptDialog() {
         <DialogHeader>
           <DialogTitle>{config?.message}</DialogTitle>
         </DialogHeader>
-        <Label htmlFor="broadcastInput">Message Name</Label>
-        <Input
-          value={userInput}
-          id="broadcastInput"
-          defaultValue={config?.defaultValue}
-          onChange={(e) => setUserInput(e.target.value)}
-        ></Input>
-        <DialogFooter>
-          <DialogClose
-            render={
-              <Button
-                onClick={() => {
-                  config?.callback(null);
-                  setDialogOpen(false);
-                }}
-                variant="outline"
-              >
-                Cancel
-              </Button>
-            }
-          />
-          <Button
-            onClick={() => {
-              if (config?.message?.startsWith("New variable name")) {
-                config?.callback(userInput);
-              } else {
-                //@ts-ignore
-                config?.callback(userInput);
+        <form
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            config?.callback(userInput);
+            setDialogOpen(false);
+          }}
+        >
+          <div className="grid gap-2">
+            <Label htmlFor="broadcastInput">Message Name</Label>
+            <Input
+              value={userInput}
+              id="broadcastInput"
+              onChange={(e) => setUserInput(e.target.value)}
+            ></Input>
+          </div>
+          <DialogFooter>
+            <DialogClose
+              render={
+                <Button
+                  type="button"
+                  onClick={() => {
+                    config?.callback(null);
+                    setDialogOpen(false);
+                  }}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
               }
-              setDialogOpen(false);
-            }}
-          >
-            Ok
-          </Button>
-        </DialogFooter>
+            />
+            <Button type="submit">Ok</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

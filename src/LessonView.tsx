@@ -20,12 +20,21 @@ import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./lib/lesson";
-import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
+import {
+  getBlocklyTheme,
+  loadBlocklyFonts,
+  watchPastelTextContrast,
+} from "./blocks/theme";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import confetti from "canvas-confetti";
 import { Check } from "lucide-react";
-import { AccessibilitySettings, saveLessonProgress } from "./lib/settings";
+import {
+  AccessibilitySettings,
+  prefersReducedMotion,
+  saveLessonProgress,
+} from "./lib/settings";
+import { StageLiveRegion } from "./components/StageLiveRegion";
 import { blockHelp } from "./blocks/blockHelp";
 import {
   diagnoseLessonStep,
@@ -103,6 +112,8 @@ function LessonView({
     null,
   );
   const [stepsOpen, setStepsOpen] = React.useState(false);
+  const [liveMessage, setLiveMessage] = React.useState("");
+  const [autoFixResult, setAutoFixResult] = React.useState<string | null>(null);
   const [hintOpen, setHintOpen] = React.useState(false);
   const [autoFixCommand, setAutoFixCommand] = React.useState<AutoFix | null>(
     null,
@@ -132,6 +143,11 @@ function LessonView({
   }, [lesson]);
 
   React.useEffect(() => {
+    if (!lesson) return;
+    document.title = `${lesson.name} – Codely`;
+  }, [lesson]);
+
+  React.useEffect(() => {
     return () => {
       codeRunning.current = false;
       runIdRef.current += 1;
@@ -154,7 +170,7 @@ function LessonView({
       !completionCelebratedRef.current
     ) {
       completionCelebratedRef.current = true;
-      if (!accessibilitySettings.reducedMotion) {
+      if (!accessibilitySettings.reducedMotion && !prefersReducedMotion()) {
         void confetti({
           particleCount: 90,
           spread: 55,
@@ -175,10 +191,23 @@ function LessonView({
   }, [currentStep, lesson, workspace, accessibilitySettings.reducedMotion]);
 
   React.useEffect(() => {
+    if (!lesson) return;
+    if (currentStep >= lesson.successMetrics.length) {
+      setLiveMessage("Lesson complete.");
+      return;
+    }
+    const stepNumber = Math.min(currentStep + 1, lesson.instructions.length);
+    setLiveMessage(
+      `Step ${stepNumber} of ${lesson.instructions.length}: ${lesson.instructions[currentStep] ?? ""}`,
+    );
+  }, [currentStep, lesson]);
+
+  React.useEffect(() => {
     setCurrentStep(0);
     currentStepRef.current = 0;
     completionCelebratedRef.current = false;
     setLessonStepHint(null);
+    setAutoFixResult(null);
   }, [lessonId]);
 
   function highlightTargetBlock(
@@ -636,13 +665,26 @@ function LessonView({
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
+      const isInteractive = (target: EventTarget | null) =>
+        target instanceof HTMLElement &&
+        target.closest(
+          "button, a, select, summary, [role='button'], [role='tab'], [role='slider'], [role='checkbox'], [role='radio'], [role='menuitem'], [role='switch']",
+        ) !== null;
       const keyDownEvent = (event: KeyboardEvent) => {
         if (isTyping(event.target)) return;
-        // Keep arrow keys and space from scrolling the page while playing.
+        if (
+          event.key === "Escape" &&
+          !event.defaultPrevented &&
+          !document.querySelector('[role="dialog"]')
+        ) {
+          stopCode();
+          return;
+        }
         if (
           ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(
             event.key,
-          )
+          ) &&
+          !isInteractive(event.target)
         ) {
           event.preventDefault();
         }
@@ -776,6 +818,7 @@ function LessonView({
   function requestHint() {
     const currentLesson = lessonRef.current;
     if (!workspace || !currentLesson) return;
+    setAutoFixResult(null);
 
     const blocks =
       Blockly.serialization.workspaces.save(workspace).blocks?.blocks ?? [];
@@ -835,9 +878,10 @@ function LessonView({
         setAutoFixCommand(null);
         autoFixProblemRef.current = null;
         setHintState(resetHints(null));
-        setLessonStepHint(
-          "I opened the sprite this step is about. Press the hint button again to keep going.",
-        );
+        const openedMessage =
+          "I opened the sprite this step is about. Press the hint button again to keep going.";
+        setLessonStepHint(openedMessage);
+        setAutoFixResult(openedMessage);
         return;
       }
     }
@@ -892,13 +936,13 @@ function LessonView({
     setAutoFixCommand(null);
     autoFixProblemRef.current = null;
     setHintState(resetHints(null));
-    setLessonStepHint(
-      stale
-        ? "Your blocks changed after that hint. Press the hint button again for a new one."
-        : remaining
-          ? "I couldn't finish that change. Press the hint button again to see what to try next."
-          : "I made the suggested change. Try the lesson again.",
-    );
+    const resultMessage = stale
+      ? "Your blocks changed after that hint. Press the hint button again for a new one."
+      : remaining
+        ? "I couldn't finish that change. Press the hint button again to see what to try next."
+        : "";
+    setLessonStepHint(resultMessage);
+    setAutoFixResult(resultMessage);
   }
 
   function saveCurrentWorkspace() {
@@ -982,6 +1026,7 @@ function LessonView({
   }
 
   async function setupWorkspace(currentLesson: Lesson | null = lesson) {
+    await loadBlocklyFonts(accessibilitySettings);
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.89);
     Blockly.utils.colour.setHsvValue(0.85);
@@ -1500,6 +1545,7 @@ function LessonView({
               <div
                 className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"
                 role="progressbar"
+                aria-label="Lesson progress"
                 aria-valuenow={Math.round(
                   (Math.min(currentStep, lesson.successMetrics.length) /
                     lesson.successMetrics.length) *
@@ -1529,15 +1575,26 @@ function LessonView({
             >
               {lesson.instructions[currentStep] ?? "Lesson complete."}
             </p>
-            {currentStep >= lesson.successMetrics.length &&
-              accessibilitySettings.reducedMotion && (
-                <p
-                  className="mt-2 flex items-center gap-2 font-semibold text-emerald-700"
-                  role="status"
-                >
-                  <Check className="size-5" /> Lesson complete.
+            <div
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {liveMessage}
+            </div>
+            <div role="status" aria-live="polite">
+              {autoFixResult && (
+                <p className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-blue-950">
+                  {autoFixResult}
                 </p>
               )}
+            </div>
+            {currentStep >= lesson.successMetrics.length && (
+              <p className="mt-2 flex items-center gap-2 font-semibold text-emerald-700">
+                <Check className="size-5" aria-hidden="true" /> Lesson complete.
+              </p>
+            )}
             <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>{lesson.name} steps</DialogTitle>
@@ -1554,12 +1611,20 @@ function LessonView({
                       className="flex items-start gap-2"
                     >
                       <Check
+                        aria-hidden="true"
                         className={
                           index < currentStep
                             ? "mt-0.5 size-4 text-emerald-600"
                             : "mt-0.5 size-4 text-slate-300"
                         }
                       />
+                      <span className="sr-only">
+                        {index < currentStep
+                          ? "Completed: "
+                          : index === currentStep
+                            ? "Current step: "
+                            : "To do: "}
+                      </span>
                       <span
                         className={
                           index === currentStep
@@ -1768,12 +1833,15 @@ function LessonView({
                 <canvas
                   className="border border-slate-300 rounded-lg"
                   id="backgroundCanvas"
+                  aria-hidden="true"
                   width="800"
                   height="600"
                 ></canvas>
                 <canvas
                   className="absolute border border-slate-300 rounded-lg"
                   id="foregroundCanvas"
+                  role="img"
+                  aria-label="Stage showing the sprites and backdrop. Spoken text and variable changes are announced while code runs. Use the sprite buttons below the stage to click a sprite."
                   width="800"
                   height="600"
                 ></canvas>
@@ -1797,6 +1865,11 @@ function LessonView({
                   <Square />
                   Stop Code
                 </Button>
+                <StageLiveRegion
+                  runtimeRef={runtimeRef}
+                  sprites={sprites}
+                  active={codeRunningState}
+                />
               </CardFooter>
             </Card>
           </div>

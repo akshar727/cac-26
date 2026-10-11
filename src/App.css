@@ -5,25 +5,25 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2138 0.0019 286.2347);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2138 0.0019 286.2347);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2138 0.0019 286.2347);
-  --primary: oklch(0.536 0.2573 269.0061);
+  --background: oklch(0.977 0.006 95);
+  --foreground: oklch(0.2 0.01 95);
+  --card: oklch(0.999 0.002 95);
+  --card-foreground: oklch(0.2 0.01 95);
+  --popover: oklch(0.999 0.002 95);
+  --popover-foreground: oklch(0.2 0.01 95);
+  --primary: oklch(0.56 0.2 277);
   --primary-foreground: oklch(0.9851 0 0);
-  --secondary: oklch(0.9526 0.0229 280.5947);
-  --secondary-foreground: oklch(0.536 0.2573 269.0061);
-  --muted: oklch(0.9702 0 0);
-  --muted-foreground: oklch(0.5555 0 0);
-  --accent: oklch(0.967 0.0029 264.5419);
-  --accent-foreground: oklch(0 0 0);
+  --secondary: oklch(0.955 0.006 95);
+  --secondary-foreground: oklch(0.25 0.01 95);
+  --muted: oklch(0.955 0.006 95);
+  --muted-foreground: oklch(0.48 0.01 95);
+  --accent: oklch(0.945 0.012 95);
+  --accent-foreground: oklch(0.2 0.01 95);
   --destructive: oklch(0.5379 0.2186 25.9751);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.9219 0 0);
-  --input: oklch(0.9219 0 0);
-  --ring: oklch(0.709 0 0);
+  --border: oklch(0.915 0.008 95);
+  --input: oklch(0.915 0.008 95);
+  --ring: oklch(0.53 0.21 277);
   --chart-1: oklch(0.8093 0.0985 252.2024);
   --chart-2: oklch(0.6207 0.1894 259.9358);
   --chart-3: oklch(0.5495 0.2202 263.0917);
@@ -84,7 +84,7 @@
   --destructive-foreground: oklch(0.9851 0 0);
   --border: oklch(0.2768 0 0);
   --input: oklch(0.325 0 0);
-  --ring: oklch(0.5555 0 0);
+  --ring: oklch(0.78 0.12 269);
   --chart-1: oklch(0.8093 0.0985 252.2024);
   --chart-2: oklch(0.6207 0.1894 259.9358);
   --chart-3: oklch(0.5495 0.2202 263.0917);
@@ -186,7 +186,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
@@ -222,9 +222,14 @@ svg[display="none"] {
   animation: codely-target-block-pulse 1.4s ease-in-out infinite;
 }
 
+.codely-lesson-target-block {
+  filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 3px #fff);
+}
+
 .codely-lesson-target-block .blocklyPath {
-  stroke: var(--color-primary) !important;
+  stroke: #111827 !important;
   stroke-width: 4px !important;
+  stroke-dasharray: 10 5;
 }
 
 .codely-reduce-motion .codely-lesson-target-block {
@@ -269,6 +274,43 @@ body.codely-pastel .blocklySvg .blocklyShadow .blocklyDropdownText {
   fill: #263238 !important;
 }
 
+.blocklyFlyoutButtonShadow {
+  display: none;
+}
+
+.blocklyFlyoutButton {
+  cursor: pointer;
+  fill: var(--primary);
+  transition: fill 150ms ease;
+}
+
+.blocklyFlyoutButton:hover {
+  fill: color-mix(in oklch, var(--primary) 80%, var(--background));
+}
+
+.blocklyFlyoutButton:active {
+  fill: color-mix(in oklch, var(--primary) 70%, var(--background));
+}
+
+.blocklyFlyoutButton:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.blocklyFlyoutButtonBackground {
+  rx: 8px;
+  ry: 8px;
+  stroke: transparent !important;
+  stroke-width: 1px;
+}
+
+.blocklyFlyoutButton .blocklyText {
+  fill: var(--primary-foreground) !important;
+  font-weight: 500;
+  letter-spacing: var(--tracking-normal);
+  cursor: pointer;
+}
+
 body.codely-pastel .blocklyDropDownDiv .blocklyMenuItem,
 body.codely-pastel .blocklyDropDownDiv .blocklyMenuItemContent,
 body.codely-pastel .blocklyWidgetDiv .blocklyMenuItem,
@@ -277,7 +319,7 @@ body.codely-pastel .blocklyWidgetDiv .blocklyMenuItemContent {
 }
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
@@ -320,7 +362,7 @@ body.codely-pastel {
   /* Soft lavender-gray */
   --border: oklch(0.88 0.025 280);
   --input: oklch(0.88 0.025 280);
-  --ring: oklch(0.72 0.1 280);
+  --ring: oklch(0.57 0.11 285);
 
   /* Pastel chart palette */
   --chart-1: oklch(0.75 0.12 275); /* lavender */

@@ -21,7 +21,14 @@ import { FieldGroup } from "./ui/field";
 import { Label } from "./ui/label";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Skeleton } from "./ui/skeleton";
-import { Copy, MoreHorizontal, PlusIcon, SquarePen, Trash } from "lucide-react";
+import {
+  Check,
+  Copy,
+  MoreHorizontal,
+  PlusIcon,
+  SquarePen,
+  Trash,
+} from "lucide-react";
 import {
   baseNameOf,
   fileNameFromPath,
@@ -109,7 +116,7 @@ export default function SpriteAndBackdropSelector({
                         "hover:cursor-pointer relative hover:bg-slate-100 transition-colors duration-200",
                         activeSprite?.id === sprite.id &&
                           !("isBackdrop" in activeSprite)
-                          ? "bg-slate-100"
+                          ? "bg-secondary ring-2 ring-ring"
                           : "",
                       )}
                       onClick={() => {
@@ -178,6 +185,13 @@ export default function SpriteAndBackdropSelector({
                         className="w-full cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         <CardContent className="flex flex-col items-center gap-2">
+                          {activeSprite?.id === sprite.id &&
+                            !("isBackdrop" in activeSprite) && (
+                              <Check
+                                aria-hidden="true"
+                                className="absolute left-2 top-2 size-5 rounded-full bg-ring p-0.5 text-background"
+                              />
+                            )}
                           {sprite.image_paths.length === 0 ? (
                             <Skeleton className="w-16 h-16" />
                           ) : (
@@ -277,14 +291,15 @@ export default function SpriteAndBackdropSelector({
                         {JSON.parse(spriteImageDialogValue).map(
                           (path: string, index: number) => (
                             <span key={index}>
-                              <span
-                                className=" text-blue-500 hover:cursor-pointer hover:underline text-wrap"
+                              <button
+                                type="button"
+                                className="text-wrap text-blue-800 underline hover:text-blue-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 onClick={async () => {
                                   await openImage(path);
                                 }}
                               >
                                 {fileNameFromPath(path)}
-                              </span>
+                              </button>
                               {index <
                               JSON.parse(spriteImageDialogValue).length - 1
                                 ? ", "
@@ -461,11 +476,11 @@ export default function SpriteAndBackdropSelector({
                   return (
                     <Card
                       className={cn(
-                        "hover:cursor-pointer hover:bg-slate-100 transition-colors duration-200",
+                        "hover:cursor-pointer relative hover:bg-slate-100 transition-colors duration-200",
                         activeSprite?.id === sprite.id &&
                           "isBackdrop" in activeSprite &&
                           activeSprite.isBackdrop === true
-                          ? "bg-slate-100"
+                          ? "bg-secondary ring-2 ring-ring"
                           : "",
                       )}
                       onClick={() => {
@@ -485,6 +500,14 @@ export default function SpriteAndBackdropSelector({
                         className="w-full cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         <CardContent className="flex flex-col items-center gap-2">
+                          {activeSprite?.id === sprite.id &&
+                            "isBackdrop" in activeSprite &&
+                            activeSprite.isBackdrop === true && (
+                              <Check
+                                aria-hidden="true"
+                                className="absolute left-2 top-2 size-5 rounded-full bg-ring p-0.5 text-background"
+                              />
+                            )}
                           {sprite.image_paths.length === 0 ? (
                             <Skeleton className="w-16 h-16" />
                           ) : (

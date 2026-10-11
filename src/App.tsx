@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import LessonView from "./LessonView";
 import "@fontsource-variable/instrument-sans";
 import "@fontsource/atkinson-hyperlegible";
+import "@fontsource/atkinson-hyperlegible/700.css";
 import {
   AccessibilitySettings,
   loadAccessibilitySettings,
@@ -49,6 +50,12 @@ function AppWrapper() {
   React.useEffect(() => {
     document.body.classList.toggle("codely-pastel", pastelTheme);
   }, [pastelTheme]);
+
+  React.useEffect(() => {
+    if (projectId !== null) document.title = "Project editor – Codely";
+    else if (lessonId !== null) document.title = "Lesson – Codely";
+    else document.title = "Projects and lessons – Codely";
+  }, [projectId, lessonId]);
 
   return (
     <React.StrictMode>

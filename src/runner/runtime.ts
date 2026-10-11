@@ -168,6 +168,19 @@ export class Runtime {
       return;
     }
 
+    this.clickTarget(clickedTarget);
+  }
+
+  clickSpriteById(spriteId: number) {
+    const target = this._targets.find(
+      (candidate) => candidate.id === spriteId && !candidate.isBackdrop,
+    );
+    if (target) {
+      this.clickTarget(target);
+    }
+  }
+
+  clickTarget(clickedTarget: Sprite) {
     const scriptOwnerId = (
       clickedTarget.cloneSourceId ?? clickedTarget.id
     ).toString();

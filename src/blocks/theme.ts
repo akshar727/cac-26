@@ -1,4 +1,42 @@
 import * as Blockly from "blockly";
+
+const DEFAULT_FONT_FAMILY =
+  "Instrument Sans, ui-sans-serif, sans-serif, system-ui";
+const HYPERLEGIBLE_FONT_FAMILY = '"Atkinson Hyperlegible", sans-serif';
+const BLOCK_FONT_WEIGHT = "bold";
+const NORMAL_FONT_SIZE = 12;
+const LARGE_FONT_SIZE = 16;
+const FONT_PROBE_TEXT = "Hg ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789";
+
+export type BlockAccessbility = {
+  textSize?: "normal" | "large";
+  hyperlegible?: boolean;
+};
+
+export function getBlocklyFontStyle(accessibilitySettings: BlockAccessbility = {}) {
+  return {
+    family:
+      accessibilitySettings.hyperlegible === true
+        ? HYPERLEGIBLE_FONT_FAMILY
+        : DEFAULT_FONT_FAMILY,
+    weight: BLOCK_FONT_WEIGHT,
+    size: accessibilitySettings.textSize === "large" ? LARGE_FONT_SIZE : NORMAL_FONT_SIZE,
+  };
+}
+
+export async function loadBlocklyFonts(
+  accessibilitySettings: BlockAccessbility = {},
+): Promise<void> {
+  if (typeof document === "undefined" || !document.fonts) return;
+  const { family, weight, size } = getBlocklyFontStyle(accessibilitySettings);
+  try {
+    await document.fonts.load(`${weight} ${size}pt ${family}`, FONT_PROBE_TEXT);
+    await document.fonts.ready;
+  } catch {
+    return;
+  }
+}
+
 const theme = Blockly.Theme.defineTheme("codely", {
   name: "codely",
   base: Blockly.Themes.Classic,
@@ -6,11 +44,7 @@ const theme = Blockly.Theme.defineTheme("codely", {
     toolboxBackgroundColour: "#f5f5f5",
     flyoutBackgroundColour: "#f5f5f5",
   },
-  fontStyle: {
-    family: "Instrument Sans, ui-sans-serif, sans-serif, system-ui",
-    weight: "bold",
-    size: 12,
-  },
+  fontStyle: getBlocklyFontStyle(),
   categoryStyles: {
     screen_category: {
       colour: "#8b78c7",
@@ -166,11 +200,6 @@ export const pastelBlockStyles: Record<
   },
 };
 
-export type BlockAccessbility = {
-  textSize?: "normal" | "large";
-  hyperlegible?: boolean;
-};
-
 export function getBlocklyTheme(pastel: boolean, accessibilitySettings: BlockAccessbility = {}) {
   const base = pastel
     ? Blockly.Theme.defineTheme("codely-pastel", {
@@ -196,13 +225,7 @@ export function getBlocklyTheme(pastel: boolean, accessibilitySettings: BlockAcc
     name,
     base,
     startHats: true,
-    fontStyle: {
-      family: hyperlegible
-        ? '"Atkinson Hyperlegible", sans-serif'
-        : "Instrument Sans, ui-sans-serif, sans-serif, system-ui",
-      weight: "bold",
-      size: large ? 16 : 12,
-    },
+    fontStyle: getBlocklyFontStyle(accessibilitySettings),
   });
 }
 
@@ -234,50 +257,5 @@ export function watchPastelTextContrast(
   const observer = new MutationObserver(applyContrast);
   observer.observe(container, { childList: true, subtree: true });
   return observer;
-}
-
-const LIGHT_TEXT = "#ffffff";
-const DARK_TEXT = "#111827";
-const MIN_TEXT_CONTRAST = 4.5;
-
-function parseRgb(value: string): [number, number, number] | null {
-  const parts = value.match(/\d+(\.\d+)?/g);
-  if (!parts || parts.length < 3) return null;
-  return [Number(parts[0]), Number(parts[1]), Number(parts[2])];
-}
-
-function relativeLuminance([red, green, blue]: [number, number, number]) {
-  const channel = (value: number) => {
-    const scaled = value / 255;
-    return scaled <= 0.03928
-      ? scaled / 12.92
-      : Math.pow((scaled + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue);
-}
-
-function contrastBetween(first: number, second: number) {
-  const lighter = Math.max(first, second);
-  const darker = Math.min(first, second);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-function backgroundLuminance(text: SVGTextElement): number | null {
-  const fieldRect = text.parentElement?.querySelector<SVGElement>(
-    ":scope > .blocklyFieldRect",
-  );
-  const candidates: (SVGElement | null | undefined)[] = [
-    fieldRect,
-    text.closest(".blocklyDraggable")?.querySelector<SVGElement>(
-      ":scope > .blocklyPath",
-    ),
-  ];
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    const fill = getComputedStyle(candidate).fill;
-    const rgb = fill ? parseRgb(fill) : null;
-    if (rgb) return relativeLuminance(rgb);
-  }
-  return null;
 }
 export default theme;

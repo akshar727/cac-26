@@ -7,10 +7,15 @@ export type AccessibilitySettings = {
   reducedMotion: boolean;
 };
 
+export function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export const defaultAccessibilitySettings: AccessibilitySettings = {
   textSize: "normal",
   hyperlegible: false,
-  reducedMotion: false,
+  reducedMotion: prefersReducedMotion(),
 };
 
 export function loadAccessibilitySettings(): AccessibilitySettings {

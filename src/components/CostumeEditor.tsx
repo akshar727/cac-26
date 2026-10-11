@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId, useRef, type CSSProperties } from "react";
 import { Card, CardContent, CardFooter, CardTitle } from "./ui/card";
 import { DatabaseSprite } from "@/types/database";
 import { DatabaseManager } from "@/lib/database";
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { copyFile, BaseDirectory, mkdir, exists } from "@tauri-apps/plugin-fs";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { appLocalDataDir, join } from "@tauri-apps/api/path";
 import { Field } from "@/components/ui/field";
 import { DialogContent, DialogFooter } from "./ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
@@ -31,12 +33,78 @@ import {
   uniqueFileName,
 } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
-import { Plus, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Copy,
+  Maximize,
+  Plus,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import type { UniqueIdentifier } from "@dnd-kit/abstract";
 
 type Costume = DatabaseSprite["image_paths"][number];
+
+const ZOOM_STEPS = [25, 50, 100, 200, 400];
+
+const overlayControl =
+  "z-10 size-7 rounded-lg bg-gray-200/30 transition-colors duration-100 hover:bg-gray-300/60";
+
+function stepZoom(current: number | null, direction: 1 | -1): number {
+  if (current === null) return direction === 1 ? 100 : 50;
+  const index = ZOOM_STEPS.indexOf(current);
+  const next = Math.min(ZOOM_STEPS.length - 1, Math.max(0, index + direction));
+  return ZOOM_STEPS[next];
+}
+
+function imageTypeOf(costume: Costume): string {
+  const source = costume.truePath ?? costume.loadablePath;
+  const match = /\.([a-z0-9]+)(?:\?.*)?$/i.exec(source);
+  return match ? match[1].toUpperCase() : "Image";
+}
+
+function copyNameFor(name: string, existingNames: string[]): string {
+  const taken = new Set(existingNames);
+  let candidate = `${name} copy`;
+  let counter = 2;
+  while (taken.has(candidate)) {
+    candidate = `${name} copy ${counter}`;
+    counter++;
+  }
+  return candidate;
+}
+
+function useImageDimensions(loadablePath: string) {
+  const [dimensions, setDimensions] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  useEffect(() => {
+    setDimensions(null);
+    if (!loadablePath) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) {
+        setDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+      }
+    };
+    img.src = loadablePath;
+    return () => {
+      cancelled = true;
+    };
+  }, [loadablePath]);
+
+  return dimensions;
+}
 
 function SortableCostumeCard({
   costume,
@@ -44,18 +112,25 @@ function SortableCostumeCard({
   isActive,
   isLesson,
   canDelete,
+  canMoveUp,
+  canMoveDown,
   onSelect,
   onDelete,
+  onMove,
 }: {
   costume: Costume;
   index: number;
   isActive: boolean;
   isLesson: boolean;
   canDelete: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   onSelect: () => void;
   onDelete: () => Promise<void>;
+  onMove: (delta: -1 | 1) => void;
 }) {
   const id = costume.loadablePath as UniqueIdentifier;
+  const deleteHintId = useId();
   const { isDragging, ref } = useSortable({
     id,
     index,
@@ -69,8 +144,9 @@ function SortableCostumeCard({
         ref={ref}
         onClick={onSelect}
         className={cn(
-          "hover:cursor-grab hover:bg-slate-100 transition-colors duration-200 relative",
-          isActive ? "bg-slate-100" : "",
+          "hover:bg-slate-100 transition-colors duration-200 relative",
+          isLesson ? "hover:cursor-pointer" : "hover:cursor-grab",
+          isActive ? "bg-secondary ring-2 ring-ring" : "",
           isDragging ? "opacity-50" : "",
         )}
       >
@@ -85,7 +161,7 @@ function SortableCostumeCard({
                       role="button"
                       tabIndex={0}
                       aria-label={`Delete costume ${costume.costumeName}`}
-                      className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
+                      className="hover:cursor-pointer absolute top-2 right-2 z-10 rounded-lg hover:bg-red-500/40 focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-100 bg-gray-200/30 flex items-center justify-center size-7"
                       onClick={(event) => event.stopPropagation()}
                     >
                       <X className="w-4 h-4" />
@@ -97,12 +173,16 @@ function SortableCostumeCard({
           ) : !isLesson ? (
             <TooltipTrigger
               render={
-                <div
-                  className="hover:cursor-pointer absolute top-0 right-0 z-10 rounded-lg hover:bg-red-500/40 transition-colors duration-100 bg-gray-200/30 flex justify-end m-2 p-1"
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-label={`Delete costume ${costume.costumeName} (unavailable)`}
+                  aria-describedby={deleteHintId}
+                  className="absolute top-2 right-2 z-10 rounded-lg bg-gray-200/30 flex items-center justify-center size-7 cursor-not-allowed opacity-60 focus-visible:outline-2 focus-visible:outline-ring"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <X className="w-4 h-4" />
-                </div>
+                </button>
               }
             />
           ) : null}
@@ -112,6 +192,43 @@ function SortableCostumeCard({
             </TooltipContent>
           )}
         </Tooltip>
+        {!isLesson && !canDelete && (
+          <span id={deleteHintId} className="sr-only">
+            You cannot delete the only costume of a sprite.
+          </span>
+        )}
+        {!isLesson && (
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className={overlayControl}
+              disabled={!canMoveUp}
+              aria-label={`Move ${costume.costumeName} up`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onMove(-1);
+              }}
+            >
+              <ChevronUp />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className={overlayControl}
+              disabled={!canMoveDown}
+              aria-label={`Move ${costume.costumeName} down`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onMove(1);
+              }}
+            >
+              <ChevronDown />
+            </Button>
+          </div>
+        )}
         <button
           type="button"
           aria-pressed={isActive}
@@ -158,20 +275,7 @@ function SortableCostumeCard({
 }
 
 function ImageSpecs({ loadablePath }: { loadablePath: string }) {
-  const [dimensions, setDimensions] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!loadablePath) return;
-
-    const img = new Image();
-    img.src = loadablePath;
-    img.onload = () => {
-      setDimensions({ width: img.width, height: img.height });
-    };
-  }, [loadablePath]);
+  const dimensions = useImageDimensions(loadablePath);
 
   if (!dimensions)
     return <span className="text-xs text-muted-foreground">Loading...</span>;
@@ -180,6 +284,192 @@ function ImageSpecs({ loadablePath }: { loadablePath: string }) {
     <p className="text-xs text-muted-foreground">
       {dimensions.width} x {dimensions.height}
     </p>
+  );
+}
+
+function CostumePreview({
+  costume,
+  position,
+  total,
+  noun,
+  isLesson,
+  isBusy,
+  onPrevious,
+  onNext,
+  onRename,
+  onDuplicate,
+}: {
+  costume: Costume;
+  position: number;
+  total: number;
+  noun: "costume" | "backdrop";
+  isLesson: boolean;
+  isBusy: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+  onRename: (name: string) => Promise<void>;
+  onDuplicate: () => Promise<void>;
+}) {
+  const [zoom, setZoom] = useState<number | null>(null);
+  const nameInputId = useId();
+  const dimensions = useImageDimensions(costume.loadablePath);
+  const label = noun === "backdrop" ? "Backdrop" : "Costume";
+
+  const imageStyle: CSSProperties =
+    zoom !== null && dimensions && dimensions.width > 0
+      ? {
+          width: (dimensions.width * zoom) / 100,
+          height: (dimensions.height * zoom) / 100,
+          maxWidth: "none",
+          maxHeight: "none",
+        }
+      : {
+          width: "auto",
+          height: "auto",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          objectFit: "contain",
+        };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={total < 2}
+            onClick={onPrevious}
+          >
+            <ChevronLeft />
+            Previous
+          </Button>
+          <span className="min-w-28 text-center text-sm" aria-live="polite">
+            {label} {position} of {total}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={total < 2}
+            onClick={onNext}
+          >
+            Next
+            <ChevronRight />
+          </Button>
+        </div>
+        <div className="flex items-center gap-1" role="group" aria-label="Zoom">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Zoom out"
+            disabled={zoom === ZOOM_STEPS[0]}
+            onClick={() => setZoom(stepZoom(zoom, -1))}
+          >
+            <ZoomOut />
+          </Button>
+          <span className="w-12 text-center text-sm tabular-nums">
+            {zoom === null ? "Fit" : `${zoom}%`}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Zoom in"
+            disabled={zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1]}
+            onClick={() => setZoom(stepZoom(zoom, 1))}
+          >
+            <ZoomIn />
+          </Button>
+          <Button
+            type="button"
+            variant={zoom === null ? "default" : "outline"}
+            size="sm"
+            aria-pressed={zoom === null}
+            onClick={() => setZoom(null)}
+          >
+            <Maximize />
+            Fit
+          </Button>
+        </div>
+      </div>
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label={`${label} preview`}
+        className="flex h-64 overflow-auto rounded border focus-visible:outline-2 focus-visible:outline-ring"
+        style={{
+          backgroundColor: "#ffffff",
+          backgroundImage:
+            "linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%), linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%)",
+          backgroundSize: "16px 16px",
+          backgroundPosition: "0 0, 8px 8px",
+        }}
+      >
+        <img
+          src={costume.loadablePath}
+          alt={costume.costumeName}
+          draggable={false}
+          className="m-auto shrink-0"
+          style={imageStyle}
+        />
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <p className="text-sm text-muted-foreground">
+          {imageTypeOf(costume)}
+          {dimensions ? ` · ${dimensions.width} x ${dimensions.height}` : ""}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Label htmlFor={nameInputId} className="text-sm">
+          {label}:
+        </Label>
+        <Input
+          id={nameInputId}
+          key={costume.loadablePath}
+          onBlur={(e) => {
+            if (isLesson) return;
+            const value = e.target.value.trim();
+            if (!value) {
+              e.target.value = costume.costumeName;
+              return;
+            }
+            if (value === costume.costumeName) return;
+            void onRename(value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          onFocus={(e) => {
+            e.target.select();
+          }}
+          className="border rounded px-2 py-1 min-w-0 flex-1"
+          disabled={isLesson}
+          defaultValue={costume.costumeName}
+        />
+        {!isLesson && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isBusy || !costume.truePath}
+            onClick={() => void onDuplicate()}
+          >
+            <Copy />
+            Duplicate
+          </Button>
+        )}
+      </div>
+      {!isLesson && !costume.truePath && (
+        <p className="text-xs text-muted-foreground">
+          This starter {noun} cannot be copied. Add your own image to make
+          copies.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -196,13 +486,12 @@ export default function CostumeEdtior({
   projectId: number;
   isLesson?: boolean;
 }) {
-  const [activeCostume, setActiveCostume] = useState<
-    DatabaseSprite["image_paths"][0] | null
-  >(
+  const [activeCostume, setActiveCostume] = useState<Costume | null>(
     activeSprite && activeSprite.image_paths.length > 0
       ? activeSprite.image_paths[0]
       : null,
   );
+  const pendingSelectionRef = useRef<string | null>(null);
 
   const [newCostumeDialogOpen, setNewCostumeDialogOpen] = useState(false);
   const [spriteImageDialogValue, setSpriteImageDialogValue] = useState("");
@@ -210,14 +499,20 @@ export default function CostumeEdtior({
   const [costumes, setCostumes] = useState<Costume[]>(
     activeSprite?.image_paths ?? [],
   );
+  const [announcement, setAnnouncement] = useState("");
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   useEffect(() => {
     setCostumes(activeSprite?.image_paths ?? []);
-    if (activeSprite && activeSprite.image_paths.length > 0) {
-      setActiveCostume(activeSprite.image_paths[0]);
-    } else if (activeSprite && activeSprite.image_paths.length === 0) {
-      setActiveCostume(null);
-    }
+    if (!activeSprite) return;
+    const paths = activeSprite.image_paths;
+    const wanted = pendingSelectionRef.current;
+    pendingSelectionRef.current = null;
+    setActiveCostume((previous) => {
+      if (paths.length === 0) return null;
+      const keep = wanted ?? previous?.loadablePath;
+      return paths.find((c) => c.loadablePath === keep) ?? paths[0];
+    });
   }, [activeSprite]);
 
   if (!activeSprite) {
@@ -231,14 +526,106 @@ export default function CostumeEdtior({
     );
   }
 
+  const isBackdrop =
+    "isBackdrop" in activeSprite && Boolean(activeSprite.isBackdrop);
+  const spriteDbId = isBackdrop ? -activeSprite.id : activeSprite.id;
+  const noun = activeSprite.id < 0 ? "backdrop" : "costume";
+  const activeIndex = costumes.findIndex(
+    (c) => c.loadablePath === activeCostume?.loadablePath,
+  );
+
+  const reorderCostumes = async (sourceIndex: number, targetIndex: number) => {
+    const nextCostumes = [...costumes];
+    const [movedCostume] = nextCostumes.splice(sourceIndex, 1);
+    nextCostumes.splice(targetIndex, 0, movedCostume);
+    setCostumes(nextCostumes);
+    setAnnouncement(
+      `Moved ${movedCostume.costumeName} to position ${targetIndex + 1} of ${nextCostumes.length}.`,
+    );
+    await new DatabaseManager().updateCostumeOrder(
+      spriteDbId,
+      nextCostumes,
+      isBackdrop,
+    );
+    await refreshDataCallback();
+  };
+
+  const selectNeighbor = (delta: -1 | 1) => {
+    if (costumes.length < 2) return;
+    const next =
+      activeIndex < 0
+        ? 0
+        : (activeIndex + delta + costumes.length) % costumes.length;
+    setActiveCostume(costumes[next]);
+  };
+
+  const renameActiveCostume = async (name: string) => {
+    if (isLesson || !activeCostume) return;
+    await new DatabaseManager().updateCostumeName(
+      spriteDbId,
+      activeSprite.image_paths,
+      activeCostume.loadablePath,
+      name,
+      isBackdrop,
+    );
+    setActiveCostume({ ...activeCostume, costumeName: name });
+    await refreshDataCallback();
+  };
+
+  const duplicateActiveCostume = async () => {
+    if (isLesson || !activeCostume?.truePath || isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      const projectFolderName = `proj_${projectId}`;
+      const copyFileName = uniqueFileName(
+        fileNameFromPath(activeCostume.truePath),
+      );
+      const copyPath = `${projectFolderName}/${copyFileName}`;
+      await copyFile(activeCostume.truePath, copyPath, {
+        fromPathBaseDir: BaseDirectory.AppLocalData,
+        toPathBaseDir: BaseDirectory.AppLocalData,
+      });
+      const baseDir = appDataDir || (await appLocalDataDir());
+      const copy: Costume = {
+        costumeName: copyNameFor(
+          activeCostume.costumeName,
+          costumes.map((c) => c.costumeName),
+        ),
+        loadablePath: convertFileSrc(await join(baseDir, copyPath)),
+        truePath: copyPath,
+      };
+      const nextCostumes = [...costumes];
+      nextCostumes.splice(
+        activeIndex < 0 ? nextCostumes.length : activeIndex + 1,
+        0,
+        copy,
+      );
+      await new DatabaseManager().updateCostumeOrder(
+        spriteDbId,
+        nextCostumes,
+        isBackdrop,
+      );
+      pendingSelectionRef.current = copy.loadablePath;
+      setAnnouncement(
+        `Duplicated ${activeCostume.costumeName}. There are now ${nextCostumes.length} ${noun}s.`,
+      );
+      await refreshDataCallback();
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   return (
     <>
       <Card className="h-full flex-1 min-w-40 flex justify-between">
         <CardContent className="flex flex-col gap-2">
           <CardTitle>
-            {(activeSprite?.id || 1) < 0 ? "Backdrops" : "Costumes"}
+            {noun === "backdrop" ? "Backdrops" : "Costumes"}
           </CardTitle>
-          {activeSprite && activeSprite.image_paths.length > 0 ? (
+          <div className="sr-only" role="status" aria-live="polite">
+            {announcement}
+          </div>
+          {activeSprite.image_paths.length > 0 ? (
             <DragDropProvider
               onDragEnd={async ({ operation, canceled }) => {
                 if (canceled) return;
@@ -259,19 +646,7 @@ export default function CostumeEdtior({
                 ) {
                   return;
                 }
-                const nextCostumes = [...costumes];
-                const [movedCostume] = nextCostumes.splice(sourceIndex, 1);
-                nextCostumes.splice(targetIndex, 0, movedCostume);
-                setCostumes(nextCostumes);
-                await new DatabaseManager().updateCostumeOrder(
-                  "isBackdrop" in activeSprite && activeSprite.isBackdrop
-                    ? -activeSprite.id
-                    : activeSprite.id,
-                  nextCostumes,
-                  "isBackdrop" in activeSprite &&
-                    Boolean(activeSprite.isBackdrop),
-                );
-                await refreshDataCallback();
+                await reorderCostumes(sourceIndex, targetIndex);
               }}
             >
               <ScrollArea>
@@ -286,20 +661,27 @@ export default function CostumeEdtior({
                       }
                       isLesson={isLesson}
                       canDelete={costumes.length > 1}
+                      canMoveUp={index > 0}
+                      canMoveDown={index < costumes.length - 1}
+                      onMove={(delta) =>
+                        void reorderCostumes(index, index + delta)
+                      }
                       onSelect={() => setActiveCostume(costume)}
                       onDelete={async () => {
+                        if (
+                          activeCostume?.loadablePath === costume.loadablePath
+                        ) {
+                          pendingSelectionRef.current =
+                            (costumes[index + 1] ?? costumes[index - 1])
+                              ?.loadablePath ?? null;
+                        }
                         await new DatabaseManager().deleteCostume(
                           costume.loadablePath,
                           costumes,
-                          "isBackdrop" in activeSprite &&
-                            activeSprite.isBackdrop
-                            ? -activeSprite.id
-                            : activeSprite.id,
-                          "isBackdrop" in activeSprite &&
-                            Boolean(activeSprite.isBackdrop),
+                          spriteDbId,
+                          isBackdrop,
                         );
                         await refreshDataCallback();
-                        setActiveCostume(null);
                       }}
                     />
                   ))}
@@ -308,7 +690,7 @@ export default function CostumeEdtior({
             </DragDropProvider>
           ) : (
             <div className="flex flex-col gap-2">
-              <p>No costumes available for this sprite.</p>
+              <p>No {noun}s yet.</p>
             </div>
           )}
         </CardContent>
@@ -330,39 +712,32 @@ export default function CostumeEdtior({
                     }}
                   >
                     <Plus />
-                    Add a {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"}
+                    Add a {noun}
                   </Button>
                 }
               />
               <DialogContent>
-                <DialogTitle>
-                  Add a new{" "}
-                  {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"}
-                </DialogTitle>
+                <DialogTitle>Add a new {noun}</DialogTitle>
                 <DialogDescription>
-                  Select an image file to add as a{" "}
-                  {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"} for the
-                  sprite.
+                  Select an image file to add as a {noun} for the sprite.
                 </DialogDescription>
                 <FieldGroup>
                   <Field>
                     <Label htmlFor="spriteName">
-                      {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}{" "}
-                      Name
+                      {noun === "backdrop" ? "Backdrop" : "Costume"} Name
                     </Label>
                     <Input
                       type="text"
                       id="spriteName"
                       value={spriteNameDialogValue}
                       onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                      placeholder={`Enter ${(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"} name`}
+                      placeholder={`Enter ${noun} name`}
                       className="border rounded px-2 py-1 w-full"
                     />
                   </Field>
                   <Field>
                     <Label htmlFor="spriteImage">
-                      {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}{" "}
-                      Image
+                      {noun === "backdrop" ? "Backdrop" : "Costume"} Image
                     </Label>
                     <Button
                       onClick={async () => {
@@ -388,15 +763,16 @@ export default function CostumeEdtior({
                     {spriteImageDialogValue && (
                       <p className="text-sm">
                         Selected image:{" "}
-                        <span
-                          className=" text-blue-500 hover:cursor-pointer hover:underline"
+                        <Button
+                          variant="link"
+                          className="text-blue-800 p-0 underline hover:cursor-pointer hover:text-blue-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                           onClick={async () => {
                             const path = spriteImageDialogValue;
                             await openImage(path);
                           }}
                         >
                           {fileNameFromPath(spriteImageDialogValue)}
-                        </span>
+                        </Button>
                       </p>
                     )}
                   </Field>
@@ -430,22 +806,15 @@ export default function CostumeEdtior({
                       await copyFile(file, `${projectFolderName}/${last}`, {
                         toPathBaseDir: BaseDirectory.AppLocalData,
                       });
-                      if (!activeSprite) {
-                        return;
-                      }
                       await new DatabaseManager().addCostumeToSprite(
-                        "isBackdrop" in activeSprite &&
-                          (activeSprite.isBackdrop as boolean)
-                          ? -activeSprite.id
-                          : activeSprite.id,
+                        spriteDbId,
                         activeSprite.image_paths,
                         last,
                         appDataDir || "",
                         spriteNameDialogValue ||
                           baseNameOf(originalName) ||
                           "New Costume",
-                        "isBackdrop" in activeSprite &&
-                          (activeSprite.isBackdrop as boolean),
+                        isBackdrop,
                         projectId,
                       );
                       refreshDataCallback();
@@ -454,7 +823,7 @@ export default function CostumeEdtior({
                       setNewCostumeDialogOpen(false);
                     }}
                   >
-                    Add {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}
+                    Add {noun === "backdrop" ? "Backdrop" : "Costume"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -465,69 +834,24 @@ export default function CostumeEdtior({
       <Card className="h-full flex-6">
         <CardContent className="flex flex-col gap-2">
           <CardTitle>
-            Current {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}
+            Current {noun === "backdrop" ? "Backdrop" : "Costume"}
           </CardTitle>
           {activeCostume ? (
-            <div className="flex flex-col items-center gap-2">
-              <img
-                src={activeCostume.loadablePath}
-                alt={`Current ${(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}`}
-                style={{
-                  maxWidth: 256,
-                  maxHeight: 256,
-                  width: "auto",
-                  height: "auto",
-                  objectFit: "contain",
-                }}
-                className="border rounded"
-              />
-              <div className="flex flex-row items-center gap-1">
-                <p className="text-sm text-center">
-                  {(activeSprite?.id || 1) < 0 ? "Backdrop" : "Costume"}:
-                </p>
-                <Input
-                  key={activeCostume.loadablePath}
-                  onBlur={async (e) => {
-                    if (isLesson || !activeSprite) {
-                      return;
-                    }
-                    await new DatabaseManager().updateCostumeName(
-                      "isBackdrop" in activeSprite &&
-                        (activeSprite.isBackdrop as boolean)
-                        ? -activeSprite.id
-                        : activeSprite.id,
-                      activeSprite.image_paths,
-                      activeCostume.loadablePath,
-                      e.target.value,
-                      "isBackdrop" in activeSprite &&
-                        (activeSprite.isBackdrop as boolean),
-                    );
-                    refreshDataCallback();
-                    setActiveCostume({
-                      ...activeCostume,
-                      costumeName: e.target.value,
-                    });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  onFocus={(e) => {
-                    e.target.select();
-                  }}
-                  className="border rounded px-2 py-1 w-full"
-                  disabled={isLesson}
-                  defaultValue={activeCostume.costumeName}
-                ></Input>
-              </div>
-            </div>
+            <CostumePreview
+              costume={activeCostume}
+              position={activeIndex + 1}
+              total={costumes.length}
+              noun={noun}
+              isLesson={isLesson}
+              isBusy={isDuplicating}
+              onPrevious={() => selectNeighbor(-1)}
+              onNext={() => selectNeighbor(1)}
+              onRename={renameActiveCostume}
+              onDuplicate={duplicateActiveCostume}
+            />
           ) : (
             <div className="flex flex-col gap-2">
-              <p>
-                No {(activeSprite?.id || 1) < 0 ? "backdrop" : "costume"}{" "}
-                selected.
-              </p>
+              <p>No {noun} selected.</p>
             </div>
           )}
         </CardContent>

@@ -21,11 +21,17 @@ import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
 import { Play, RotateCcw, Square, Undo2 } from "lucide-react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
-import { getBlocklyTheme, watchPastelTextContrast } from "./blocks/theme";
+import {
+  getBlocklyTheme,
+  loadBlocklyFonts,
+  watchPastelTextContrast,
+} from "./blocks/theme";
 import type { AccessibilitySettings } from "./lib/settings";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import { Label } from "./components/ui/label";
+import { StageLiveRegion } from "./components/StageLiveRegion";
+import { spriteLabel } from "./lib/stage";
 
 type RuntimeSnapshotTarget = {
   id: number;
@@ -35,6 +41,8 @@ type RuntimeSnapshotTarget = {
   direction: number;
   size: number;
   currentCostumeIndex: number;
+  sayText: string;
+  thinkText: string;
   variables: Record<string, number | string | boolean>;
 };
 
@@ -124,6 +132,8 @@ function CodeEditor({
         direction: target.direction,
         size: target.size,
         currentCostumeIndex: target.currentCostumeIndex,
+        sayText: target.sayText,
+        thinkText: target.thinkText,
         variables: Object.fromEntries(target.variables.entries()),
       })),
     };
@@ -170,6 +180,8 @@ function CodeEditor({
       target.direction = savedTarget.direction;
       target.size = savedTarget.size;
       target.currentCostumeIndex = savedTarget.currentCostumeIndex;
+      target.sayText = savedTarget.sayText;
+      target.thinkText = savedTarget.thinkText;
       target.variables = new Map(Object.entries(savedTarget.variables));
     }
     runtime._renderer.blit(runtime._targets);
@@ -362,13 +374,26 @@ function CodeEditor({
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
+      const isInteractive = (target: EventTarget | null) =>
+        target instanceof HTMLElement &&
+        target.closest(
+          "button, a, select, summary, [role='button'], [role='tab'], [role='slider'], [role='checkbox'], [role='radio'], [role='menuitem'], [role='switch']",
+        ) !== null;
       const keyDownEvent = (event: KeyboardEvent) => {
         if (isTyping(event.target)) return;
-        // Keep arrow keys and space from scrolling the page while playing.
+        if (
+          event.key === "Escape" &&
+          !event.defaultPrevented &&
+          !document.querySelector('[role="dialog"]')
+        ) {
+          stopCode();
+          return;
+        }
         if (
           ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(
             event.key,
-          )
+          ) &&
+          !isInteractive(event.target)
         ) {
           event.preventDefault();
         }
@@ -567,6 +592,7 @@ function CodeEditor({
   }
 
   async function setupWorkspace() {
+    await loadBlocklyFonts(accessibilitySettings);
     console.log("Setting up workspace...");
     Blockly.utils.colour.setHsvSaturation(0.89);
     Blockly.utils.colour.setHsvValue(0.85);
@@ -1120,16 +1146,24 @@ function CodeEditor({
                   <canvas
                     className="absolute inset-0 h-full w-full rounded-lg border border-slate-300"
                     id="backgroundCanvas"
+                    aria-hidden="true"
                     width="800"
                     height="600"
                   ></canvas>
                   <canvas
                     className="absolute inset-0 h-full w-full rounded-lg border border-slate-300"
                     id="foregroundCanvas"
+                    role="img"
+                    aria-label="Stage showing the sprites and backdrop. Spoken text and variable changes are announced while code runs. Use the sprite buttons below the stage to click a sprite."
                     width="800"
                     height="600"
                   ></canvas>
                 </div>
+                <StageLiveRegion
+                  runtimeRef={runtimeRef}
+                  sprites={sprites}
+                  active={codeRunningState}
+                />
                 <div className="mt-2 grid w-full max-w-200 gap-2 rounded-lg border bg-white p-2 text-sm shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
                   <div className="min-w-0 space-y-2">
                     <div className="flex min-w-0 items-center gap-2">
@@ -1174,15 +1208,11 @@ function CodeEditor({
                           className="rounded border bg-secondary border-primary/20 text-blue-950 px-2 py-1"
                         >
                           <div className="font-medium">
-                            {target.isBackdrop
-                              ? "Backdrop"
-                              : `Sprite ${target.id}`}
+                            {spriteLabel(target, sprites)}
                           </div>
                           {Array.from(target.variables.entries()).length ===
                           0 ? (
-                            <div className="text-secondary-foreground">
-                              No variables
-                            </div>
+                            <div>No variables</div>
                           ) : (
                             Array.from(target.variables.entries()).map(
                               ([id, value]) => (

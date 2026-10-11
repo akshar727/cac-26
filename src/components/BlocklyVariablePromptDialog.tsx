@@ -39,6 +39,33 @@ export function BlocklyVariablePromptDialog() {
   }, []);
   const [scope, setScope] = React.useState<"local" | "global">("local");
 
+  const isDelete =
+    config?.message?.startsWith("Delete") &&
+    config?.message?.includes("variable");
+
+  const cancel = () => {
+    if (config?.message?.startsWith("New variable name")) {
+      config?.callback(null, false);
+    } else {
+      //@ts-ignore
+      config?.callback(null);
+    }
+    setIsOpen(false);
+  };
+
+  const confirm = () => {
+    if (config?.message?.startsWith("New variable name")) {
+      config?.callback(userInput, scope === "global");
+    } else if (isDelete) {
+      //@ts-ignore
+      config?.callback(true);
+    } else {
+      //@ts-ignore
+      config?.callback(userInput);
+    }
+    setIsOpen(false);
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -55,84 +82,68 @@ export function BlocklyVariablePromptDialog() {
         <DialogHeader>
           <DialogTitle>{config?.message}</DialogTitle>
         </DialogHeader>
-        {(config?.message?.startsWith("New variable name:") ||
-          config?.message?.startsWith("Rename all")) && (
-          <>
-            <Label htmlFor="variableName">Variable Name</Label>
-            <Input
-              value={userInput}
-              id="variableName"
-              onChange={(e) => setUserInput(e.target.value)}
-            ></Input>
-          </>
-        )}
-        {config?.message?.startsWith("Delete") &&
-          config?.message?.includes("variable") && (
+        <form
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            confirm();
+          }}
+        >
+          {(config?.message?.startsWith("New variable name:") ||
+            config?.message?.startsWith("Rename all")) && (
+            <div className="grid gap-2">
+              <Label htmlFor="variableName">Variable Name</Label>
+              <Input
+                value={userInput}
+                id="variableName"
+                onChange={(e) => setUserInput(e.target.value)}
+              ></Input>
+            </div>
+          )}
+          {isDelete && (
             <p>
               Are you sure you want to delete this variable? This action cannot
               be undone.
             </p>
           )}
-        {config?.message?.startsWith("New variable name") && (
-          <RadioGroup
-            value={scope}
-            onValueChange={(value) => setScope(value as "local" | "global")}
-            className="flex flex-row gap-2"
-            defaultValue="local"
-          >
-            <div className="flex flex-row items-center gap-2">
-              <RadioGroupItem value="local" id="local" />
-              <Label htmlFor="local">This Sprite Only</Label>
-            </div>
-            <div className="flex flex-row items-center gap-2">
-              <RadioGroupItem value="global" id="global" />
-              <Label htmlFor="global">All Sprites</Label>
-            </div>
-          </RadioGroup>
-        )}
-        <DialogFooter>
-          <DialogClose
-            render={
-              <Button
-                onClick={() => {
-                  if (config?.message?.startsWith("New variable name")) {
-                    config?.callback(null, false);
-                  } else {
-                    //@ts-ignore
-                    config?.callback(null);
-                  }
-                  setIsOpen(false);
-                }}
-                variant="outline"
-              >
-                Cancel
-              </Button>
-            }
-          />
-          <Button
-            onClick={() => {
-              if (config?.message?.startsWith("New variable name")) {
-                config?.callback(userInput, scope === "global");
-              } else if (
-                config?.message?.startsWith("Delete") &&
-                config?.message?.includes("variable")
-              ) {
-                //@ts-ignore
-                config?.callback(true);
-              } else {
-                console.log("userInput", userInput);
-                //@ts-ignore
-                config?.callback(userInput);
+          {config?.message?.startsWith("New variable name") && (
+            <RadioGroup
+              value={scope}
+              onValueChange={(value) => setScope(value as "local" | "global")}
+              className="flex flex-row gap-2"
+              defaultValue="local"
+              aria-label="Variable scope"
+            >
+              <div className="flex flex-row items-center gap-2">
+                <RadioGroupItem value="local" id="local" />
+                <Label htmlFor="local">This Sprite Only</Label>
+              </div>
+              <div className="flex flex-row items-center gap-2">
+                <RadioGroupItem value="global" id="global" />
+                <Label htmlFor="global">All Sprites</Label>
+              </div>
+            </RadioGroup>
+          )}
+          <DialogFooter>
+            <DialogClose
+              render={
+                <Button type="button" onClick={cancel} variant="outline">
+                  Cancel
+                </Button>
               }
-              setIsOpen(false);
-            }}
-            variant={
-              config?.message?.startsWith("Delete") ? "destructive" : "default"
-            }
-          >
-            {config?.message?.startsWith("Delete") ? "Delete Variable" : "Ok"}
-          </Button>
-        </DialogFooter>
+            />
+            <Button
+              type="submit"
+              variant={
+                config?.message?.startsWith("Delete")
+                  ? "destructive"
+                  : "default"
+              }
+            >
+              {config?.message?.startsWith("Delete") ? "Delete Variable" : "Ok"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

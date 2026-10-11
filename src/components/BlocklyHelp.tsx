@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Blockly from "blockly";
 import { blockHelp } from "@/blocks/blockHelp";
+import { Button } from "@/components/ui/button";
 
 import {
   Popover,
@@ -14,6 +15,8 @@ type AnchorPosition = {
   x: number;
   y: number;
 };
+
+const HELP_TITLE_ID = "codely-block-help-title";
 
 export function BlocklyHelp({
   workspace,
@@ -64,7 +67,6 @@ export function BlocklyHelp({
 
         const block = workspace.getBlockById(clickEvent.blockId);
         if (!block) return;
-        console.log("CLICKED BLOCK", block.type);
         setSelectedBlock(block);
         setHelpOpen(true);
         updateAnchorPosition(block);
@@ -145,7 +147,9 @@ function BlockHelpContent({ block }: { block: Blockly.Block }) {
 
   return (
     <div className="space-y-2">
-      <h3 className="font-semibold">{help?.title ?? block.type}</h3>
+      <h3 id={HELP_TITLE_ID} tabIndex={-1} className="font-semibold">
+        {help?.title ?? block.type}
+      </h3>
       {help && (
         <div className="space-y-2">
           <div className="rounded-md bg-muted p-3 text-sm">

@@ -186,389 +186,407 @@ export default function ProjectSelector({
   }, [projects, lessons]);
   return (
     <>
-      <div className="text-center left-1/2 top-10 -translate-x-1/2 font-bold absolute">
-        <Dialog
-          open={settingsOpen}
-          onOpenChange={(open) => {
-            setSettingsOpen(open);
-            if (!open) setConfirmReset(false);
-          }}
-        >
-          <DialogTrigger
-            render={
-              <Button
-                variant="outline"
-                className="absolute right-0 top-0 translate-x-full"
-                aria-label="Open Codely settings"
-                title="Open settings"
-              >
-                Settings
-              </Button>
-            }
-          ></DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Codely settings</DialogTitle>
-              {/* <DialogDescription>
-                Adjust the workspace colors to make coding feel more
-                comfortable.
-              </DialogDescription> */}
-            </DialogHeader>
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold">Color mode</Label>
-              <RadioGroup
-                value={pastelTheme ? "pastel" : "standard"}
-                onValueChange={(value) =>
-                  onPastelThemeChange(value === "pastel")
-                }
-                aria-label="Color mode"
-              >
-                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3 hover:bg-muted">
-                  <RadioGroupItem value="standard" id="standard-colors" />
-                  <span>
-                    <span className="block font-medium">Standard colors</span>
-                    <span className="block text-sm text-muted-foreground">
-                      Use the regular category palette.
-                    </span>
-                  </span>
-                </label>
-                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3 hover:bg-muted">
-                  <RadioGroupItem value="pastel" id="pastel-colors" />
-                  <span>
-                    <span className="block font-medium">
-                      Sensory-Safe / Pastel
-                    </span>
-                    <span className="block text-sm text-muted-foreground">
-                      Use softer, lower-saturation colors with comfortable dark
-                      text.
-                    </span>
-                  </span>
-                </label>
-              </RadioGroup>
-              <div className="space-y-2 border-t pt-3">
-                <Label className="text-sm font-semibold">Other settings</Label>
-                {[
-                  [
-                    "Large text",
-                    accessibilitySettings.textSize === "large",
-                    (value: boolean) =>
-                      onAccessibilitySettingsChange({
-                        ...accessibilitySettings,
-                        textSize: value ? "large" : "normal",
-                      }),
-                  ],
-                  [
-                    "Atkinson Hyperlegible font",
-                    accessibilitySettings.hyperlegible,
-                    (value: boolean) =>
-                      onAccessibilitySettingsChange({
-                        ...accessibilitySettings,
-                        hyperlegible: value,
-                      }),
-                  ],
-                  [
-                    "Reduced motion",
-                    accessibilitySettings.reducedMotion,
-                    (value: boolean) =>
-                      onAccessibilitySettingsChange({
-                        ...accessibilitySettings,
-                        reducedMotion: value,
-                      }),
-                  ],
-                ].map(([label, checked, onChange]) => (
-                  <label
-                    key={label as string}
-                    className="flex items-start justify-between gap-3 rounded-md border p-3"
+      <main className="min-h-dvh">
+        <header className="grid grid-cols-1 items-center gap-4 px-6 pb-2 pt-6 md:grid-cols-[1fr_auto_1fr] md:px-12">
+          <div className="hidden md:order-1 md:block" aria-hidden="true" />
+          <div className="flex justify-end md:order-3">
+            <Dialog
+              open={settingsOpen}
+              onOpenChange={(open) => {
+                setSettingsOpen(open);
+                if (!open) setConfirmReset(false);
+              }}
+            >
+              <DialogTrigger
+                render={
+                  <Button
+                    variant="white"
+                    aria-label="Open Codely settings"
+                    title="Open settings"
                   >
-                    <span>
-                      <span className="block">{label as string}</span>
-                    </span>
-                    <Checkbox
-                      checked={checked as boolean}
-                      onCheckedChange={(checkedValue) =>
-                        (onChange as (value: boolean) => void)(
-                          checkedValue === true,
-                        )
-                      }
-                    />
-                  </label>
+                    Settings
+                  </Button>
+                }
+              ></DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Codely settings</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Color mode</Label>
+                  <RadioGroup
+                    value={pastelTheme ? "pastel" : "standard"}
+                    onValueChange={(value) =>
+                      onPastelThemeChange(value === "pastel")
+                    }
+                    aria-label="Color mode"
+                  >
+                    <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3 hover:bg-muted">
+                      <RadioGroupItem value="standard" id="standard-colors" />
+                      <span>
+                        <span className="block font-medium">
+                          Standard colors
+                        </span>
+                        <span className="block text-sm text-muted-foreground">
+                          Use the regular category palette.
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3 hover:bg-muted">
+                      <RadioGroupItem value="pastel" id="pastel-colors" />
+                      <span>
+                        <span className="block font-medium">Pastel</span>
+                        <span className="block text-sm text-muted-foreground">
+                          Use softer, lower-saturation colors with comfortable
+                          dark text.
+                        </span>
+                      </span>
+                    </label>
+                  </RadioGroup>
+                  <div className="space-y-2 border-t pt-3">
+                    <Label className="text-sm font-semibold">
+                      Other settings
+                    </Label>
+                    {[
+                      [
+                        "Large text",
+                        accessibilitySettings.textSize === "large",
+                        (value: boolean) =>
+                          onAccessibilitySettingsChange({
+                            ...accessibilitySettings,
+                            textSize: value ? "large" : "normal",
+                          }),
+                      ],
+                      [
+                        "Atkinson Hyperlegible font",
+                        accessibilitySettings.hyperlegible,
+                        (value: boolean) =>
+                          onAccessibilitySettingsChange({
+                            ...accessibilitySettings,
+                            hyperlegible: value,
+                          }),
+                      ],
+                      [
+                        "Reduced motion",
+                        accessibilitySettings.reducedMotion,
+                        (value: boolean) =>
+                          onAccessibilitySettingsChange({
+                            ...accessibilitySettings,
+                            reducedMotion: value,
+                          }),
+                      ],
+                    ].map(([label, checked, onChange]) => (
+                      <label
+                        key={label as string}
+                        className="flex items-start justify-between gap-3 rounded-md border p-3"
+                      >
+                        <span>
+                          <span className="block">{label as string}</span>
+                        </span>
+                        <Checkbox
+                          checked={checked as boolean}
+                          onCheckedChange={(checkedValue) =>
+                            (onChange as (value: boolean) => void)(
+                              checkedValue === true,
+                            )
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="space-y-2 border-t pt-3">
+                    <Label className="text-sm font-semibold">
+                      Lesson progress
+                    </Label>
+                    {confirmReset ? (
+                      <div
+                        className="space-y-3 rounded-md border p-3"
+                        role="status"
+                      >
+                        <p className="text-sm">
+                          This removes the checkmarks from all of your lessons.
+                          Your projects will not change. Do you want to start
+                          the lessons over?
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              resetAllLessonProgress();
+                              setProgressVersion((version) => version + 1);
+                              setConfirmReset(false);
+                            }}
+                          >
+                            Yes, reset my progress
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConfirmReset(false)}
+                          >
+                            No, keep my progress
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                        <span className="text-sm">
+                          Remove the checkmarks from finished lessons.
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmReset(true)}
+                        >
+                          Reset lesson progress
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose render={<Button variant="outline" />}>
+                    Done
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="text-center md:order-2 md:max-w-2xl">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Welcome to Codely!
+            </h1>
+            <p className="mx-auto mt-2 max-w-xl text-balance text-base font-normal text-muted-foreground">
+              Choose an existing project or start a new one to begin. You can
+              also open the lessons to learn how to use Codely and build your
+              own projects.
+            </p>
+          </div>
+        </header>
+        <div className="grid w-full grid-cols-1 gap-6 px-6 py-6 md:grid-cols-2 md:px-12">
+          <div className="flex min-w-0 w-full flex-col items-center gap-4">
+            <h2 className="text-xl font-bold">My Projects</h2>
+            <ScrollArea className="h-128 w-full rounded-md border bg-white">
+              <div className="w-full grid md:grid-cols-2 grid-cols-1 gap-4 p-4">
+                {projects.map((project) => (
+                  <Card
+                    className="relative flex justify-between"
+                    key={project.id}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="absolute hover:bg-gray-200 top-2 right-2 z-10"
+                            aria-label={`Actions for ${project.name}`}
+                          />
+                        }
+                      >
+                        <MoreHorizontal />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-48 p-1 whitespace-nowrap"
+                        align="start"
+                      >
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem
+                            onClick={() => openRenameDialog(project)}
+                          >
+                            <Pencil />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => openDescriptionDialog(project)}
+                          >
+                            <TextAlignStart />
+                            Change description
+                          </DropdownMenuItem>
+                          {projects.length > 1 && (
+                            <DropdownMenuItem
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeleteProject(project)}
+                            >
+                              <Trash2 />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
+                      {projectThumbnails[project.id] ? (
+                        <img
+                          src={projectThumbnails[project.id]}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Skeleton className="h-full w-full rounded-none" />
+                      )}
+                    </div>
+                    <CardHeader>
+                      <CardTitle>{project.name}</CardTitle>
+                      <CardDescription>
+                        {project.description || "No description"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardFooter className="flex justify-center bg-white">
+                      <Button
+                        variant="secondary"
+                        onClick={() => onProjectSelect(project.id)}
+                      >
+                        Open Project
+                        <ArrowRight />
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 ))}
               </div>
-              <div className="space-y-2 border-t pt-3">
-                <Label className="text-sm font-semibold">Lesson progress</Label>
-                {confirmReset ? (
-                  <div
-                    className="space-y-3 rounded-md border p-3"
-                    role="status"
-                  >
-                    <p className="text-sm">
-                      This removes the checkmarks from all of your lessons. Your
-                      projects will not change. Do you want to start the lessons
-                      over?
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          resetAllLessonProgress();
-                          setProgressVersion((version) => version + 1);
-                          setConfirmReset(false);
-                        }}
-                      >
-                        Yes, reset my progress
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setConfirmReset(false)}
-                      >
-                        No, keep my progress
-                      </Button>
-                    </div>
+            </ScrollArea>
+            <Dialog>
+              <DialogTrigger
+                render={
+                  <Button className="w-fit" variant="white" size="lg">
+                    <Plus />
+                    Create New Project
+                  </Button>
+                }
+              ></DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Project</DialogTitle>
+                </DialogHeader>
+                <Label htmlFor="project-name">
+                  <div>
+                    Project Name{" "}
+                    <span className="text-destructive">(required)</span>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-3 rounded-md border p-3">
-                    <span className="text-sm">
-                      Remove the checkmarks from finished lessons.
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setConfirmReset(true)}
-                    >
-                      Reset lesson progress
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose render={<Button variant="outline" />}>
-                Done
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <h1 className="text-2xl">Welcome to Codely!</h1>
-        <h2 className="text-lg">
-          Choose an existing project or start a new one to begin. You can also
-          open the lessons to learn how to use Codely and build your own
-          projects.
-        </h2>
-      </div>
-      <div className="grid mt-32 xs:mt-16 md:mt-0 h-dvh w-full grid-cols-1 pt-48 gap-6 px-6 md:grid-cols-2 md:px-12">
-        <div className="flex min-w-0 w-full flex-col items-center gap-4">
-          <h2 className="text-xl font-bold">My Projects</h2>
-          <ScrollArea className="h-128 w-full rounded-md border">
-            <div className="w-full grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 p-4">
-              {projects.map((project) => (
-                <Card
-                  className="relative flex justify-between"
-                  key={project.id}
-                >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="absolute hover:bg-gray-200 top-2 right-2 z-10"
-                          aria-label={`Actions for ${project.name}`}
-                        />
-                      }
-                    >
-                      <MoreHorizontal />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="w-48 p-1 whitespace-nowrap"
-                      align="start"
-                    >
-                      <DropdownMenuGroup>
-                        <DropdownMenuItem
-                          onClick={() => openRenameDialog(project)}
-                        >
-                          <Pencil />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => openDescriptionDialog(project)}
-                        >
-                          <TextAlignStart />
-                          Change description
-                        </DropdownMenuItem>
-                        {projects.length > 1 && (
-                          <DropdownMenuItem
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeleteProject(project)}
-                          >
-                            <Trash2 />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
-                    {projectThumbnails[project.id] ? (
-                      <img
-                        src={projectThumbnails[project.id]}
-                        alt={`${project.name} thumbnail`}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Skeleton className="h-full w-full rounded-none" />
-                    )}
-                  </div>
-                  <CardHeader>
-                    <CardTitle>{project.name}</CardTitle>
-                    <CardDescription>
-                      {project.description || "No description"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardFooter className="flex justify-center bg-white">
-                    <Button
-                      variant="secondary"
-                      onClick={() => onProjectSelect(project.id)}
-                    >
-                      Open Project
-                      <ArrowRight />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-          <Dialog>
-            <DialogTrigger
-              render={
-                <Button className="w-fit" variant="secondary" size="lg">
-                  <Plus />
-                  Create New Project
-                </Button>
-              }
-            ></DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Project</DialogTitle>
-              </DialogHeader>
-              <Label htmlFor="project-name">
+                </Label>
                 <div>
-                  Project Name <span className="text-destructive">*</span>
-                </div>
-              </Label>
-              <div>
-                <Input
-                  onChange={(e) => {
-                    if (e.target.value.length > 0) setProjectNameError(false);
-                    else if (e.target.value.length === 0)
-                      setProjectNameError(true);
-                  }}
-                  defaultValue={"New Project"}
-                  id="project-name"
-                  placeholder="Enter project name"
-                />
-                <p
-                  className={cn(
-                    projectNameError ? "mt-1 text-destructive" : "hidden",
-                  )}
-                >
-                  This field is required.
-                </p>
-              </div>
-              <Label htmlFor="project-description">Project Description</Label>
-              <Input
-                id="project-description"
-                placeholder="Enter project description"
-              />
-              <Button
-                onClick={() => {
-                  (async () => {
-                    const nameInput = document.getElementById(
-                      "project-name",
-                    ) as HTMLInputElement;
-                    const descriptionInput = document.getElementById(
-                      "project-description",
-                    ) as HTMLInputElement;
-                    const name = nameInput.value;
-                    const description = descriptionInput.value;
-                    if (!name) {
-                      setProjectNameError(true);
-                      return;
+                  <Input
+                    onChange={(e) => {
+                      if (e.target.value.length > 0) setProjectNameError(false);
+                      else if (e.target.value.length === 0)
+                        setProjectNameError(true);
+                    }}
+                    defaultValue={"New Project"}
+                    id="project-name"
+                    placeholder="Enter project name"
+                    required
+                    aria-invalid={projectNameError}
+                    aria-describedby={
+                      projectNameError ? "project-name-error" : undefined
                     }
-                    const dbManager = new DatabaseManager();
-                    await dbManager.createProject(name, description);
-                    const projects = await dbManager.getProjects();
-                    const newProjectId = projects[projects.length - 1].id;
-                    onProjectSelect(newProjectId);
-                  })();
-                }}
-              >
-                Create Project
-              </Button>
-            </DialogContent>
-          </Dialog>
-        </div>
-        <div className="flex min-w-0 w-full flex-col items-center gap-4">
-          <h2 className="text-xl font-bold">Lessons</h2>
-          <ScrollArea className="h-128 w-full rounded-md border">
-            <div className="w-full grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 p-4">
-              {lessons.map((project) => (
-                <Card
-                  className="relative flex justify-between"
-                  key={project.id}
-                >
-                  <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
-                    {lessonThumbnails[project.id] ? (
-                      <img
-                        src={lessonThumbnails[project.id]}
-                        alt={`${project.name} thumbnail`}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Skeleton className="h-full w-full rounded-none" />
-                    )}
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      {loadLessonProgress(project.id) >=
-                        project.successMetrics.length && (
-                        <Check
-                          className="size-5 text-emerald-700"
-                          aria-label="Completed"
-                        />
-                      )}
-                      {project.name}
-                    </CardTitle>
-                    <CardDescription>
-                      {project.description || "No description"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    Difficulty:{" "}
-                    <span
-                      className={cn("font-bold", {
-                        "text-green-800": project.difficulty === "beginner",
-                        "text-amber-800": project.difficulty === "intermediate",
-                        "text-red-800": project.difficulty === "advanced",
-                      })}
+                  />
+                  {projectNameError && (
+                    <p
+                      id="project-name-error"
+                      role="alert"
+                      className="mt-1 text-destructive"
                     >
-                      {project.difficulty.charAt(0).toUpperCase() +
-                        project.difficulty.slice(1)}
-                    </span>
-                  </CardContent>
-                  <CardFooter className="flex justify-center bg-white">
-                    <Button onClick={() => onLessonSelect(project.id)}>
-                      Start Lesson
-                      <ArrowRight />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
+                      This field is required.
+                    </p>
+                  )}
+                </div>
+                <Label htmlFor="project-description">Project Description</Label>
+                <Input
+                  id="project-description"
+                  placeholder="Enter project description"
+                />
+                <Button
+                  onClick={() => {
+                    (async () => {
+                      const nameInput = document.getElementById(
+                        "project-name",
+                      ) as HTMLInputElement;
+                      const descriptionInput = document.getElementById(
+                        "project-description",
+                      ) as HTMLInputElement;
+                      const name = nameInput.value;
+                      const description = descriptionInput.value;
+                      if (!name) {
+                        setProjectNameError(true);
+                        return;
+                      }
+                      const dbManager = new DatabaseManager();
+                      await dbManager.createProject(name, description);
+                      const projects = await dbManager.getProjects();
+                      const newProjectId = projects[projects.length - 1].id;
+                      onProjectSelect(newProjectId);
+                    })();
+                  }}
+                >
+                  Create Project
+                </Button>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="flex min-w-0 w-full flex-col items-center gap-4">
+            <h2 className="text-xl font-bold">Lessons</h2>
+            <ScrollArea className="h-128 bg-white w-full rounded-md border">
+              <div className="w-full grid lg:grid-cols-2 md:grid-cols-2 grid-cols-1 gap-4 p-4">
+                {lessons.map((project) => (
+                  <Card
+                    className="relative flex justify-between"
+                    key={project.id}
+                  >
+                    <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
+                      {lessonThumbnails[project.id] ? (
+                        <img
+                          src={lessonThumbnails[project.id]}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Skeleton className="h-full w-full rounded-none" />
+                      )}
+                    </div>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {loadLessonProgress(project.id) >=
+                          project.successMetrics.length && (
+                          <Check
+                            className="size-5 text-emerald-700"
+                            role="img"
+                            aria-label="Completed"
+                          />
+                        )}
+                        {project.name}
+                      </CardTitle>
+                      <CardDescription>
+                        {project.description || "No description"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      Difficulty:{" "}
+                      <span
+                        className={cn("font-bold", {
+                          "text-green-800": project.difficulty === "beginner",
+                          "text-amber-800":
+                            project.difficulty === "intermediate",
+                          "text-red-800": project.difficulty === "advanced",
+                        })}
+                      >
+                        {project.difficulty.charAt(0).toUpperCase() +
+                          project.difficulty.slice(1)}
+                      </span>
+                    </CardContent>
+                    <CardFooter className="flex justify-center bg-white">
+                      <Button onClick={() => onLessonSelect(project.id)}>
+                        Start Lesson
+                        <ArrowRight />
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
-      </div>
+      </main>
       <Dialog
         open={renameProject !== null}
         onOpenChange={(open) => {
