@@ -29,6 +29,7 @@ import { Checkbox } from "./components/ui/checkbox";
 import {
   ArrowRight,
   Check,
+  Code,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -184,10 +185,16 @@ export default function ProjectSelector({
       loadThumbnails();
     }
   }, [projects, lessons]);
+
+  const lessonStatus = (lesson: Lesson) => {
+    const done = loadLessonProgress(lesson.id);
+    const total = lesson.successMetrics.length;
+    return { done, total, complete: done >= total, started: done > 0 };
+  };
   return (
     <>
-      <main className="min-h-dvh">
-        <header className="grid grid-cols-1 items-center gap-4 px-6 pb-2 pt-6 md:grid-cols-[1fr_auto_1fr] md:px-12">
+      <main className="flex h-dvh flex-col overflow-hidden">
+        <header className="shrink-0 grid grid-cols-1 items-center gap-4 px-6 pb-2 pt-6 md:grid-cols-[1fr_auto_1fr] md:px-12">
           <div className="hidden md:order-1 md:block" aria-hidden="true" />
           <div className="flex justify-end md:order-3">
             <Dialog
@@ -364,10 +371,193 @@ export default function ProjectSelector({
             </p>
           </div>
         </header>
-        <div className="grid w-full grid-cols-1 gap-6 px-6 py-6 md:grid-cols-2 md:px-12">
-          <div className="flex min-w-0 w-full flex-col items-center gap-4">
-            <h2 className="text-xl font-bold">My Projects</h2>
-            <ScrollArea className="h-128 w-full rounded-md border bg-white">
+        <div className="grid min-h-0 w-full flex-1 grid-cols-1 grid-rows-2 gap-6 px-6 py-6 md:grid-cols-2 md:grid-rows-1 md:px-12">
+          <div className="flex min-h-0 min-w-0 w-full flex-col items-center gap-4">
+            <div className="flex min-h-9 w-full items-center justify-between gap-3">
+              <h2 className="text-xl font-bold">Lessons</h2>
+              <p className="text-sm text-muted-foreground">
+                {
+                  lessons.filter((lesson) => lessonStatus(lesson).complete)
+                    .length
+                }{" "}
+                of {lessons.length} done
+              </p>
+            </div>
+            <ScrollArea className="min-h-0 w-full flex-1 rounded-md border bg-card">
+              <div className="w-full grid lg:grid-cols-2 md:grid-cols-2 grid-cols-1 gap-4 p-4">
+                {lessons.map((project) => (
+                  <Card
+                    className="relative flex justify-between"
+                    key={project.id}
+                  >
+                    <div className="-mt-(--card-spacing) h-24 w-full shrink-0 overflow-hidden rounded-t-xl border-b bg-muted">
+                      {lessonThumbnails[project.id] ? (
+                        <img
+                          src={lessonThumbnails[project.id]}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Skeleton className="h-full w-full rounded-none" />
+                      )}
+                    </div>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {loadLessonProgress(project.id) >=
+                          project.successMetrics.length && (
+                          <Check
+                            className="size-5 text-emerald-700"
+                            role="img"
+                            aria-label="Completed"
+                          />
+                        )}
+                        {project.name}
+                      </CardTitle>
+                      <CardDescription>
+                        {project.description || "No description"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        Difficulty:{" "}
+                        <span
+                          className={cn("font-bold", {
+                            "text-green-800": project.difficulty === "beginner",
+                            "text-amber-800":
+                              project.difficulty === "intermediate",
+                            "text-indigo-800":
+                              project.difficulty === "advanced",
+                          })}
+                        >
+                          {project.difficulty.charAt(0).toUpperCase() +
+                            project.difficulty.slice(1)}
+                        </span>
+                      </div>
+                      {lessonStatus(project).started &&
+                        !lessonStatus(project).complete && (
+                          <div>
+                            <div
+                              className="h-2 w-full rounded-full border bg-muted"
+                              role="progressbar"
+                              aria-label={`${project.name} progress`}
+                              aria-valuemin={0}
+                              aria-valuemax={lessonStatus(project).total}
+                              aria-valuenow={lessonStatus(project).done}
+                            >
+                              <div
+                                className="h-full rounded-full bg-ring"
+                                style={{
+                                  width: `${(lessonStatus(project).done / lessonStatus(project).total) * 100}%`,
+                                }}
+                              />
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {lessonStatus(project).done} of{" "}
+                              {lessonStatus(project).total} done
+                            </p>
+                          </div>
+                        )}
+                    </CardContent>
+                    <CardFooter className="flex justify-center bg-card">
+                      <Button onClick={() => onLessonSelect(project.id)}>
+                        {lessonStatus(project).complete
+                          ? "Review lesson"
+                          : lessonStatus(project).started
+                            ? "Continue lesson"
+                            : "Start lesson"}
+                        <ArrowRight />
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <div className="flex min-h-0 min-w-0 w-full flex-col items-center gap-4">
+            <div className="flex min-h-9 w-full items-center justify-between gap-3">
+              <h2 className="text-xl font-bold">My projects</h2>
+              <Dialog>
+                <DialogTrigger
+                  render={
+                    <Button variant="white" size="lg">
+                      <Plus />
+                      New project
+                    </Button>
+                  }
+                ></DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Project</DialogTitle>
+                  </DialogHeader>
+                  <Label htmlFor="project-name">
+                    <div>
+                      Project Name{" "}
+                      <span className="text-destructive">(required)</span>
+                    </div>
+                  </Label>
+                  <div>
+                    <Input
+                      onChange={(e) => {
+                        if (e.target.value.length > 0)
+                          setProjectNameError(false);
+                        else if (e.target.value.length === 0)
+                          setProjectNameError(true);
+                      }}
+                      defaultValue={"New Project"}
+                      id="project-name"
+                      placeholder="Enter project name"
+                      required
+                      aria-invalid={projectNameError}
+                      aria-describedby={
+                        projectNameError ? "project-name-error" : undefined
+                      }
+                    />
+                    {projectNameError && (
+                      <p
+                        id="project-name-error"
+                        role="alert"
+                        className="mt-1 text-destructive"
+                      >
+                        This field is required.
+                      </p>
+                    )}
+                  </div>
+                  <Label htmlFor="project-description">
+                    Project Description
+                  </Label>
+                  <Input
+                    id="project-description"
+                    placeholder="Enter project description"
+                  />
+                  <Button
+                    onClick={() => {
+                      (async () => {
+                        const nameInput = document.getElementById(
+                          "project-name",
+                        ) as HTMLInputElement;
+                        const descriptionInput = document.getElementById(
+                          "project-description",
+                        ) as HTMLInputElement;
+                        const name = nameInput.value;
+                        const description = descriptionInput.value;
+                        if (!name) {
+                          setProjectNameError(true);
+                          return;
+                        }
+                        const dbManager = new DatabaseManager();
+                        await dbManager.createProject(name, description);
+                        const projects = await dbManager.getProjects();
+                        const newProjectId = projects[projects.length - 1].id;
+                        onProjectSelect(newProjectId);
+                      })();
+                    }}
+                  >
+                    Create Project
+                  </Button>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <ScrollArea className="min-h-0 w-full flex-1 rounded-md border bg-card">
               <div className="w-full grid md:grid-cols-2 grid-cols-1 gap-4 p-4">
                 {projects.map((project) => (
                   <Card
@@ -378,9 +568,9 @@ export default function ProjectSelector({
                       <DropdownMenuTrigger
                         render={
                           <Button
-                            variant="ghost"
+                            variant="white"
                             size="icon-sm"
-                            className="absolute hover:bg-gray-200 top-2 right-2 z-10"
+                            className="absolute top-2 right-2 z-10"
                             aria-label={`Actions for ${project.name}`}
                           />
                         }
@@ -416,7 +606,7 @@ export default function ProjectSelector({
                         </DropdownMenuGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
+                    <div className="-mt-(--card-spacing) h-24 w-full shrink-0 overflow-hidden rounded-t-xl border-b bg-muted">
                       {projectThumbnails[project.id] ? (
                         <img
                           src={projectThumbnails[project.id]}
@@ -424,7 +614,12 @@ export default function ProjectSelector({
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <Skeleton className="h-full w-full rounded-none" />
+                        <div
+                          className="flex h-full w-full items-center justify-center text-muted-foreground"
+                          aria-hidden="true"
+                        >
+                          <Code className="size-8" />
+                        </div>
                       )}
                     </div>
                     <CardHeader>
@@ -433,150 +628,12 @@ export default function ProjectSelector({
                         {project.description || "No description"}
                       </CardDescription>
                     </CardHeader>
-                    <CardFooter className="flex justify-center bg-white">
+                    <CardFooter className="flex justify-center bg-card">
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         onClick={() => onProjectSelect(project.id)}
                       >
-                        Open Project
-                        <ArrowRight />
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-            <Dialog>
-              <DialogTrigger
-                render={
-                  <Button className="w-fit" variant="white" size="lg">
-                    <Plus />
-                    Create New Project
-                  </Button>
-                }
-              ></DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Project</DialogTitle>
-                </DialogHeader>
-                <Label htmlFor="project-name">
-                  <div>
-                    Project Name{" "}
-                    <span className="text-destructive">(required)</span>
-                  </div>
-                </Label>
-                <div>
-                  <Input
-                    onChange={(e) => {
-                      if (e.target.value.length > 0) setProjectNameError(false);
-                      else if (e.target.value.length === 0)
-                        setProjectNameError(true);
-                    }}
-                    defaultValue={"New Project"}
-                    id="project-name"
-                    placeholder="Enter project name"
-                    required
-                    aria-invalid={projectNameError}
-                    aria-describedby={
-                      projectNameError ? "project-name-error" : undefined
-                    }
-                  />
-                  {projectNameError && (
-                    <p
-                      id="project-name-error"
-                      role="alert"
-                      className="mt-1 text-destructive"
-                    >
-                      This field is required.
-                    </p>
-                  )}
-                </div>
-                <Label htmlFor="project-description">Project Description</Label>
-                <Input
-                  id="project-description"
-                  placeholder="Enter project description"
-                />
-                <Button
-                  onClick={() => {
-                    (async () => {
-                      const nameInput = document.getElementById(
-                        "project-name",
-                      ) as HTMLInputElement;
-                      const descriptionInput = document.getElementById(
-                        "project-description",
-                      ) as HTMLInputElement;
-                      const name = nameInput.value;
-                      const description = descriptionInput.value;
-                      if (!name) {
-                        setProjectNameError(true);
-                        return;
-                      }
-                      const dbManager = new DatabaseManager();
-                      await dbManager.createProject(name, description);
-                      const projects = await dbManager.getProjects();
-                      const newProjectId = projects[projects.length - 1].id;
-                      onProjectSelect(newProjectId);
-                    })();
-                  }}
-                >
-                  Create Project
-                </Button>
-              </DialogContent>
-            </Dialog>
-          </div>
-          <div className="flex min-w-0 w-full flex-col items-center gap-4">
-            <h2 className="text-xl font-bold">Lessons</h2>
-            <ScrollArea className="h-128 bg-white w-full rounded-md border">
-              <div className="w-full grid lg:grid-cols-2 md:grid-cols-2 grid-cols-1 gap-4 p-4">
-                {lessons.map((project) => (
-                  <Card
-                    className="relative flex justify-between"
-                    key={project.id}
-                  >
-                    <div className="h-24 border-b w-full overflow-hidden rounded-t-lg bg-muted">
-                      {lessonThumbnails[project.id] ? (
-                        <img
-                          src={lessonThumbnails[project.id]}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Skeleton className="h-full w-full rounded-none" />
-                      )}
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        {loadLessonProgress(project.id) >=
-                          project.successMetrics.length && (
-                          <Check
-                            className="size-5 text-emerald-700"
-                            role="img"
-                            aria-label="Completed"
-                          />
-                        )}
-                        {project.name}
-                      </CardTitle>
-                      <CardDescription>
-                        {project.description || "No description"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      Difficulty:{" "}
-                      <span
-                        className={cn("font-bold", {
-                          "text-green-800": project.difficulty === "beginner",
-                          "text-amber-800":
-                            project.difficulty === "intermediate",
-                          "text-red-800": project.difficulty === "advanced",
-                        })}
-                      >
-                        {project.difficulty.charAt(0).toUpperCase() +
-                          project.difficulty.slice(1)}
-                      </span>
-                    </CardContent>
-                    <CardFooter className="flex justify-center bg-white">
-                      <Button onClick={() => onLessonSelect(project.id)}>
-                        Start Lesson
+                        Open project
                         <ArrowRight />
                       </Button>
                     </CardFooter>
@@ -670,7 +727,7 @@ export default function ProjectSelector({
           </DialogHeader>
           This is a permanent action and cannot be undone. All sprites,
           backdrops, and other data associated with this project will be lost.
-          <DialogFooter className="bg-white">
+          <DialogFooter className="bg-popover">
             <DialogClose render={<Button variant="outline">Cancel</Button>} />
             <DialogClose
               render={

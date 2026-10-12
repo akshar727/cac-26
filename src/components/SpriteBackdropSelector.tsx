@@ -175,23 +175,24 @@ export default function SpriteAndBackdropSelector({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
-                      <button
+                      {activeSprite?.id === sprite.id &&
+                        !("isBackdrop" in activeSprite) && (
+                          <Check
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-2 top-2 z-10 size-5 rounded-full bg-ring p-0.5 text-background"
+                          />
+                        )}
+                      <Button
                         type="button"
+                        variant="ghost"
                         aria-pressed={
                           activeSprite?.id === sprite.id &&
                           !("isBackdrop" in activeSprite)
                         }
                         aria-label={`Select sprite ${sprite.name}`}
-                        className="w-full cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        className="h-auto w-full whitespace-normal p-0 font-normal hover:bg-transparent dark:hover:bg-transparent"
                       >
                         <CardContent className="flex flex-col items-center gap-2">
-                          {activeSprite?.id === sprite.id &&
-                            !("isBackdrop" in activeSprite) && (
-                              <Check
-                                aria-hidden="true"
-                                className="absolute left-2 top-2 size-5 rounded-full bg-ring p-0.5 text-background"
-                              />
-                            )}
                           {sprite.image_paths.length === 0 ? (
                             <Skeleton className="w-16 h-16" />
                           ) : (
@@ -209,7 +210,7 @@ export default function SpriteAndBackdropSelector({
                           )}
                           <p className={`text-sm text-center`}>{sprite.name}</p>
                         </CardContent>
-                      </button>
+                      </Button>
                     </Card>
                   );
                 })}
@@ -291,15 +292,16 @@ export default function SpriteAndBackdropSelector({
                         {JSON.parse(spriteImageDialogValue).map(
                           (path: string, index: number) => (
                             <span key={index}>
-                              <button
+                              <Button
                                 type="button"
-                                className="text-wrap text-blue-800 underline hover:text-blue-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                variant="link"
+                                className="h-auto whitespace-normal p-0 text-wrap text-blue-800 underline hover:text-blue-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 onClick={async () => {
                                   await openImage(path);
                                 }}
                               >
                                 {fileNameFromPath(path)}
-                              </button>
+                              </Button>
                               {index <
                               JSON.parse(spriteImageDialogValue).length - 1
                                 ? ", "
@@ -321,9 +323,13 @@ export default function SpriteAndBackdropSelector({
                       if (!spriteImageDialogValue || !spriteNameDialogValue) {
                         return;
                       }
-                      const files: string[] = JSON.parse(spriteImageDialogValue);
-                      const savedFiles: { originalName: string; storedName: string }[] =
-                        [];
+                      const files: string[] = JSON.parse(
+                        spriteImageDialogValue,
+                      );
+                      const savedFiles: {
+                        originalName: string;
+                        storedName: string;
+                      }[] = [];
                       const projectFolderName = `proj_${projectId}`;
                       const folderExists = await exists(projectFolderName, {
                         baseDir: BaseDirectory.AppLocalData,
@@ -342,23 +348,36 @@ export default function SpriteAndBackdropSelector({
                         }
                         // A new stored name means two pictures with the same
                         // name can never overwrite each other.
-                        const storedName = uniqueFileName(originalName, fileIndex);
+                        const storedName = uniqueFileName(
+                          originalName,
+                          fileIndex,
+                        );
                         fileIndex++;
                         savedFiles.push({ originalName, storedName });
-                        await copyFile(file, `proj_${projectId}/${storedName}`, {
-                          toPathBaseDir: BaseDirectory.AppLocalData,
-                        });
+                        await copyFile(
+                          file,
+                          `proj_${projectId}/${storedName}`,
+                          {
+                            toPathBaseDir: BaseDirectory.AppLocalData,
+                          },
+                        );
                       }
                       const baseDir =
                         appDataDirRef.current ?? (await appLocalDataDir());
                       const formattedFileNames = await Promise.all(
-                        savedFiles.map(async ({ originalName, storedName }) => ({
-                          costumeName: baseNameOf(originalName),
-                          loadablePath: convertFileSrc(
-                            await join(baseDir, `proj_${projectId}`, storedName),
-                          ),
-                          truePath: `proj_${projectId}/${storedName}`,
-                        })),
+                        savedFiles.map(
+                          async ({ originalName, storedName }) => ({
+                            costumeName: baseNameOf(originalName),
+                            loadablePath: convertFileSrc(
+                              await join(
+                                baseDir,
+                                `proj_${projectId}`,
+                                storedName,
+                              ),
+                            ),
+                            truePath: `proj_${projectId}/${storedName}`,
+                          }),
+                        ),
                       );
                       console.log("Project ID:", projectId);
                       await new DatabaseManager().addNewSprite(
@@ -489,25 +508,26 @@ export default function SpriteAndBackdropSelector({
                       }}
                       key={sprite.id}
                     >
-                      <button
+                      {activeSprite?.id === sprite.id &&
+                        "isBackdrop" in activeSprite &&
+                        activeSprite.isBackdrop === true && (
+                          <Check
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-2 top-2 z-10 size-5 rounded-full bg-ring p-0.5 text-background"
+                          />
+                        )}
+                      <Button
                         type="button"
+                        variant="ghost"
                         aria-pressed={
                           activeSprite?.id === sprite.id &&
                           "isBackdrop" in activeSprite &&
                           activeSprite.isBackdrop === true
                         }
                         aria-label={`Select backdrop ${sprite.name}`}
-                        className="w-full cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        className="h-auto w-full whitespace-normal p-0 font-normal hover:bg-transparent dark:hover:bg-transparent"
                       >
                         <CardContent className="flex flex-col items-center gap-2">
-                          {activeSprite?.id === sprite.id &&
-                            "isBackdrop" in activeSprite &&
-                            activeSprite.isBackdrop === true && (
-                              <Check
-                                aria-hidden="true"
-                                className="absolute left-2 top-2 size-5 rounded-full bg-ring p-0.5 text-background"
-                              />
-                            )}
                           {sprite.image_paths.length === 0 ? (
                             <Skeleton className="w-16 h-16" />
                           ) : (
@@ -525,7 +545,7 @@ export default function SpriteAndBackdropSelector({
                           )}
                           <p className={`text-sm text-center`}>{sprite.name}</p>
                         </CardContent>
-                      </button>
+                      </Button>
                     </Card>
                   );
                 })}

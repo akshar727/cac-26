@@ -173,16 +173,18 @@ function SortableCostumeCard({
           ) : !isLesson ? (
             <TooltipTrigger
               render={
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   aria-disabled="true"
                   aria-label={`Delete costume ${costume.costumeName} (unavailable)`}
                   aria-describedby={deleteHintId}
-                  className="absolute top-2 right-2 z-10 rounded-lg bg-gray-200/30 flex items-center justify-center size-7 cursor-not-allowed opacity-60 focus-visible:outline-2 focus-visible:outline-ring"
+                  className="absolute top-2 right-2 z-10 bg-gray-200/30 opacity-60 hover:bg-gray-200/30 hover:cursor-not-allowed active:translate-y-0"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               }
             />
           ) : null}
@@ -229,11 +231,12 @@ function SortableCostumeCard({
             </Button>
           </div>
         )}
-        <button
+        <Button
           type="button"
+          variant="ghost"
           aria-pressed={isActive}
           aria-label={`Select costume ${costume.costumeName}`}
-          className="w-full rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="h-auto w-full whitespace-normal p-0 font-normal hover:cursor-[inherit] hover:bg-transparent dark:hover:bg-transparent"
         >
           <CardContent className="flex relative flex-col items-center gap-2">
             <img
@@ -250,7 +253,7 @@ function SortableCostumeCard({
             <p className="text-sm text-center">{costume.costumeName}</p>
             <ImageSpecs loadablePath={costume.loadablePath} />
           </CardContent>
-        </button>
+        </Button>
       </Card>
       {!isLesson && canDelete && (
         <DialogContent>
