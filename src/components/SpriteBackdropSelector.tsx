@@ -22,13 +22,13 @@ import { Label } from "./ui/label";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Skeleton } from "./ui/skeleton";
 import {
-  Check,
-  Copy,
-  MoreHorizontal,
+  CheckIcon,
+  CopyIcon,
+  DotsThreeIcon,
+  NotePencilIcon,
   PlusIcon,
-  SquarePen,
-  Trash,
-} from "lucide-react";
+  TrashIcon,
+} from "@phosphor-icons/react";
 import {
   baseNameOf,
   fileNameFromPath,
@@ -85,6 +85,20 @@ export default function SpriteAndBackdropSelector({
   const [renameValue, setRenameValue] = useState("");
   const [deleteSprite, setDeleteSprite] = useState<DatabaseSprite | null>(null);
 
+  const spriteItems = sprites.filter(
+    (sprite) =>
+      typeof sprite === "object" &&
+      sprite !== null &&
+      !("isBackdrop" in sprite),
+  );
+  const backdropItems = sprites.filter(
+    (sprite) =>
+      typeof sprite === "object" &&
+      sprite !== null &&
+      "isBackdrop" in sprite &&
+      sprite.isBackdrop === true,
+  );
+
   const openRenameDialog = (sprite: DatabaseSprite) => {
     setRenameSprite(sprite);
     setRenameValue(sprite.name);
@@ -95,133 +109,114 @@ export default function SpriteAndBackdropSelector({
       <Card className="flex-2 justify-between">
         <CardContent className="flex flex-col gap-2">
           <CardTitle>Sprites</CardTitle>
-          {sprites.filter(
-            (sprite) =>
-              typeof sprite === "object" &&
-              sprite !== null &&
-              !("isBackdrop" in sprite),
-          ).length > 0 ? (
+          {spriteItems.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
-              {sprites
-                .filter(
-                  (sprite) =>
-                    typeof sprite === "object" &&
-                    sprite !== null &&
-                    !("isBackdrop" in sprite),
-                )
-                .map((sprite) => {
-                  return (
-                    <Card
-                      className={cn(
-                        "hover:cursor-pointer relative hover:bg-slate-100 transition-colors duration-200",
+              {spriteItems.map((sprite) => {
+                return (
+                  <Card
+                    className={cn(
+                      "hover:cursor-pointer relative hover:bg-muted transition-colors duration-200",
+                      activeSprite?.id === sprite.id &&
+                        !("isBackdrop" in activeSprite)
+                        ? "bg-secondary ring-2 ring-ring"
+                        : "",
+                    )}
+                    onClick={() => {
+                      setActiveSprite(sprite);
+                      activeSpriteRef.current = sprite;
+                    }}
+                    key={sprite.id}
+                  >
+                    {!isLesson && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="absolute top-2 right-2 z-10"
+                              aria-label={`Actions for ${sprite.name}`}
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                          }
+                        >
+                          <DotsThreeIcon weight="bold" aria-hidden="true" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-36 p-1" align="start">
+                          <DropdownMenuGroup>
+                            <DropdownMenuItem
+                              onClick={() => openRenameDialog(sprite)}
+                            >
+                              <NotePencilIcon aria-hidden="true" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                await new DatabaseManager().duplicateSprite(
+                                  sprite.id,
+                                  sprite.project_id,
+                                  appDataDirRef.current || "",
+                                );
+                                await importDatabaseData();
+                              }}
+                            >
+                              <CopyIcon aria-hidden="true" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeleteSprite(sprite)}
+                            >
+                              <TrashIcon aria-hidden="true" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {activeSprite?.id === sprite.id &&
+                      !("isBackdrop" in activeSprite) && (
+                        <CheckIcon
+                          aria-hidden="true"
+                          className="pointer-events-none absolute left-2 top-2 z-10 size-5 rounded-full bg-ring p-0.5 text-background"
+                        />
+                      )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-pressed={
                         activeSprite?.id === sprite.id &&
-                          !("isBackdrop" in activeSprite)
-                          ? "bg-secondary ring-2 ring-ring"
-                          : "",
-                      )}
-                      onClick={() => {
-                        setActiveSprite(sprite);
-                        activeSpriteRef.current = sprite;
-                      }}
-                      key={sprite.id}
+                        !("isBackdrop" in activeSprite)
+                      }
+                      aria-label={`Select sprite ${sprite.name}`}
+                      className="h-auto w-full whitespace-normal p-0 font-normal hover:bg-transparent dark:hover:bg-transparent"
                     >
-                      {!isLesson && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="absolute hover:bg-gray-200 top-2 right-2 z-10"
-                                aria-label={`Actions for ${sprite.name}`}
-                                onClick={(event) => event.stopPropagation()}
-                              />
-                            }
-                          >
-                            <MoreHorizontal />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            className="w-36 p-1"
-                            align="start"
-                          >
-                            <DropdownMenuGroup>
-                              <DropdownMenuItem
-                                onClick={() => openRenameDialog(sprite)}
-                              >
-                                <SquarePen />
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={async () => {
-                                  await new DatabaseManager().duplicateSprite(
-                                    sprite.id,
-                                    sprite.project_id,
-                                    appDataDirRef.current || "",
-                                  );
-                                  await importDatabaseData();
-                                }}
-                              >
-                                <Copy />
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => setDeleteSprite(sprite)}
-                              >
-                                <Trash />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuGroup>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                      {activeSprite?.id === sprite.id &&
-                        !("isBackdrop" in activeSprite) && (
-                          <Check
-                            aria-hidden="true"
-                            className="pointer-events-none absolute left-2 top-2 z-10 size-5 rounded-full bg-ring p-0.5 text-background"
+                      <CardContent className="flex flex-col items-center gap-2">
+                        {sprite.image_paths.length === 0 ? (
+                          <Skeleton className="size-16" />
+                        ) : (
+                          <img
+                            src={sprite.image_paths[0].loadablePath}
+                            alt=""
+                            className="h-auto max-h-16 w-auto max-w-16 object-contain"
                           />
                         )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        aria-pressed={
-                          activeSprite?.id === sprite.id &&
-                          !("isBackdrop" in activeSprite)
-                        }
-                        aria-label={`Select sprite ${sprite.name}`}
-                        className="h-auto w-full whitespace-normal p-0 font-normal hover:bg-transparent dark:hover:bg-transparent"
-                      >
-                        <CardContent className="flex flex-col items-center gap-2">
-                          {sprite.image_paths.length === 0 ? (
-                            <Skeleton className="w-16 h-16" />
-                          ) : (
-                            <img
-                              src={sprite.image_paths[0].loadablePath}
-                              alt=""
-                              style={{
-                                maxWidth: 64,
-                                maxHeight: 64,
-                                width: "auto",
-                                height: "auto",
-                                objectFit: "contain",
-                              }}
-                            />
-                          )}
-                          <p className={`text-sm text-center`}>{sprite.name}</p>
-                        </CardContent>
-                      </Button>
-                    </Card>
-                  );
-                })}
+                        <p className="text-sm text-center">{sprite.name}</p>
+                      </CardContent>
+                    </Button>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              <p>Sprites will be displayed here.</p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {isLesson
+                ? "This lesson has no sprites."
+                : "No sprites yet. Add one to start coding."}
+            </p>
           )}
         </CardContent>
-        <CardFooter className="flex bg-white flex-col gap-1 justify-center">
+        <CardFooter className="flex flex-col justify-center gap-1">
           {!isLesson && (
             <Dialog
               open={spriteDialogOpen}
@@ -236,30 +231,33 @@ export default function SpriteAndBackdropSelector({
               <DialogTrigger
                 render={
                   <Button onClick={async () => {}}>
-                    <PlusIcon />
+                    <PlusIcon aria-hidden="true" />
                     Add a sprite
                   </Button>
                 }
               />
               <DialogContent>
-                <DialogTitle>Add a new sprite</DialogTitle>
+                <DialogTitle>Add a sprite</DialogTitle>
                 <DialogDescription>
-                  Enter the name of the new sprite and select an image file.
+                  Name your sprite, then choose one or more pictures for it.
                 </DialogDescription>
                 <FieldGroup>
                   <Field>
-                    <Label htmlFor="spriteName">Sprite Name</Label>
+                    <Label htmlFor="spriteName">Sprite name</Label>
                     <Input
                       id="spriteName"
                       type="text"
+                      autoComplete="off"
                       value={spriteNameDialogValue || ""}
                       onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                      placeholder="Enter sprite name"
+                      placeholder="For example, Rocket"
                     />
                   </Field>
                   <Field>
-                    <Label htmlFor="spriteImage">Sprite Images</Label>
+                    <Label htmlFor="spriteImage">Sprite pictures</Label>
                     <Button
+                      id="spriteImage"
+                      variant="outline"
                       onClick={async () => {
                         const selectedFile = await open({
                           multiple: true,
@@ -284,18 +282,18 @@ export default function SpriteAndBackdropSelector({
                         }
                       }}
                     >
-                      Upload Image
+                      Choose pictures
                     </Button>
                     {spriteImageDialogValue && (
                       <p className="text-sm break-all relative">
-                        Selected image(s):{" "}
+                        Chosen:{" "}
                         {JSON.parse(spriteImageDialogValue).map(
                           (path: string, index: number) => (
                             <span key={index}>
                               <Button
                                 type="button"
                                 variant="link"
-                                className="h-auto whitespace-normal p-0 text-wrap text-blue-800 underline hover:text-blue-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                className="h-auto whitespace-normal p-0 text-wrap text-foreground underline decoration-foreground/40 underline-offset-4 hover:bg-transparent hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 onClick={async () => {
                                   await openImage(path);
                                 }}
@@ -318,7 +316,9 @@ export default function SpriteAndBackdropSelector({
                     render={<Button variant="outline">Cancel</Button>}
                   />
                   <Button
-                    disabled={!spriteImageDialogValue || !spriteNameDialogValue}
+                    disabled={
+                      !spriteImageDialogValue || !spriteNameDialogValue?.trim()
+                    }
                     onClick={async () => {
                       if (!spriteImageDialogValue || !spriteNameDialogValue) {
                         return;
@@ -346,8 +346,6 @@ export default function SpriteAndBackdropSelector({
                         if (!originalName) {
                           return;
                         }
-                        // A new stored name means two pictures with the same
-                        // name can never overwrite each other.
                         const storedName = uniqueFileName(
                           originalName,
                           fileIndex,
@@ -381,7 +379,7 @@ export default function SpriteAndBackdropSelector({
                       );
                       console.log("Project ID:", projectId);
                       await new DatabaseManager().addNewSprite(
-                        spriteNameDialogValue,
+                        spriteNameDialogValue.trim(),
                         formattedFileNames,
                         projectId as number,
                       );
@@ -408,13 +406,14 @@ export default function SpriteAndBackdropSelector({
           <DialogHeader>
             <DialogTitle>Rename sprite</DialogTitle>
             <DialogDescription>
-              Enter a new name for this sprite.
+              Pick a new name for this sprite.
             </DialogDescription>
           </DialogHeader>
           <Field>
             <Label htmlFor="renameSprite">Sprite name</Label>
             <Input
               id="renameSprite"
+              autoComplete="off"
               value={renameValue}
               onChange={(event) => setRenameValue(event.target.value)}
               autoFocus
@@ -448,11 +447,14 @@ export default function SpriteAndBackdropSelector({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete this sprite?</DialogTitle>
+            <DialogTitle>Delete {deleteSprite?.name ?? "this sprite"}?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes the sprite along with its costumes,
+              variables, and code. You cannot undo this.
+            </DialogDescription>
           </DialogHeader>
-          This is a permanent action and cannot be undone. All costumes,
-          variables, and code associated with this sprite will be lost.
-          <DialogFooter className="bg-white">
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
             <DialogClose
               render={
                 <Button
@@ -464,96 +466,73 @@ export default function SpriteAndBackdropSelector({
                     setDeleteSprite(null);
                   }}
                 >
-                  Delete Sprite
+                  Delete sprite
                 </Button>
               }
             />
-            <DialogClose render={<Button variant="outline">Cancel</Button>} />
           </DialogFooter>
         </DialogContent>
       </Dialog>
       <Card className="flex-1 justify-between">
         <CardContent className="flex flex-col gap-2">
           <CardTitle>Backdrops</CardTitle>
-          {sprites.filter(
-            (sprite) =>
-              typeof sprite === "object" &&
-              sprite !== null &&
-              "isBackdrop" in sprite &&
-              sprite.isBackdrop === true,
-          ).length > 0 ? (
+          {backdropItems.length > 0 ? (
             <div className="grid grid-cols-1 gap-2">
-              {sprites
-                .filter(
-                  (sprite) =>
-                    typeof sprite === "object" &&
-                    sprite !== null &&
-                    "isBackdrop" in sprite &&
-                    sprite.isBackdrop === true,
-                )
-                .map((sprite) => {
-                  return (
-                    <Card
-                      className={cn(
-                        "hover:cursor-pointer relative hover:bg-slate-100 transition-colors duration-200",
-                        activeSprite?.id === sprite.id &&
-                          "isBackdrop" in activeSprite &&
-                          activeSprite.isBackdrop === true
-                          ? "bg-secondary ring-2 ring-ring"
-                          : "",
-                      )}
-                      onClick={() => {
-                        setActiveSprite(sprite);
-                        activeSpriteRef.current = sprite;
-                      }}
-                      key={sprite.id}
-                    >
-                      {activeSprite?.id === sprite.id &&
+              {backdropItems.map((sprite) => {
+                return (
+                  <Card
+                    className={cn(
+                      "hover:cursor-pointer relative hover:bg-muted transition-colors duration-200",
+                      activeSprite?.id === sprite.id &&
                         "isBackdrop" in activeSprite &&
-                        activeSprite.isBackdrop === true && (
-                          <Check
-                            aria-hidden="true"
-                            className="pointer-events-none absolute left-2 top-2 z-10 size-5 rounded-full bg-ring p-0.5 text-background"
+                        activeSprite.isBackdrop === true
+                        ? "bg-secondary ring-2 ring-ring"
+                        : "",
+                    )}
+                    onClick={() => {
+                      setActiveSprite(sprite);
+                      activeSpriteRef.current = sprite;
+                    }}
+                    key={sprite.id}
+                  >
+                    {activeSprite?.id === sprite.id &&
+                      "isBackdrop" in activeSprite &&
+                      activeSprite.isBackdrop === true && (
+                        <CheckIcon
+                          aria-hidden="true"
+                          className="pointer-events-none absolute left-2 top-2 z-10 size-5 rounded-full bg-ring p-0.5 text-background"
+                        />
+                      )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-pressed={
+                        activeSprite?.id === sprite.id &&
+                        "isBackdrop" in activeSprite &&
+                        activeSprite.isBackdrop === true
+                      }
+                      aria-label={`Select backdrop ${sprite.name}`}
+                      className="h-auto w-full whitespace-normal p-0 font-normal hover:bg-transparent dark:hover:bg-transparent"
+                    >
+                      <CardContent className="flex flex-col items-center gap-2">
+                        {sprite.image_paths.length === 0 ? (
+                          <Skeleton className="size-16" />
+                        ) : (
+                          <img
+                            src={sprite.image_paths[0].loadablePath}
+                            alt=""
+                            className="h-auto max-h-16 w-auto max-w-16 object-contain"
                           />
                         )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        aria-pressed={
-                          activeSprite?.id === sprite.id &&
-                          "isBackdrop" in activeSprite &&
-                          activeSprite.isBackdrop === true
-                        }
-                        aria-label={`Select backdrop ${sprite.name}`}
-                        className="h-auto w-full whitespace-normal p-0 font-normal hover:bg-transparent dark:hover:bg-transparent"
-                      >
-                        <CardContent className="flex flex-col items-center gap-2">
-                          {sprite.image_paths.length === 0 ? (
-                            <Skeleton className="w-16 h-16" />
-                          ) : (
-                            <img
-                              src={sprite.image_paths[0].loadablePath}
-                              alt=""
-                              style={{
-                                maxWidth: 64,
-                                maxHeight: 64,
-                                width: "auto",
-                                height: "auto",
-                                objectFit: "contain",
-                              }}
-                            />
-                          )}
-                          <p className={`text-sm text-center`}>{sprite.name}</p>
-                        </CardContent>
-                      </Button>
-                    </Card>
-                  );
-                })}
+                        <p className="text-sm text-center">{sprite.name}</p>
+                      </CardContent>
+                    </Button>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              <p>Backdrops will be displayed here.</p>
-            </div>
+            <p className="text-sm text-muted-foreground">No backdrops yet.</p>
           )}
         </CardContent>
       </Card>

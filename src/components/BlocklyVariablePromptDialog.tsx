@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -11,6 +12,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "./ui/label";
+
+type PromptKind = "new-variable" | "rename-variable" | "confirm";
+
+function promptKindFor(message: string | undefined): PromptKind | null {
+  if (!message) return null;
+  if (message.startsWith("New variable name")) return "new-variable";
+  if (message.startsWith("Rename all")) return "rename-variable";
+  return "confirm";
+}
 
 export function BlocklyVariablePromptDialog() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -28,6 +38,7 @@ export function BlocklyVariablePromptDialog() {
     const handlePrompt = (e: Event) => {
       const { message, defaultValue, callback } = (e as CustomEvent).detail;
       setConfig({ message, defaultValue, callback });
+      setUserInput(defaultValue ?? "");
       setIsOpen(true);
     };
 
@@ -39,13 +50,39 @@ export function BlocklyVariablePromptDialog() {
   }, []);
   const [scope, setScope] = React.useState<"local" | "global">("local");
 
-  const isDelete =
-    config?.message?.startsWith("Delete") &&
-    config?.message?.includes("variable");
+  const kind = promptKindFor(config?.message);
+  const needsName = kind === "new-variable" || kind === "rename-variable";
+  const isDelete = kind === "confirm" && config?.message.startsWith("Delete");
+
+  const title =
+    kind === "new-variable"
+      ? "New variable"
+      : kind === "rename-variable"
+        ? "Rename variable"
+        : config?.message;
+
+  const description =
+    kind === "rename-variable"
+      ? config?.message.replace(/:$/, "")
+      : isDelete
+        ? "You cannot undo this."
+        : undefined;
+
+  const submitLabel =
+    kind === "new-variable"
+      ? "Create variable"
+      : kind === "rename-variable"
+        ? "Rename"
+        : isDelete
+          ? "Delete"
+          : "OK";
 
   const cancel = () => {
-    if (config?.message?.startsWith("New variable name")) {
+    if (kind === "new-variable") {
       config?.callback(null, false);
+    } else if (kind === "confirm") {
+      //@ts-ignore
+      config?.callback(false);
     } else {
       //@ts-ignore
       config?.callback(null);
@@ -54,14 +91,14 @@ export function BlocklyVariablePromptDialog() {
   };
 
   const confirm = () => {
-    if (config?.message?.startsWith("New variable name")) {
-      config?.callback(userInput, scope === "global");
-    } else if (isDelete) {
+    if (kind === "new-variable") {
+      config?.callback(userInput.trim(), scope === "global");
+    } else if (kind === "confirm") {
       //@ts-ignore
       config?.callback(true);
     } else {
       //@ts-ignore
-      config?.callback(userInput);
+      config?.callback(userInput.trim());
     }
     setIsOpen(false);
   };
@@ -80,48 +117,52 @@ export function BlocklyVariablePromptDialog() {
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{config?.message}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <form
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
+            if (needsName && !userInput.trim()) return;
             confirm();
           }}
         >
-          {(config?.message?.startsWith("New variable name:") ||
-            config?.message?.startsWith("Rename all")) && (
+          {needsName && (
             <div className="grid gap-2">
-              <Label htmlFor="variableName">Variable Name</Label>
+              <Label htmlFor="variableName">Variable name</Label>
               <Input
                 value={userInput}
                 id="variableName"
+                autoFocus
+                autoComplete="off"
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => setUserInput(e.target.value)}
               ></Input>
             </div>
           )}
-          {isDelete && (
-            <p>
-              Are you sure you want to delete this variable? This action cannot
-              be undone.
-            </p>
-          )}
-          {config?.message?.startsWith("New variable name") && (
+          {kind === "new-variable" && (
             <RadioGroup
               value={scope}
               onValueChange={(value) => setScope(value as "local" | "global")}
-              className="flex flex-row gap-2"
+              className="grid grid-cols-2 gap-2"
               defaultValue="local"
               aria-label="Variable scope"
             >
-              <div className="flex flex-row items-center gap-2">
-                <RadioGroupItem value="local" id="local" />
-                <Label htmlFor="local">This Sprite Only</Label>
-              </div>
-              <div className="flex flex-row items-center gap-2">
-                <RadioGroupItem value="global" id="global" />
-                <Label htmlFor="global">All Sprites</Label>
-              </div>
+              <Label
+                htmlFor="variable-scope-local"
+                className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 hover:bg-muted"
+              >
+                <RadioGroupItem value="local" id="variable-scope-local" />
+                This sprite only
+              </Label>
+              <Label
+                htmlFor="variable-scope-global"
+                className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 hover:bg-muted"
+              >
+                <RadioGroupItem value="global" id="variable-scope-global" />
+                All sprites
+              </Label>
             </RadioGroup>
           )}
           <DialogFooter>
@@ -134,13 +175,10 @@ export function BlocklyVariablePromptDialog() {
             />
             <Button
               type="submit"
-              variant={
-                config?.message?.startsWith("Delete")
-                  ? "destructive"
-                  : "default"
-              }
+              disabled={needsName && !userInput.trim()}
+              variant={isDelete ? "destructive" : "default"}
             >
-              {config?.message?.startsWith("Delete") ? "Delete Variable" : "Ok"}
+              {submitLabel}
             </Button>
           </DialogFooter>
         </form>

@@ -17,18 +17,18 @@ import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
-import { Play, Square, Undo2 } from "lucide-react";
+import {
+  ArrowUUpLeftIcon,
+  CheckIcon,
+  PlayIcon,
+  StopIcon,
+} from "@phosphor-icons/react";
 import { BlocklyHelp } from "./components/BlocklyHelp";
 import { Lesson } from "./lib/lesson";
-import {
-  getBlocklyTheme,
-  loadBlocklyFonts,
-  watchPastelTextContrast,
-} from "./blocks/theme";
+import { getBlocklyTheme, loadBlocklyFonts } from "./blocks/theme";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import confetti from "canvas-confetti";
-import { Check } from "lucide-react";
 import {
   AccessibilitySettings,
   prefersReducedMotion,
@@ -1263,7 +1263,6 @@ function LessonView({
     });
     blocklyDiv.classList.toggle("codely-pastel", pastelTheme);
     document.body.classList.toggle("codely-pastel", pastelTheme);
-    watchPastelTextContrast(blocklyDiv, pastelTheme);
     setWorkspace(ws);
     ws.addChangeListener((e: Blockly.Events.Abstract) => {
       // UI events are things like scrolling, zooming, etc.
@@ -1495,9 +1494,9 @@ function LessonView({
   }
 
   return (
-    <main className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-slate-50 p-2 text-slate-900 dark:bg-slate-800">
+    <main className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-background p-2 text-foreground">
       {lesson && (
-        <section className="mb-1 shrink-0 rounded-lg border bg-white p-4 shadow-sm">
+        <section className="mb-1 shrink-0 rounded-lg border bg-card p-4 shadow-sm">
           <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1532,7 +1531,7 @@ function LessonView({
                       cb();
                     }}
                   >
-                    <Undo2 />
+                    <ArrowUUpLeftIcon aria-hidden="true" />
                     Back to Menu
                   </Button>
                 </div>
@@ -1543,7 +1542,7 @@ function LessonView({
             </div>
             <div className="mt-3 flex items-center gap-3">
               <div
-                className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"
+                className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
                 role="progressbar"
                 aria-label="Lesson progress"
                 aria-valuenow={Math.round(
@@ -1555,7 +1554,7 @@ function LessonView({
                 aria-valuemax={100}
               >
                 <div
-                  className="h-full rounded-full bg-emerald-400 transition-[width] duration-300"
+                  className="h-full rounded-full bg-ring transition-[width] duration-300"
                   style={{
                     width: `${Math.round(
                       (Math.min(currentStep, lesson.successMetrics.length) /
@@ -1585,14 +1584,14 @@ function LessonView({
             </div>
             <div role="status" aria-live="polite">
               {autoFixResult && (
-                <p className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-blue-950">
+                <p className="mt-2 rounded-md bg-secondary px-3 py-2 text-secondary-foreground">
                   {autoFixResult}
                 </p>
               )}
             </div>
             {currentStep >= lesson.successMetrics.length && (
               <p className="mt-2 flex items-center gap-2 font-semibold text-emerald-700">
-                <Check className="size-5" aria-hidden="true" /> Lesson complete.
+                <CheckIcon className="size-5" aria-hidden="true" /> Lesson complete.
               </p>
             )}
             <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
@@ -1610,12 +1609,12 @@ function LessonView({
                       key={`${lesson.id}-${index}`}
                       className="flex items-start gap-2"
                     >
-                      <Check
+                      <CheckIcon
                         aria-hidden="true"
                         className={
                           index < currentStep
                             ? "mt-0.5 size-4 text-emerald-600"
-                            : "mt-0.5 size-4 text-slate-300"
+                            : "mt-0.5 size-4 text-muted-foreground/40"
                         }
                       />
                       <span className="sr-only">
@@ -1712,7 +1711,7 @@ function LessonView({
                   disabled={codeRunningState === true || !workspace}
                   className="shadow-sm"
                 >
-                  <Play />
+                  <PlayIcon aria-hidden="true" />
                   Run Code
                 </Button>
                 <Dialog open={hintOpen} onOpenChange={setHintOpen}>
@@ -1740,7 +1739,7 @@ function LessonView({
                       </DialogDescription>
                     </DialogHeader>
                     <p
-                      className="rounded-md bg-blue-50 px-3 py-3 text-blue-950"
+                      className="rounded-md bg-secondary px-3 py-3 text-secondary-foreground"
                       role="status"
                     >
                       {lessonStepHint ??
@@ -1831,14 +1830,14 @@ function LessonView({
             >
               <CardContent className="relative flex w-full flex-col justify-center items-center">
                 <canvas
-                  className="border border-slate-300 rounded-lg"
+                  className="border border-border rounded-lg"
                   id="backgroundCanvas"
                   aria-hidden="true"
                   width="800"
                   height="600"
                 ></canvas>
                 <canvas
-                  className="absolute border border-slate-300 rounded-lg"
+                  className="absolute border border-border rounded-lg"
                   id="foregroundCanvas"
                   role="img"
                   aria-label="Stage showing the sprites and backdrop. Spoken text and variable changes are announced while code runs. Use the sprite buttons below the stage to click a sprite."
@@ -1853,7 +1852,7 @@ function LessonView({
                   }}
                   disabled={codeRunningState === true}
                 >
-                  <Play />
+                  <PlayIcon aria-hidden="true" />
                   Run Code
                 </Button>
                 <Button
@@ -1862,7 +1861,7 @@ function LessonView({
                   }}
                   disabled={codeRunningState === false}
                 >
-                  <Square />
+                  <StopIcon aria-hidden="true" />
                   Stop Code
                 </Button>
                 <StageLiveRegion

@@ -1,4 +1,3 @@
-"use client";
 import React from "react";
 import { DatabaseManager } from "./lib/database";
 import { appLocalDataDir, join, resolveResource } from "@tauri-apps/api/path";
@@ -27,16 +26,15 @@ import { Label } from "./components/ui/label";
 import { Input } from "./components/ui/input";
 import { Checkbox } from "./components/ui/checkbox";
 import {
-  ArrowRight,
-  Check,
-  Code,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Settings2,
-  TextAlignStart,
-  Trash2,
-} from "lucide-react";
+  ArrowRightIcon,
+  CheckIcon,
+  CodeIcon,
+  DotsThreeIcon,
+  PencilIcon,
+  PlusIcon,
+  TextAlignLeftIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { ScrollArea } from "./components/ui/scroll-area";
 import { Skeleton } from "./components/ui/skeleton";
 import { Lesson } from "./lib/lesson";
@@ -130,7 +128,6 @@ export default function ProjectSelector({
   }, []);
 
   React.useEffect(() => {
-    console.log("Loading thumbnails for projects and lessons...");
     const loadThumbnails = async () => {
       const appDir = await appLocalDataDir();
       const loadProjectThumbnail = async (folder: string) => {
@@ -405,7 +402,7 @@ export default function ProjectSelector({
                       <CardTitle className="flex items-center gap-2">
                         {loadLessonProgress(project.id) >=
                           project.successMetrics.length && (
-                          <Check
+                          <CheckIcon
                             className="size-5 text-emerald-700"
                             role="img"
                             aria-label="Completed"
@@ -465,7 +462,7 @@ export default function ProjectSelector({
                           : lessonStatus(project).started
                             ? "Continue lesson"
                             : "Start lesson"}
-                        <ArrowRight />
+                        <ArrowRightIcon aria-hidden="true" />
                       </Button>
                     </CardFooter>
                   </Card>
@@ -480,18 +477,18 @@ export default function ProjectSelector({
                 <DialogTrigger
                   render={
                     <Button variant="white" size="lg">
-                      <Plus />
+                      <PlusIcon aria-hidden="true" />
                       New project
                     </Button>
                   }
                 ></DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Create New Project</DialogTitle>
+                    <DialogTitle>Create new project</DialogTitle>
                   </DialogHeader>
                   <Label htmlFor="project-name">
                     <div>
-                      Project Name{" "}
+                      Project name{" "}
                       <span className="text-destructive">(required)</span>
                     </div>
                   </Label>
@@ -523,7 +520,7 @@ export default function ProjectSelector({
                     )}
                   </div>
                   <Label htmlFor="project-description">
-                    Project Description
+                    Project description
                   </Label>
                   <Input
                     id="project-description"
@@ -552,7 +549,7 @@ export default function ProjectSelector({
                       })();
                     }}
                   >
-                    Create Project
+                    Create project
                   </Button>
                 </DialogContent>
               </Dialog>
@@ -575,7 +572,7 @@ export default function ProjectSelector({
                           />
                         }
                       >
-                        <MoreHorizontal />
+                        <DotsThreeIcon weight="bold" aria-hidden="true" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         className="w-48 p-1 whitespace-nowrap"
@@ -585,13 +582,13 @@ export default function ProjectSelector({
                           <DropdownMenuItem
                             onClick={() => openRenameDialog(project)}
                           >
-                            <Pencil />
+                            <PencilIcon aria-hidden="true" />
                             Rename
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => openDescriptionDialog(project)}
                           >
-                            <TextAlignStart />
+                            <TextAlignLeftIcon aria-hidden="true" />
                             Change description
                           </DropdownMenuItem>
                           {projects.length > 1 && (
@@ -599,7 +596,7 @@ export default function ProjectSelector({
                               className="text-destructive hover:text-destructive"
                               onClick={() => setDeleteProject(project)}
                             >
-                              <Trash2 />
+                              <TrashIcon aria-hidden="true" />
                               Delete
                             </DropdownMenuItem>
                           )}
@@ -618,7 +615,7 @@ export default function ProjectSelector({
                           className="flex h-full w-full items-center justify-center text-muted-foreground"
                           aria-hidden="true"
                         >
-                          <Code className="size-8" />
+                          <CodeIcon className="size-8" aria-hidden="true" />
                         </div>
                       )}
                     </div>
@@ -634,7 +631,7 @@ export default function ProjectSelector({
                         onClick={() => onProjectSelect(project.id)}
                       >
                         Open project
-                        <ArrowRight />
+                        <ArrowRightIcon aria-hidden="true" />
                       </Button>
                     </CardFooter>
                   </Card>
@@ -654,7 +651,7 @@ export default function ProjectSelector({
           <DialogHeader>
             <DialogTitle>Rename project</DialogTitle>
           </DialogHeader>
-          <Label htmlFor="rename-project">Project Name</Label>
+          <Label htmlFor="rename-project">Project name</Label>
           <Input
             id="rename-project"
             value={renameValue}
@@ -675,7 +672,7 @@ export default function ProjectSelector({
                 setRenameProject(null);
               }}
             >
-              Rename Project
+              Rename project
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -690,7 +687,7 @@ export default function ProjectSelector({
           <DialogHeader>
             <DialogTitle>Change project description</DialogTitle>
           </DialogHeader>
-          <Label htmlFor="project-description-edit">Project Description</Label>
+          <Label htmlFor="project-description-edit">Project description</Label>
           <Input
             id="project-description-edit"
             value={descriptionValue}
@@ -710,7 +707,7 @@ export default function ProjectSelector({
                 setDescriptionProject(null);
               }}
             >
-              Save Description
+              Save description
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -740,7 +737,7 @@ export default function ProjectSelector({
                     setDeleteProject(null);
                   }}
                 >
-                  Delete Project
+                  Delete project
                 </Button>
               }
             />

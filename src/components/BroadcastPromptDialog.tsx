@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -20,9 +21,7 @@ export default function BroadcastPromptDialog() {
     callback: (name: string | null) => void;
   } | null>(null);
 
-  const [userInput, setUserInput] = React.useState<string>(
-    config?.defaultValue || "",
-  );
+  const [userInput, setUserInput] = React.useState<string>("");
 
   React.useEffect(() => {
     const handlePrompt = (e: Event) => {
@@ -38,6 +37,9 @@ export default function BroadcastPromptDialog() {
       window.removeEventListener("broadcast-prompt", handlePrompt);
     };
   }, []);
+
+  const isRename = config?.message.startsWith("Rename") ?? false;
+
   return (
     <Dialog
       open={dialogOpen}
@@ -45,21 +47,30 @@ export default function BroadcastPromptDialog() {
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{config?.message}</DialogTitle>
+          <DialogTitle>{isRename ? "Rename message" : "New message"}</DialogTitle>
+          <DialogDescription>
+            {isRename
+              ? "Pick a new name for this message."
+              : "Messages let one sprite tell another sprite when to start."}
+          </DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            config?.callback(userInput);
+            if (!userInput.trim()) return;
+            config?.callback(userInput.trim());
             setDialogOpen(false);
           }}
         >
           <div className="grid gap-2">
-            <Label htmlFor="broadcastInput">Message Name</Label>
+            <Label htmlFor="broadcastInput">Message name</Label>
             <Input
               value={userInput}
               id="broadcastInput"
+              autoFocus
+              autoComplete="off"
+              onFocus={(e) => e.currentTarget.select()}
               onChange={(e) => setUserInput(e.target.value)}
             ></Input>
           </div>
@@ -78,7 +89,9 @@ export default function BroadcastPromptDialog() {
                 </Button>
               }
             />
-            <Button type="submit">Ok</Button>
+            <Button type="submit" disabled={!userInput.trim()}>
+              {isRename ? "Rename" : "Create message"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

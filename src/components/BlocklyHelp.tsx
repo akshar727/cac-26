@@ -148,7 +148,7 @@ function BlockHelpContent({ block }: { block: Blockly.Block }) {
   return (
     <div className="space-y-2">
       <h3 id={HELP_TITLE_ID} tabIndex={-1} className="font-semibold">
-        {help?.title ?? block.type}
+        {help?.title ?? "About this block"}
       </h3>
       {help && (
         <div className="space-y-2">
@@ -160,7 +160,7 @@ function BlockHelpContent({ block }: { block: Blockly.Block }) {
               <strong>Example:</strong> {help.example}
             </p>
           )}
-          <details className="text-xs text-muted-foreground">
+          <details className="text-sm text-muted-foreground">
             <summary className="cursor-pointer font-medium">
               More technical description
             </summary>
@@ -170,7 +170,8 @@ function BlockHelpContent({ block }: { block: Blockly.Block }) {
       )}
       {!help && (
         <p className="text-sm text-muted-foreground">
-          This block does not have a description yet. Try dragging it to see what it does.
+          This block does not have a description yet. Try dragging it to see
+          what it does.
         </p>
       )}
     </div>

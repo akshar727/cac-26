@@ -34,18 +34,17 @@ import {
 } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
 import {
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Copy,
-  Maximize,
-  Plus,
-  X,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
+  CaretDownIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  CaretUpIcon,
+  CopyIcon,
+  CornersOutIcon,
+  MagnifyingGlassMinusIcon,
+  MagnifyingGlassPlusIcon,
+  PlusIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import type { UniqueIdentifier } from "@dnd-kit/abstract";
@@ -55,7 +54,7 @@ type Costume = DatabaseSprite["image_paths"][number];
 const ZOOM_STEPS = [25, 50, 100, 200, 400];
 
 const overlayControl =
-  "z-10 size-7 rounded-lg bg-gray-200/30 transition-colors duration-100 hover:bg-gray-300/60";
+  "z-10 size-7 rounded-lg bg-muted/70 transition-colors duration-100 hover:bg-muted";
 
 function stepZoom(current: number | null, direction: 1 | -1): number {
   if (current === null) return direction === 1 ? 100 : 50;
@@ -144,7 +143,7 @@ function SortableCostumeCard({
         ref={ref}
         onClick={onSelect}
         className={cn(
-          "hover:bg-slate-100 transition-colors duration-200 relative",
+          "hover:bg-muted transition-colors duration-200 relative",
           isLesson ? "hover:cursor-pointer" : "hover:cursor-grab",
           isActive ? "bg-secondary ring-2 ring-ring" : "",
           isDragging ? "opacity-50" : "",
@@ -161,10 +160,10 @@ function SortableCostumeCard({
                       role="button"
                       tabIndex={0}
                       aria-label={`Delete costume ${costume.costumeName}`}
-                      className="hover:cursor-pointer absolute top-2 right-2 z-10 rounded-lg hover:bg-red-500/40 focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-100 bg-gray-200/30 flex items-center justify-center size-7"
+                      className="hover:cursor-pointer absolute top-2 right-2 z-10 rounded-lg hover:bg-destructive/30 focus-visible:outline-2 focus-visible:outline-ring transition-colors duration-100 bg-muted/70 flex items-center justify-center size-7"
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <X className="w-4 h-4" />
+                      <XIcon className="w-4 h-4" aria-hidden="true" />
                     </div>
                   }
                 />
@@ -180,10 +179,10 @@ function SortableCostumeCard({
                   aria-disabled="true"
                   aria-label={`Delete costume ${costume.costumeName} (unavailable)`}
                   aria-describedby={deleteHintId}
-                  className="absolute top-2 right-2 z-10 bg-gray-200/30 opacity-60 hover:bg-gray-200/30 hover:cursor-not-allowed active:translate-y-0"
+                  className="absolute top-2 right-2 z-10 bg-muted/70 opacity-60 hover:bg-muted/70 hover:cursor-not-allowed active:translate-y-0"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <X className="w-4 h-4" />
+                  <XIcon className="w-4 h-4" aria-hidden="true" />
                 </Button>
               }
             />
@@ -213,7 +212,7 @@ function SortableCostumeCard({
                 onMove(-1);
               }}
             >
-              <ChevronUp />
+              <CaretUpIcon aria-hidden="true" />
             </Button>
             <Button
               type="button"
@@ -227,7 +226,7 @@ function SortableCostumeCard({
                 onMove(1);
               }}
             >
-              <ChevronDown />
+              <CaretDownIcon aria-hidden="true" />
             </Button>
           </div>
         )}
@@ -261,11 +260,11 @@ function SortableCostumeCard({
             <DialogTitle>Delete this costume?</DialogTitle>
           </DialogHeader>
           This is a permanent action and cannot be undone.
-          <DialogFooter className="bg-white">
+          <DialogFooter className="bg-popover">
             <DialogClose
               render={
                 <Button variant="destructive" onClick={onDelete}>
-                  Delete Costume
+                  Delete costume
                 </Button>
               }
             />
@@ -345,7 +344,7 @@ function CostumePreview({
             disabled={total < 2}
             onClick={onPrevious}
           >
-            <ChevronLeft />
+            <CaretLeftIcon aria-hidden="true" />
             Previous
           </Button>
           <span className="min-w-28 text-center text-sm" aria-live="polite">
@@ -359,7 +358,7 @@ function CostumePreview({
             onClick={onNext}
           >
             Next
-            <ChevronRight />
+            <CaretRightIcon aria-hidden="true" />
           </Button>
         </div>
         <div className="flex items-center gap-1" role="group" aria-label="Zoom">
@@ -371,7 +370,7 @@ function CostumePreview({
             disabled={zoom === ZOOM_STEPS[0]}
             onClick={() => setZoom(stepZoom(zoom, -1))}
           >
-            <ZoomOut />
+            <MagnifyingGlassMinusIcon aria-hidden="true" />
           </Button>
           <span className="w-12 text-center text-sm tabular-nums">
             {zoom === null ? "Fit" : `${zoom}%`}
@@ -384,7 +383,7 @@ function CostumePreview({
             disabled={zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1]}
             onClick={() => setZoom(stepZoom(zoom, 1))}
           >
-            <ZoomIn />
+            <MagnifyingGlassPlusIcon aria-hidden="true" />
           </Button>
           <Button
             type="button"
@@ -393,7 +392,7 @@ function CostumePreview({
             aria-pressed={zoom === null}
             onClick={() => setZoom(null)}
           >
-            <Maximize />
+            <CornersOutIcon aria-hidden="true" />
             Fit
           </Button>
         </div>
@@ -402,7 +401,7 @@ function CostumePreview({
         tabIndex={0}
         role="region"
         aria-label={`${label} preview`}
-        className="flex h-64 overflow-auto rounded border focus-visible:outline-2 focus-visible:outline-ring"
+        className="flex h-64 overflow-auto rounded-lg border focus-visible:outline-2 focus-visible:outline-ring"
         style={{
           backgroundColor: "#ffffff",
           backgroundImage:
@@ -450,7 +449,7 @@ function CostumePreview({
           onFocus={(e) => {
             e.target.select();
           }}
-          className="border rounded px-2 py-1 min-w-0 flex-1"
+          className="min-w-0 flex-1"
           disabled={isLesson}
           defaultValue={costume.costumeName}
         />
@@ -461,7 +460,7 @@ function CostumePreview({
             disabled={isBusy || !costume.truePath}
             onClick={() => void onDuplicate()}
           >
-            <Copy />
+            <CopyIcon aria-hidden="true" />
             Duplicate
           </Button>
         )}
@@ -714,7 +713,7 @@ export default function CostumeEdtior({
                       setNewCostumeDialogOpen(true);
                     }}
                   >
-                    <Plus />
+                    <PlusIcon aria-hidden="true" />
                     Add a {noun}
                   </Button>
                 }
@@ -727,7 +726,7 @@ export default function CostumeEdtior({
                 <FieldGroup>
                   <Field>
                     <Label htmlFor="spriteName">
-                      {noun === "backdrop" ? "Backdrop" : "Costume"} Name
+                      {noun === "backdrop" ? "Backdrop" : "Costume"} name
                     </Label>
                     <Input
                       type="text"
@@ -735,12 +734,12 @@ export default function CostumeEdtior({
                       value={spriteNameDialogValue}
                       onChange={(e) => setSpriteNameDialogValue(e.target.value)}
                       placeholder={`Enter ${noun} name`}
-                      className="border rounded px-2 py-1 w-full"
+                      className="w-full"
                     />
                   </Field>
                   <Field>
                     <Label htmlFor="spriteImage">
-                      {noun === "backdrop" ? "Backdrop" : "Costume"} Image
+                      {noun === "backdrop" ? "Backdrop" : "Costume"} image
                     </Label>
                     <Button
                       onClick={async () => {
@@ -761,14 +760,14 @@ export default function CostumeEdtior({
                         }
                       }}
                     >
-                      Upload Image
+                      Upload image
                     </Button>
                     {spriteImageDialogValue && (
                       <p className="text-sm">
                         Selected image:{" "}
                         <Button
                           variant="link"
-                          className="text-blue-800 p-0 underline hover:cursor-pointer hover:text-blue-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                          className="p-0 text-foreground underline hover:cursor-pointer hover:text-foreground/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                           onClick={async () => {
                             const path = spriteImageDialogValue;
                             await openImage(path);
@@ -826,7 +825,7 @@ export default function CostumeEdtior({
                       setNewCostumeDialogOpen(false);
                     }}
                   >
-                    Add {noun === "backdrop" ? "Backdrop" : "Costume"}
+                    Add {noun}
                   </Button>
                 </DialogFooter>
               </DialogContent>

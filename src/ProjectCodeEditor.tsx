@@ -19,13 +19,14 @@ import { DatabaseManager } from "./lib/database";
 import CostumeEditor from "./components/CostumeEditor";
 import BroadcastPromptDialog from "./components/BroadcastPromptDialog";
 import SpriteAndBackdropSelector from "./components/SpriteBackdropSelector";
-import { Play, RotateCcw, Square, Undo2 } from "lucide-react";
-import { BlocklyHelp } from "./components/BlocklyHelp";
 import {
-  getBlocklyTheme,
-  loadBlocklyFonts,
-  watchPastelTextContrast,
-} from "./blocks/theme";
+  ArrowCounterClockwiseIcon,
+  ArrowUUpLeftIcon,
+  PlayIcon,
+  StopIcon,
+} from "@phosphor-icons/react";
+import { BlocklyHelp } from "./components/BlocklyHelp";
+import { getBlocklyTheme, loadBlocklyFonts } from "./blocks/theme";
 import type { AccessibilitySettings } from "./lib/settings";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
@@ -834,7 +835,6 @@ function CodeEditor({
     });
     blocklyDiv.classList.toggle("codely-pastel", pastelTheme);
     document.body.classList.toggle("codely-pastel", pastelTheme);
-    watchPastelTextContrast(blocklyDiv, pastelTheme);
     setWorkspace(ws);
     ws.addChangeListener((e: Blockly.Events.Abstract) => {
       // UI events are things like scrolling, zooming, etc.
@@ -1025,7 +1025,7 @@ function CodeEditor({
   }
 
   return (
-    <main className="p-2 bg-slate-50 dark:bg-slate-800 min-h-dvh h-dvh max-h-dvh text-slate-900">
+    <main className="h-dvh max-h-dvh min-h-dvh bg-background p-2 text-foreground">
       {void runtimeTick}
       <Tabs
         value={activeTab}
@@ -1080,7 +1080,7 @@ function CodeEditor({
                 disabled={codeRunningState === true || !workspace}
                 className="absolute right-3 top-3 z-10 shadow-sm"
               >
-                <Play />
+                <PlayIcon aria-hidden="true" />
                 Run Code
               </Button>
             </div>
@@ -1144,14 +1144,14 @@ function CodeEditor({
               <CardContent className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-auto p-3">
                 <div className="relative aspect-4/3 w-full max-w-200 shrink-0">
                   <canvas
-                    className="absolute inset-0 h-full w-full rounded-lg border border-slate-300"
+                    className="absolute inset-0 h-full w-full rounded-lg border border-foreground/25"
                     id="backgroundCanvas"
                     aria-hidden="true"
                     width="800"
                     height="600"
                   ></canvas>
                   <canvas
-                    className="absolute inset-0 h-full w-full rounded-lg border border-slate-300"
+                    className="absolute inset-0 h-full w-full rounded-lg border border-foreground/25"
                     id="foregroundCanvas"
                     role="img"
                     aria-label="Stage showing the sprites and backdrop. Spoken text and variable changes are announced while code runs. Use the sprite buttons below the stage to click a sprite."
@@ -1164,10 +1164,13 @@ function CodeEditor({
                   sprites={sprites}
                   active={codeRunningState}
                 />
-                <div className="mt-2 grid w-full max-w-200 gap-2 rounded-lg border bg-white p-2 text-sm shadow-sm md:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
+                <div className="mt-3 grid w-full max-w-200 gap-4 border-t pt-3 text-sm md:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
                   <div className="min-w-0 space-y-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <RotateCcw className="size-4 shrink-0 text-muted-foreground" />
+                      <ArrowCounterClockwiseIcon
+                        className="size-4 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                       <Label
                         id="runtime-rewind-label"
                         className="shrink-0 font-medium"
@@ -1205,14 +1208,14 @@ function CodeEditor({
                       {(runtimeRef.current?._targets ?? []).map((target) => (
                         <div
                           key={target.id}
-                          className="rounded border bg-secondary border-primary/20 text-blue-950 px-2 py-1"
+                          className="border-b border-border py-1 last:border-b-0"
                         >
                           <div className="font-medium">
                             {spriteLabel(target, sprites)}
                           </div>
                           {Array.from(target.variables.entries()).length ===
                           0 ? (
-                            <div>No variables</div>
+                            <div className="text-muted-foreground">No variables</div>
                           ) : (
                             Array.from(target.variables.entries()).map(
                               ([id, value]) => (
@@ -1244,7 +1247,7 @@ function CodeEditor({
                   }}
                   disabled={codeRunningState === true}
                 >
-                  <Play />
+                  <PlayIcon aria-hidden="true" />
                   Run Code
                 </Button>
                 <Button
@@ -1253,7 +1256,7 @@ function CodeEditor({
                   }}
                   disabled={codeRunningState === false}
                 >
-                  <Square />
+                  <StopIcon aria-hidden="true" />
                   Stop Code
                 </Button>
               </CardFooter>
@@ -1270,7 +1273,7 @@ function CodeEditor({
         }}
         className="absolute top-2 right-2"
       >
-        <Undo2 />
+        <ArrowUUpLeftIcon aria-hidden="true" />
         Back to Menu
       </Button>
       <BlocklyVariablePromptDialog />

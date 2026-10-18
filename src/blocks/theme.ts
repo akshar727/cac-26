@@ -13,6 +13,12 @@ export type BlockAccessbility = {
   hyperlegible?: boolean;
 };
 
+type BlockPalette = {
+  colourPrimary: string;
+  colourSecondary: string;
+  colourTertiary: string;
+};
+
 export function getBlocklyFontStyle(accessibilitySettings: BlockAccessbility = {}) {
   return {
     family:
@@ -37,117 +43,73 @@ export async function loadBlocklyFonts(
   }
 }
 
-const theme = Blockly.Theme.defineTheme("codely", {
-  name: "codely",
-  base: Blockly.Themes.Classic,
-  componentStyles: {
-    toolboxBackgroundColour: "#f5f5f5",
-    flyoutBackgroundColour: "#f5f5f5",
+function categoryNameFor(blockStyleName: string) {
+  return blockStyleName.replace(/_blocks$/, "_category");
+}
+
+function categoryStylesFrom(styles: Record<string, BlockPalette>) {
+  return Object.fromEntries(
+    Object.entries(styles).map(([name, palette]) => [
+      categoryNameFor(name),
+      { colour: palette.colourPrimary },
+    ]),
+  );
+}
+
+const blockStyles: Record<string, BlockPalette> = {
+  screen_blocks: {
+    colourPrimary: "#7c67c0",
+    colourSecondary: "#6c55b9",
+    colourTertiary: "#5f47ad",
   },
-  fontStyle: getBlocklyFontStyle(),
-  categoryStyles: {
-    screen_category: {
-      colour: "#8b78c7",
-    },
-    event_category: {
-      colour: "#d84a5a",
-    },
-    motion_category: {
-      colour: "#5b8def",
-    },
-    visual_category: {
-      colour: "#e6a04d",
-    },
-    loop_category: {
-      colour: "#72b85d",
-    },
-    logic_category: {
-      colour: "#5bb5d6",
-    },
-    math_category: {
-      colour: "#b36bd4",
-    },
-    text_category: {
-      colour: "#5bbd83",
-    },
-    variable_category: {
-      colour: "#d1a34c",
-    },
-    procedure_category: {
-      colour: "#cf6e9b",
-    },
+  event_blocks: {
+    colourPrimary: "#d53b4c",
+    colourSecondary: "#cb2b3d",
+    colourTertiary: "#b62737",
   },
-  blockStyles: {
-    screen_blocks: {
-      colourPrimary: "#8b78c7",
-      colourSecondary: "#7865b5",
-      colourTertiary: "#654fa3",
-    },
-    event_blocks: {
-      colourPrimary: "#d84a5a",
-      colourSecondary: "#bd3848",
-      colourTertiary: "#9f2938",
-    },
-    motion_blocks: {
-      colourPrimary: "#5b8def",
-      colourSecondary: "#4779db",
-      colourTertiary: "#3565c4",
-    },
-    visual_blocks: {
-      colourPrimary: "#e6a04d",
-      colourSecondary: "#d88e38",
-      colourTertiary: "#c57b24",
-    },
-    loop_blocks: {
-      colourPrimary: "#72b85d",
-      colourSecondary: "#5da549",
-      colourTertiary: "#4b9138",
-    },
-    logic_blocks: {
-      colourPrimary: "#5bb5d6",
-      colourSecondary: "#46a0c2",
-      colourTertiary: "#348baa",
-    },
-    math_blocks: {
-      colourPrimary: "#b36bd4",
-      colourSecondary: "#9f56c0",
-      colourTertiary: "#8a42ab",
-    },
-    text_blocks: {
-      colourPrimary: "#5bbd83",
-      colourSecondary: "#47a96f",
-      colourTertiary: "#36955c",
-    },
-    variable_blocks: {
-      colourPrimary: "#d1a34c",
-      colourSecondary: "#bd9138",
-      colourTertiary: "#a87e26",
-    },
-    procedure_blocks: {
-      colourPrimary: "#cf6e9b",
-      colourSecondary: "#bc5987",
-      colourTertiary: "#a94773",
-    },
+  motion_blocks: {
+    colourPrimary: "#2e6eeb",
+    colourSecondary: "#175ee9",
+    colourTertiary: "#1454d2",
   },
-  startHats: true,
-});
-export const pastelCategoryColours: Record<string, string> = {
-  screen_category: "#c8b6e8",
-  event_category: "#e8b6bb",
-  motion_category: "#b9d9e8",
-  visual_category: "#f2d3ae",
-  loop_category: "#c7dfbd",
-  logic_category: "#c1dfe8",
-  math_category: "#d8c9e4",
-  text_category: "#c6e2cc",
-  variable_category: "#ead9ad",
-  procedure_category: "#e2bfd0",
+  visual_blocks: {
+    colourPrimary: "#a76517",
+    colourSecondary: "#915714",
+    colourTertiary: "#7a4a11",
+  },
+  loop_blocks: {
+    colourPrimary: "#4a8239",
+    colourSecondary: "#407031",
+    colourTertiary: "#365f29",
+  },
+  logic_blocks: {
+    colourPrimary: "#277e9e",
+    colourSecondary: "#226e8a",
+    colourTertiary: "#1d5d75",
+  },
+  math_blocks: {
+    colourPrimary: "#a44fcc",
+    colourSecondary: "#9a3bc6",
+    colourTertiary: "#8b34b4",
+  },
+  text_blocks: {
+    colourPrimary: "#358355",
+    colourSecondary: "#2e7149",
+    colourTertiary: "#265f3d",
+  },
+  variable_blocks: {
+    colourPrimary: "#956f26",
+    colourSecondary: "#816021",
+    colourTertiary: "#6c511c",
+  },
+  procedure_blocks: {
+    colourPrimary: "#c34881",
+    colourSecondary: "#b63c74",
+    colourTertiary: "#a33568",
+  },
 };
 
-export const pastelBlockStyles: Record<
-  string,
-  { colourPrimary: string; colourSecondary: string; colourTertiary: string }
-> = {
+export const pastelBlockStyles: Record<string, BlockPalette> = {
   screen_blocks: {
     colourPrimary: "#c8b6e8",
     colourSecondary: "#b3a0d5",
@@ -200,18 +162,37 @@ export const pastelBlockStyles: Record<
   },
 };
 
+export const pastelCategoryColours: Record<string, string> = Object.fromEntries(
+  Object.entries(pastelBlockStyles).map(([name, palette]) => [
+    categoryNameFor(name),
+    palette.colourPrimary,
+  ]),
+);
+
+const theme = Blockly.Theme.defineTheme("codely", {
+  name: "codely",
+  base: Blockly.Themes.Classic,
+  componentStyles: {
+    toolboxBackgroundColour: "#f1f0ec",
+    flyoutBackgroundColour: "#f1f0ec",
+  },
+  fontStyle: getBlocklyFontStyle(),
+  categoryStyles: categoryStylesFrom(blockStyles),
+  blockStyles,
+  startHats: true,
+});
+
 export function getBlocklyTheme(pastel: boolean, accessibilitySettings: BlockAccessbility = {}) {
   const base = pastel
     ? Blockly.Theme.defineTheme("codely-pastel", {
         name: "codely-pastel",
         base: theme,
         startHats: true,
-        categoryStyles: Object.fromEntries(
-          Object.entries(pastelCategoryColours).map(([name, colour]) => [
-            name,
-            { colour },
-          ]),
-        ),
+        componentStyles: {
+          toolboxBackgroundColour: "#f1eff8",
+          flyoutBackgroundColour: "#f1eff8",
+        },
+        categoryStyles: categoryStylesFrom(pastelBlockStyles),
         blockStyles: pastelBlockStyles,
       })
     : theme;
@@ -229,33 +210,4 @@ export function getBlocklyTheme(pastel: boolean, accessibilitySettings: BlockAcc
   });
 }
 
-export function watchPastelTextContrast(
-  container: HTMLElement,
-  pastel: boolean,
-): MutationObserver | null {
-  const applyContrast = () => {
-    container
-      .querySelectorAll<SVGTextElement>(
-        ".blocklyText, .blocklyDropdownText, .blocklyFlyoutLabelText, .blocklyToolboxCategoryLabel",
-      )
-      .forEach((element) => {
-        element.style.setProperty("fill", pastel ? "#263238" : "", "important");
-      });
-
-    document
-      .querySelectorAll<HTMLElement>(
-        ".blocklyDropDownDiv .blocklyMenuItemContent, .blocklyWidgetDiv .blocklyMenuItemContent",
-      )
-      .forEach((element) => {
-        element.style.setProperty("color", pastel ? "#000" : "", "important");
-      });
-  };
-
-  applyContrast();
-  if (!pastel) return null;
-
-  const observer = new MutationObserver(applyContrast);
-  observer.observe(container, { childList: true, subtree: true });
-  return observer;
-}
 export default theme;

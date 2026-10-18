@@ -35,7 +35,7 @@ Codely is built with these open-source projects. Each one keeps its own license.
 - Tailwind CSS and tw-animate-css
 - shadcn/ui, Base UI and Radix UI
 - dnd-kit
-- Lucide icons
+- Phosphor Icons
 - canvas-confetti
 - class-variance-authority, clsx and tailwind-merge
 - Vite and TypeScript
