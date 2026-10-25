@@ -54,7 +54,3 @@ npm run tauri -- build
 The sprite and backdrop artwork used in Codely lessons comes from the Scratch
 Foundation and is used under CC BY-SA 2.0. The files are in
 `src-tauri/lesson_assets/shared`.
-
-## AI use
-
-
