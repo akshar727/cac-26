@@ -607,13 +607,6 @@ export const toolbox = {
         },
         {
           kind: "block",
-          type: "math_on_list",
-          fields: {
-            OP: "SUM",
-          },
-        },
-        {
-          kind: "block",
           type: "math_modulo",
           inputs: {
             DIVIDEND: {

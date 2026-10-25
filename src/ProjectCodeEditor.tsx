@@ -1196,8 +1196,8 @@ function CodeEditor({
                   sprites={sprites}
                   active={codeRunningState}
                 />
-                <div className="mt-3 grid w-full max-w-200 gap-4 border-t pt-3 text-sm md:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
-                  <div className="min-w-0 space-y-2">
+                <div className="mt-3 grid w-full max-w-200 gap-3 text-sm md:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
+                  <div className="min-w-0 space-y-2 rounded-lg border border-foreground/25 p-3">
                     <div className="flex min-w-0 items-center gap-2">
                       <ArrowCounterClockwiseIcon
                         className="size-4 shrink-0 text-muted-foreground"
@@ -1234,7 +1234,7 @@ function CodeEditor({
                       </span>
                     </div>
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 rounded-lg border border-foreground/25 p-3">
                     <h3 className="font-semibold leading-none">Variables</h3>
                     <div className="mt-1 grid max-h-20 gap-1 overflow-y-auto pr-1 sm:grid-cols-2 md:grid-cols-1">
                       {(runtimeRef.current?._targets ?? []).map((target) => (
