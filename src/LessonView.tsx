@@ -28,7 +28,7 @@ import { Lesson } from "./lib/lesson";
 import { getBlocklyTheme, loadBlocklyFonts } from "./blocks/theme";
 import { registerExtensions, unregisterExtensions } from "./lib/extensions";
 import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
-import confetti from "canvas-confetti";
+import { celebrate } from "./lib/celebrate";
 import {
   AccessibilitySettings,
   prefersReducedMotion,
@@ -179,14 +179,7 @@ function LessonView({
     ) {
       completionCelebratedRef.current = true;
       if (!accessibilitySettings.reducedMotion && !prefersReducedMotion()) {
-        void confetti({
-          particleCount: 90,
-          spread: 55,
-          startVelocity: 28,
-          ticks: 180,
-          scalar: 0.8,
-          origin: { y: 0.65 },
-        });
+        celebrate();
       }
     }
     if (workspace && lesson) {
