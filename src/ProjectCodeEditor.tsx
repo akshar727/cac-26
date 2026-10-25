@@ -33,6 +33,12 @@ import { RuntimeErrorDialog } from "./components/RuntimeErrorDialog";
 import { Label } from "./components/ui/label";
 import { StageLiveRegion } from "./components/StageLiveRegion";
 import { spriteLabel } from "./lib/stage";
+import {
+  pause,
+  STARTING_STATE_PAUSE_MS,
+  waitForCostumeImages,
+  waitForStageCanvases,
+} from "./lib/stageReady";
 
 type RuntimeSnapshotTarget = {
   id: number;
@@ -92,6 +98,7 @@ function CodeEditor({
   const runtimeActiveRef = useRef(false);
   const runIdRef = useRef(0);
   const runCleanupRef = useRef<(() => void) | null>(null);
+  const autoRunTokenRef = useRef(0);
   const snapshotsRef = useRef<RuntimeSnapshot[]>([]);
   const snapshotFrameRef = useRef(0);
   const [snapshotCount, setSnapshotCount] = React.useState(0);
@@ -115,6 +122,7 @@ function CodeEditor({
   React.useEffect(() => {
     return () => {
       codeRunning.current = false;
+      autoRunTokenRef.current += 1;
       runIdRef.current += 1;
       runCleanupRef.current?.();
       runCleanupRef.current = null;
@@ -326,6 +334,7 @@ function CodeEditor({
   const runCode = () => {
     if (!Blockly.getMainWorkspace()) return;
 
+    autoRunTokenRef.current += 1;
     runIdRef.current += 1;
     runCleanupRef.current?.();
     runCleanupRef.current = null;
@@ -498,6 +507,7 @@ function CodeEditor({
 
   const stopCode = () => {
     codeRunning.current = false;
+    autoRunTokenRef.current += 1;
     runtimeActiveRef.current = false;
     runIdRef.current += 1;
     runCleanupRef.current?.();
@@ -516,9 +526,29 @@ function CodeEditor({
     publishSnapshotState();
   };
 
-  function runFromCodeTab() {
+  async function runFromCodeTab() {
+    const token = autoRunTokenRef.current + 1;
+    autoRunTokenRef.current = token;
+    const isCancelled = () => autoRunTokenRef.current !== token;
     setActiveTab("screen");
-    window.setTimeout(() => runCode(), 100);
+    const stageReady = await waitForStageCanvases(isCancelled);
+    if (isCancelled()) return;
+    if (stageReady) {
+      let preview: Runtime | null = null;
+      try {
+        preview = renderBasePositions();
+      } catch {
+        preview = null;
+      }
+      if (preview) {
+        await waitForCostumeImages(preview, isCancelled);
+        if (isCancelled()) return;
+        preview.render();
+        await pause(STARTING_STATE_PAUSE_MS);
+        if (isCancelled()) return;
+      }
+    }
+    runCode();
   }
 
   function saveCurrentWorkspaceToDatabase() {
@@ -585,11 +615,12 @@ function CodeEditor({
     })();
   }
   function renderBasePositions() {
-    if (sprites.length === 0) return;
+    if (sprites.length === 0) return null;
     const runtime = new Runtime(sprites, () => {
       runtime.render();
       saveThumbnail();
     });
+    return runtime;
   }
 
   async function setupWorkspace() {
@@ -1030,6 +1061,7 @@ function CodeEditor({
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
+          autoRunTokenRef.current += 1;
           // Leaving the Screen tab ends the run so it cannot draw to a missing canvas.
           if (value !== "screen" && codeRunning.current) {
             stopCode();

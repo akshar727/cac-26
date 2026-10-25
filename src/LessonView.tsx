@@ -35,6 +35,12 @@ import {
   saveLessonProgress,
 } from "./lib/settings";
 import { StageLiveRegion } from "./components/StageLiveRegion";
+import {
+  pause,
+  STARTING_STATE_PAUSE_MS,
+  waitForCostumeImages,
+  waitForStageCanvases,
+} from "./lib/stageReady";
 import { blockHelp } from "./blocks/blockHelp";
 import {
   diagnoseLessonStep,
@@ -124,6 +130,7 @@ function LessonView({
   const runtimeActiveRef = useRef(false);
   const runIdRef = useRef(0);
   const runCleanupRef = useRef<(() => void) | null>(null);
+  const autoRunTokenRef = useRef(0);
 
   React.useEffect(() => {
     codeRunning.current = codeRunningState;
@@ -150,6 +157,7 @@ function LessonView({
   React.useEffect(() => {
     return () => {
       codeRunning.current = false;
+      autoRunTokenRef.current += 1;
       runIdRef.current += 1;
       runCleanupRef.current?.();
       runCleanupRef.current = null;
@@ -521,10 +529,11 @@ function LessonView({
   }
 
   function renderBasePositions() {
-    if (sprites.length === 0) return;
+    if (sprites.length === 0) return null;
     const runtime = new Runtime(sprites, () => runtimeRef.current?.render());
     runtimeRef.current = runtime;
     runtime.render();
+    return runtime;
   }
 
   // this effect should only add stuff into the workspace, not fetch data.
@@ -614,6 +623,7 @@ function LessonView({
 
   const runCode = () => {
     if (!Blockly.getMainWorkspace()) return;
+    autoRunTokenRef.current += 1;
     runIdRef.current += 1;
     runCleanupRef.current?.();
     runCleanupRef.current = null;
@@ -793,6 +803,7 @@ function LessonView({
 
   const stopCode = () => {
     codeRunning.current = false;
+    autoRunTokenRef.current += 1;
     runtimeActiveRef.current = false;
     runIdRef.current += 1;
     runCleanupRef.current?.();
@@ -810,9 +821,29 @@ function LessonView({
     setCodeRunningState(false);
   };
 
-  function runFromCodeTab() {
+  async function runFromCodeTab() {
+    const token = autoRunTokenRef.current + 1;
+    autoRunTokenRef.current = token;
+    const isCancelled = () => autoRunTokenRef.current !== token;
     setActiveTab("screen");
-    window.setTimeout(() => runCode(), 100);
+    const stageReady = await waitForStageCanvases(isCancelled);
+    if (isCancelled()) return;
+    if (stageReady) {
+      let preview: Runtime | null = null;
+      try {
+        preview = renderBasePositions();
+      } catch {
+        preview = null;
+      }
+      if (preview) {
+        await waitForCostumeImages(preview, isCancelled);
+        if (isCancelled()) return;
+        preview.render();
+        await pause(STARTING_STATE_PAUSE_MS);
+        if (isCancelled()) return;
+      }
+    }
+    runCode();
   }
 
   function requestHint() {
@@ -1649,6 +1680,7 @@ function LessonView({
       <Tabs
         value={activeTab}
         onValueChange={(value) => {
+          autoRunTokenRef.current += 1;
           setActiveTab(value);
           if (value !== "screen" && codeRunning.current) {
             stopCode();
