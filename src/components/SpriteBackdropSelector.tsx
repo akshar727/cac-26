@@ -250,7 +250,7 @@ export default function SpriteAndBackdropSelector({
                       autoComplete="off"
                       value={spriteNameDialogValue || ""}
                       onChange={(e) => setSpriteNameDialogValue(e.target.value)}
-                      placeholder="For example, Rocket"
+                      placeholder="Enter sprite name"
                     />
                   </Field>
                   <Field>
@@ -447,7 +447,9 @@ export default function SpriteAndBackdropSelector({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {deleteSprite?.name ?? "this sprite"}?</DialogTitle>
+            <DialogTitle>
+              Delete {deleteSprite?.name ?? "this sprite"}?
+            </DialogTitle>
             <DialogDescription>
               This permanently deletes the sprite along with its costumes,
               variables, and code. You cannot undo this.

@@ -45,7 +45,11 @@ import {
   PlusIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { DragDropProvider } from "@dnd-kit/react";
+import {
+  DragDropProvider,
+  KeyboardSensor,
+  PointerSensor,
+} from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import type { UniqueIdentifier } from "@dnd-kit/abstract";
 
@@ -55,6 +59,22 @@ const ZOOM_STEPS = [25, 50, 100, 200, 400];
 
 const overlayControl =
   "z-10 size-7 rounded-lg bg-muted/70 transition-colors duration-100 hover:bg-muted";
+
+const INTERACTIVE_SELECTOR =
+  "button, a, input, select, textarea, [role='button']";
+
+const costumeSensors = [
+  PointerSensor.configure({
+    preventActivation(event, source) {
+      const target = event.target;
+      if (!(target instanceof Element)) return false;
+      if (target.closest("[data-costume-select]")) return false;
+      const interactive = target.closest(INTERACTIVE_SELECTOR);
+      return interactive !== null && interactive !== source.element;
+    },
+  }),
+  KeyboardSensor,
+];
 
 function stepZoom(current: number | null, direction: 1 | -1): number {
   if (current === null) return direction === 1 ? 100 : 50;
@@ -233,6 +253,7 @@ function SortableCostumeCard({
         <Button
           type="button"
           variant="ghost"
+          data-costume-select
           aria-pressed={isActive}
           aria-label={`Select costume ${costume.costumeName}`}
           className="h-auto w-full whitespace-normal p-0 font-normal hover:cursor-[inherit] hover:bg-transparent dark:hover:bg-transparent"
@@ -629,6 +650,7 @@ export default function CostumeEdtior({
           </div>
           {activeSprite.image_paths.length > 0 ? (
             <DragDropProvider
+              sensors={costumeSensors}
               onDragEnd={async ({ operation, canceled }) => {
                 if (canceled) return;
                 const source = operation.source as {
@@ -742,6 +764,7 @@ export default function CostumeEdtior({
                       {noun === "backdrop" ? "Backdrop" : "Costume"} image
                     </Label>
                     <Button
+                      variant="outline"
                       onClick={async () => {
                         const selectedFile = await open({
                           multiple: false,
